@@ -1,4 +1,4 @@
-import { FIELD } from '../../gameplay/config';
+import { FIELD, POWER_WARN } from '../../gameplay/config';
 import type { EventBus } from '../../engine/core/EventBus';
 import type { GameEvents } from '../../gameplay/events';
 import { BrickKind } from '../../gameplay/types';
@@ -223,8 +223,31 @@ export class AudioDirector {
       );
     });
 
-    events.on('shieldHit', ({ x }) => {
-      audio.tone({ freq: 500, endFreq: 1100, dur: 0.2, vol: 0.2, type: 'triangle', pan: panOf(x) });
+    // A timed power running out: a soft tick each second of the warning, rising and getting more insistent.
+    events.on('powerUpWarning', ({ left, x }) => {
+      const t = audio.context?.currentTime ?? 0;
+      const urgency = POWER_WARN - left;
+      const f = 1500 + urgency * 260;
+      audio.tone({ freq: f, dur: 0.06, vol: 0.05 + urgency * 0.015, type: 'sine', pan: panOf(x), when: t });
+      audio.tone({ freq: f * 1.5, dur: 0.05, vol: 0.03 + urgency * 0.01, type: 'sine', pan: panOf(x), when: t + 0.07 });
+    });
+
+    // ...and gone: a short power-down.
+    events.on('powerUpExpired', ({ x }) => {
+      const t = audio.context?.currentTime ?? 0;
+      audio.tone({ freq: 1100, endFreq: 180, dur: 0.38, vol: 0.09, type: 'triangle', pan: panOf(x), when: t });
+      audio.tone({ freq: 550, endFreq: 90, dur: 0.45, vol: 0.05, type: 'sawtooth', filter: 1400, pan: panOf(x), when: t + 0.02 });
+      audio.noise({ dur: 0.25, vol: 0.035, filterType: 'bandpass', filter: 3000, endFilter: 600, pan: panOf(x), when: t });
+    });
+
+    events.on('shieldHit', ({ x, charges }) => {
+      const t = audio.context?.currentTime ?? 0;
+      const pan = panOf(x);
+      // The pulse: a bright rising ping, then the spent strand powering down (lower and longer on the last one).
+      audio.tone({ freq: 500, endFreq: 1100, dur: 0.2, vol: 0.2, type: 'triangle', pan, when: t });
+      const from = charges > 0 ? 620 : 420;
+      audio.tone({ freq: from, endFreq: from * 0.22, dur: 0.8, vol: 0.1, type: 'sawtooth', filter: 1800, pan, when: t + 0.16 });
+      audio.noise({ dur: 0.7, vol: 0.06, filterType: 'bandpass', filter: 2600, endFilter: 500, pan, when: t + 0.16 });
     });
 
     events.on('laserFired', ({ x }) => {

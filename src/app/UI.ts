@@ -61,7 +61,6 @@ const TEMPLATE = /* html */ `
       </g>
     </svg>
     <div class="readout level"><label data-ref="levelLabel">Space Level</label><b data-ref="levelNum">1</b></div>
-    <div class="powers" data-ref="powers"></div>
     <div class="readout score"><label>Score</label><b data-ref="score">0</b></div>
     <div class="readout combo idle" data-ref="combo"><label>Multiplier</label><b data-ref="mult">x1</b></div>
     <div class="readout lives"><label>Lives</label><span class="pips" data-ref="lives"></span></div>
@@ -179,30 +178,9 @@ const TEMPLATE = /* html */ `
 `;
 
 const POPUP_COUNT = 10;
-/** Order of the active power-up column, top to bottom. */
-const POWER_ORDER: readonly PowerUpKind[] = [
-  PowerUpKind.Fire,
-  PowerUpKind.Laser,
-  PowerUpKind.Magnet,
-  PowerUpKind.Multi,
-  PowerUpKind.Expand,
-  PowerUpKind.Slow,
-  PowerUpKind.Shield,
-  PowerUpKind.Life,
-];
-const LIFE_TILE_SECONDS = 2.5;
 
 function hexCss(hex: number): string {
   return `#${hex.toString(16).padStart(6, '0')}`;
-}
-
-interface PowerTile {
-  readonly el: HTMLElement;
-  readonly count: HTMLElement;
-  readonly fill: HTMLElement;
-  on: boolean;
-  text: string;
-  frac: number;
 }
 
 /** DOM overlay: menus, HUD, banners and floating popups. Only touches the DOM when a value changes. */
@@ -210,12 +188,10 @@ export class UI {
   private readonly refs = new Map<string, HTMLElement>();
   private readonly screens = new Map<ScreenId, HTMLElement>();
   private readonly popups: HTMLElement[] = [];
-  private readonly tiles = new Map<PowerUpKind, PowerTile>();
   private popupCursor = 0;
   private current: ScreenId | null = null;
   private navReturn: ScreenId = 'menu';
   private bannerTimer = 0;
-  private lifeTileTimer = 0;
   /** Loadout picker: one card per power-up kind (index = PowerUpKind) and the picks so far, in order. */
   private readonly pickCards: HTMLButtonElement[] = [];
   private picks: PowerUpKind[] = [];
@@ -240,25 +216,6 @@ export class UI {
       const el = document.createElement('span');
       popupLayer.appendChild(el);
       this.popups.push(el);
-    }
-
-    const powers = this.ref('powers');
-    for (const kind of POWER_ORDER) {
-      const info = POWERUPS[kind];
-      const el = document.createElement('div');
-      el.className = 'power';
-      el.style.setProperty('--c', hexCss(info.color));
-      el.title = info.name;
-      el.innerHTML = `<div class="tile">${iconSvg(kind)}</div><div class="count"><span></span><i></i></div>`;
-      powers.appendChild(el);
-      this.tiles.set(kind, {
-        el,
-        count: el.querySelector('.count span') as HTMLElement,
-        fill: el.querySelector('.count i') as HTMLElement,
-        on: false,
-        text: '',
-        frac: -1,
-      });
     }
 
     this.ref('powerLegend').innerHTML = Array.from({ length: POWERUP_KIND_COUNT }, (_, k) => {
@@ -534,11 +491,6 @@ export class UI {
     el.classList.add('show');
   }
 
-  /** Shows the extra-life tile for a moment after one is collected. */
-  notifyLife(): void {
-    this.lifeTileTimer = LIFE_TILE_SECONDS;
-  }
-
   showFatal(message: string): void {
     const el = this.ref('fatal');
     el.textContent = '';
@@ -548,26 +500,6 @@ export class UI {
     p.textContent = message;
     el.append(h, p);
     el.classList.add('visible');
-  }
-
-  private setTile(kind: PowerUpKind, on: boolean, text: string, frac: number): void {
-    const tile = this.tiles.get(kind);
-    if (!tile) return;
-    if (on !== tile.on) {
-      tile.on = on;
-      tile.el.classList.toggle('on', on);
-    }
-    if (!on) return;
-    if (text !== tile.text) {
-      tile.text = text;
-      tile.count.textContent = text;
-    }
-    // Only touch the DOM when the bar visibly changes (it used to restyle every frame).
-    const q = Math.round(Math.max(0, Math.min(1, frac)) * 400) / 400;
-    if (q !== tile.frac) {
-      tile.frac = q;
-      tile.fill.style.transform = `scaleX(${q})`;
-    }
   }
 
   /**
@@ -614,22 +546,6 @@ export class UI {
       }
       s.mult = world.multiplier;
       combo.classList.toggle('idle', world.multiplier <= 1);
-    }
-
-    for (const kind of POWER_ORDER) {
-      const info = POWERUPS[kind];
-      if (info.duration > 0) {
-        const left = world.effectTime[kind];
-        this.setTile(kind, left > 0, `${Math.ceil(left)}s`, left / info.duration);
-      } else if (kind === PowerUpKind.Shield) {
-        this.setTile(kind, world.shieldCharges > 0, `×${world.shieldCharges}`, world.shieldCharges / 2);
-      } else if (kind === PowerUpKind.Multi) {
-        const n = world.balls.activeCount;
-        this.setTile(kind, n > 1, `×${n}`, 1);
-      } else if (kind === PowerUpKind.Life) {
-        this.lifeTileTimer = Math.max(0, this.lifeTileTimer - dt);
-        this.setTile(kind, this.lifeTileTimer > 0, '+1', this.lifeTileTimer / LIFE_TILE_SECONDS);
-      }
     }
 
     const boss = world.boss;

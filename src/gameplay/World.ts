@@ -19,6 +19,8 @@ import {
   POWERUPS,
   POWERUP_SCORE,
   SHIELD_CHARGES,
+  SHIELD_PICKUP,
+  POWER_WARN,
   SHOT,
   BITE,
   SCARAB,
@@ -424,10 +426,15 @@ export class World {
     const effects = this.effectTime;
     for (let kind = 0; kind < effects.length; kind++) {
       if (effects[kind] <= 0) continue;
+      const before = Math.ceil(effects[kind]);
       effects[kind] -= dt;
+      const after = Math.ceil(effects[kind]);
+      if (effects[kind] > 0 && after < before && after <= POWER_WARN) {
+        this.events.emit('powerUpWarning', { kind: kind as PowerUpKind, left: after, x: this.paddle.x });
+      }
       if (effects[kind] <= 0) {
         effects[kind] = 0;
-        this.events.emit('powerUpExpired', { kind: kind as PowerUpKind });
+        this.events.emit('powerUpExpired', { kind: kind as PowerUpKind, x: this.paddle.x });
         if (kind === PowerUpKind.Magnet) this.launchStuckBalls();
       }
     }
@@ -448,7 +455,7 @@ export class World {
       }
       if (sources.length > 0) this.events.emit('ballsSplit', { x: sources[0].x, y: sources[0].y });
     } else if (kind === PowerUpKind.Shield) {
-      this.shieldCharges = SHIELD_CHARGES;
+      this.shieldCharges = Math.min(SHIELD_CHARGES, this.shieldCharges + SHIELD_PICKUP);
     } else if (kind === PowerUpKind.Life) {
       this.lives = Math.min(PLAYER.maxLives, this.lives + 1);
     }

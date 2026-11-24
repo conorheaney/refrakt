@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { BALL, FIELD, LASER, PADDLE, POWERUPS, SHOT } from '../config';
+import { BALL, FIELD, LASER, PADDLE, POWERUPS, SHIELD_CHARGES, SHOT } from '../config';
 import type { WorldId } from '../../content/worlds';
-import { clamp, damp, easeOutCubic, lerp } from '../../engine/core/math';
+import { clamp, easeOutCubic, lerp } from '../../engine/core/math';
 import { POWERUP_KIND_COUNT, PowerUpKind, type Paddle } from '../types';
 import { paddleSlope } from '../hazards/scarabs/scarabs';
 import type { World } from '../World';
@@ -11,6 +11,7 @@ import type { ParticleSystem } from '../../engine/render/ParticleSystem';
 import { TRAIL_FRAGMENT, TRAIL_VERTEX } from '../../engine/render/shaders';
 import { createShadowTexture } from '../../engine/render/textures';
 import { createIconTexture } from '../powerups/iconTexture';
+import { BAND_H, BAND_INSET, BAND_Y, PaddlePowers } from './PaddlePowers';
 
 function hdr(hex: number, gain: number): THREE.Color {
   return new THREE.Color(hex).multiplyScalar(gain);
@@ -402,6 +403,9 @@ export function paddleRoll(p: Paddle): number {
 
 export class PaddleView {
   readonly group = new THREE.Group();
+  /** Countdowns for the paddle's timed powers, on its front face (PaddlePowers). */
+  readonly powers = new PaddlePowers(PADDLE_HALF_D + 0.035);
+  private readonly bar: THREE.Mesh;
   private readonly stretch = new THREE.Group();
   private readonly cannonL: THREE.Mesh;
   private readonly cannonR: THREE.Mesh;
@@ -413,8 +417,6 @@ export class PaddleView {
   private readonly goal = new THREE.Color();
   // Light-bar colours. Kept modest so the bar (and its floor reflection) reads clearly without blooming.
   private readonly cBase = hdr(0xff7a1f, 2);
-  private readonly cMagnet = hdr(0xb04dff, 2);
-  private readonly cLaser = hdr(0xff2f4f, 2.2);
   private readonly cStun = hdr(0xff2020, 1.6);
   private readonly cVenom = hdr(0x5dff3a, 1.8);
   private readonly cScarab = hdr(0xffb020, 1.7);
@@ -449,14 +451,15 @@ export class PaddleView {
     const top = new THREE.Mesh(createSlabGeometry(halfW - 0.42, 0.04, PADDLE_HALF_D - 0.36, 0.34, 0.03), this.topMaterial);
     top.position.y = halfH + 0.02;
 
-    const recess = new THREE.Mesh(
-      new THREE.BoxGeometry(PADDLE.width * 0.82, 0.16, 0.04),
-      new THREE.MeshStandardMaterial({ color: 0x14171c, roughness: 0.35, metalness: 0.8 }),
+    // The display band across the front face: dark glass that the light bar and the power countdowns sit in.
+    const band = new THREE.Mesh(
+      new RoundedBoxGeometry(PADDLE.width - BAND_INSET, BAND_H, 0.06, 3, 0.03),
+      new THREE.MeshPhysicalMaterial({ color: 0x0b0e13, roughness: 0.18, metalness: 0.4, clearcoat: 1, clearcoatRoughness: 0.08 }),
     );
-    recess.position.set(0, -0.04, PADDLE_HALF_D + 0.005);
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(PADDLE.width * 0.36, 0.09, 0.05), this.barMaterial);
-    bar.position.set(0, -0.04, PADDLE_HALF_D + 0.03);
-    this.stretch.add(body, top, recess, bar);
+    band.position.set(0, BAND_Y, PADDLE_HALF_D);
+    this.bar = new THREE.Mesh(new THREE.BoxGeometry(PADDLE.width * 0.36, 0.09, 0.05), this.barMaterial);
+    this.bar.position.set(0, BAND_Y, PADDLE_HALF_D + 0.03);
+    this.stretch.add(body, top, band, this.bar);
 
     // Small warm glints at both front corners.
     const accentGeo = new THREE.BoxGeometry(0.22, 0.06, 0.05);
@@ -481,7 +484,7 @@ export class PaddleView {
     this.contact.position.y = FIELD.floorY - PADDLE.y + 0.01;
     this.contact.renderOrder = 1;
 
-    this.group.add(this.stretch, this.cannonL, this.cannonR, this.contact);
+    this.group.add(this.stretch, this.cannonL, this.cannonR, this.contact, this.powers.group);
     this.color.copy(this.cBase);
     scene.add(this.group);
   }
@@ -517,15 +520,18 @@ export class PaddleView {
     if (p.stun > 0) this.goal.copy(this.cStun);
     else if (p.shove !== 0) this.goal.copy(this.cVenom);
     else if (world.scarabs.clinging > 0) this.goal.copy(this.cScarab);
-    else if (laser) this.goal.copy(this.cLaser);
-    else if (world.hasEffect(PowerUpKind.Magnet)) this.goal.copy(this.cMagnet);
     else this.goal.copy(this.cBase);
     this.color.lerp(this.goal, 1 - Math.exp(-6 * dt));
     this.barMaterial.color.copy(this.color).multiplyScalar(1 + hit * 0.35);
+    // The power countdowns take over the band while any are running; otherwise the plain light bar shows.
+    this.powers.update(world, p.width, dt);
+    this.bar.visible = this.powers.shownCount === 0;
     this.accentMaterial.color.copy(this.color).multiplyScalar(0.55 + hit * 0.2);
     this.topMaterial.emissiveIntensity = 0.18 + hit * 0.15;
   }
+
 }
+
 
 // ---------------------------------------------------------------------- drops
 
@@ -802,43 +808,265 @@ export class BossView {
 
 // --------------------------------------------------------------------- shield
 
-/** A thin glowing line at the barrier's collision height. */
-export class ShieldView {
-  private readonly mesh: THREE.Mesh;
-  private readonly material = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    blending: THREE.AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-  });
-  private readonly base = new THREE.Color(0x6ff0ff);
-  private flash = 0;
+/** The beam's quad reaches this far below and above its line (room for the halo and emitter nodes). */
+const SHIELD_BELOW = 0.35;
+const SHIELD_ABOVE = 0.35;
+/** How far the force-field netting reaches back across the floor behind the beam (world units, -z). */
+const NET_DEPTH = 5;
+/** How much each side of the netting draws in per unit it reaches back. */
+const NET_TAPER = 0.3;
 
-  constructor(scene: THREE.Scene) {
-    const radius = 0.035;
-    const geometry = new THREE.CapsuleGeometry(radius, FIELD.halfWidth * 2 - radius * 2, 6, 12);
-    geometry.rotateZ(Math.PI / 2);
-    this.mesh = new THREE.Mesh(geometry, this.material);
-    this.mesh.position.set(0, FIELD.shieldY, 0.2);
-    this.mesh.visible = false;
-    scene.add(this.mesh);
+const SHIELD_VERTEX = /* glsl */ `
+  varying vec2 vPos;
+  uniform float uLength;
+  void main() {
+    vPos = vec2(position.x * uLength, (position.y + 0.5) * ${(SHIELD_BELOW + SHIELD_ABOVE).toFixed(3)} - ${SHIELD_BELOW.toFixed(3)});
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+/**
+ * The barrier's beam, drawn additively on one quad laid over its line. Everything about it follows uLevel,
+ * its strength (charges left / charges full): thick and cyan at full strength (with the netting behind it,
+ * NET_FRAGMENT); thin, amber and breaking up into sputtering segments on its last charge. Emitter nodes burn at
+ * both ends, energy flows along it, and a hit flares white and ripples out from where the ball struck.
+ */
+const SHIELD_FRAGMENT = /* glsl */ `
+  varying vec2 vPos;
+  uniform float uLength;
+  uniform float uTime;
+  uniform float uLevel;
+  uniform float uFill;
+  uniform float uFlicker;
+  uniform float uHitX;
+  uniform float uHitAge;
+  uniform vec3 uColor;
+
+  float hash(float n) { return fract(sin(n) * 43758.5453); }
+
+  void main() {
+    float x = vPos.x;
+    float y = vPos.y;
+    float halfL = uLength * 0.5;
+    float level = uLevel;
+    // Ignition: the beam spreads out from the middle when the barrier comes up.
+    float reach = uFill * (halfL + 0.3);
+    float lit = smoothstep(reach, reach - 0.4, abs(x));
+
+    // Hit: white-hot spot where the ball struck, a ripple racing to both ends.
+    float d = abs(x - uHitX);
+    float rippleFade = exp(-uHitAge * 2.0);
+    float ripple = exp(-pow((d - uHitAge * 24.0) / 0.8, 2.0)) * rippleFade;
+    float spot = exp(-d * d / 1.5) * exp(-uHitAge * 4.5);
+    float flare = clamp(1.0 - uHitAge * 2.2, 0.0, 1.0);
+
+    // Damage: below full strength the beam breaks into segments that drop out and come back.
+    float damage = clamp(1.0 - level, 0.0, 1.0);
+    // Uneven segments, so the dropouts read as faults rather than a regular stripe.
+    float seg = floor(x * 1.3 + sin(x * 0.55) * 1.7);
+    float tick = floor(uTime * 11.0 + hash(seg) * 3.0);
+    float gap = step(1.0 - damage * 0.4, hash(seg * 7.13 + tick * 1.37));
+    float crackle = step(0.985 - damage * 0.03, hash(floor(x * 6.0) * 3.1 + floor(uTime * 30.0) * 0.71));
+
+    // The beam: a core that thins and a halo that narrows as strength drains.
+    float w = mix(0.018, 0.05, level);
+    float core = exp(-y * y / (w * w));
+    float halo = exp(-y * y / (w * w * 9.0)) * 0.45;
+    float flow = 0.8 + 0.2 * sin(abs(x) * 2.2 - uTime * 9.0);
+    float beam = (core * 1.8 + halo) * flow * (1.0 - gap * 0.7) * (0.35 + 0.65 * level);
+
+    // Emitter nodes at both ends.
+    float ex = abs(x) - (halfL - 0.15);
+    float node = exp(-(ex * ex + y * y) / mix(0.012, 0.035, level)) * 2.5;
+
+    float glow = (beam + node) * uFlicker + crackle * core * 3.0;
+    float hit = (ripple + spot * 2.0) * (core * 2.5 + halo * 2.0) + flare * core * 1.5;
+    vec3 col = uColor * glow + mix(uColor, vec3(1.0), 0.65) * hit * 2.4;
+    float ends = smoothstep(halfL + 0.1, halfL - 0.05, abs(x));
+    gl_FragColor = vec4(col * lit * ends, 1.0);
+  }
+`;
+
+const NET_VERTEX = /* glsl */ `
+  varying vec2 vPos;
+  uniform float uLength;
+  void main() {
+    // The quad lies flat on the floor: x along the beam, y how far back from it.
+    vPos = vec2(position.x * uLength, -position.z * ${NET_DEPTH.toFixed(3)});
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+/**
+ * The force field's netting: hexagonal cells laid across the floor behind the beam, running back into the
+ * scene and fading with distance, with energy drifting away from the line. It is strongest at full strength,
+ * thins with each charge lost and is gone on the last; a hit flares it and rings out across it.
+ */
+const NET_FRAGMENT = /* glsl */ `
+  varying vec2 vPos;
+  uniform float uLength;
+  uniform float uTime;
+  uniform float uLevel;
+  uniform float uFill;
+  uniform float uFlicker;
+  uniform float uHitX;
+  uniform float uHitAge;
+  uniform vec3 uColor;
+  const float NET_TAPER = ${NET_TAPER.toFixed(3)};
+
+  // Distance to the nearest edge of a hexagonal cell (0 on the edge).
+  float hexEdge(vec2 p) {
+    p.x *= 1.1547;
+    p.y += mod(floor(p.x), 2.0) * 0.5;
+    p = abs(fract(p) - 0.5);
+    return abs(max(p.x * 1.5 + p.y, p.y * 2.0) - 1.0);
   }
 
-  pulse(): void {
-    this.flash = 1;
+  void main() {
+    float x = vPos.x;
+    float back = vPos.y;
+    float halfL = uLength * 0.5;
+    float flare = clamp(1.0 - uHitAge * 1.6, 0.0, 1.0);
+    float strength = smoothstep(0.4, 1.0, uLevel) + flare * 0.7;
+    // Reaches further back the stronger it is, and fades out toward the back of the scene.
+    float reach = ${NET_DEPTH.toFixed(3)} * (0.35 + 0.65 * smoothstep(0.4, 1.0, uLevel)) + flare * 1.5;
+    float fade = exp(-back / (reach * 0.4)) * smoothstep(0.0, 0.12, back);
+    float cells = 1.0 - smoothstep(0.0, 0.1, hexEdge(vec2(x * 1.5, back * 1.5 - uTime * 0.4)));
+    // Bands of energy rolling away from the beam.
+    float wave = 0.55 + 0.45 * sin(back * 5.0 - uTime * 5.0 + sin(x * 0.5) * 1.5);
+    // A hit rings out across the netting from where the ball struck.
+    float r = length(vec2(x - uHitX, back));
+    float ring = exp(-pow((r - uHitAge * 12.0) / 0.5, 2.0)) * exp(-uHitAge * 1.8);
+    float lit = smoothstep(uFill * (halfL + 0.3), uFill * (halfL + 0.3) - 0.4, abs(x));
+    // The sides draw in a little as the netting runs back.
+    float edge = halfL - back * NET_TAPER;
+    float sides = smoothstep(edge, edge - 0.8, abs(x));
+    float net = fade * (cells * (0.45 * wave + ring * 3.0) + 0.06) * strength * uFlicker;
+    vec3 col = uColor * net + vec3(1.0) * cells * ring * fade * 0.8;
+    gl_FragColor = vec4(col * lit * sides, 1.0);
+  }
+`;
+
+/** Seconds after a hit before the barrier starts losing strength (so the pulse reads first), and the drain time. */
+const SHIELD_DRAIN_DELAY = 0.2;
+const SHIELD_DRAIN = 0.8;
+
+/**
+ * The barrier along the floor. One beam whose look says how many saves it has left (see SHIELD_FRAGMENT):
+ * a hit makes it flare and ripple, then it visibly drains to its weaker state, or sputters out on its last.
+ */
+export class ShieldView {
+  private readonly mesh: THREE.Mesh;
+  private readonly net: THREE.Mesh;
+  private readonly uniforms = {
+    uLength: { value: FIELD.halfWidth * 2 },
+    uTime: { value: 0 },
+    uLevel: { value: 0 },
+    uFill: { value: 0 },
+    uFlicker: { value: 1 },
+    uHitX: { value: 0 },
+    uHitAge: { value: 99 },
+    uColor: { value: new THREE.Color() },
+  };
+  private readonly full = hdr(0x6ff0ff, 1.8);
+  private readonly weak = hdr(0xffa23a, 2);
+  /** Shown strength 0-1; trails the real one so each lost charge drains away visibly. */
+  private level = 0;
+  private fill = 0;
+  private hold = 0;
+  private hitX = 0;
+  private hitAge = 99;
+  private time = 0;
+
+  constructor(scene: THREE.Scene) {
+    const material = new THREE.ShaderMaterial({
+      uniforms: this.uniforms,
+      vertexShader: SHIELD_VERTEX,
+      fragmentShader: SHIELD_FRAGMENT,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false,
+    });
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+    this.mesh.visible = false;
+    this.mesh.renderOrder = 2;
+    scene.add(this.mesh);
+
+    // The netting shares the beam's uniforms; its quad lies flat, reaching back from the beam's line.
+    const netGeo = new THREE.PlaneGeometry(1, 1);
+    netGeo.rotateX(-Math.PI / 2);
+    netGeo.translate(0, 0, -0.5);
+    this.net = new THREE.Mesh(
+      netGeo,
+      new THREE.ShaderMaterial({
+        uniforms: this.uniforms,
+        vertexShader: NET_VERTEX,
+        fragmentShader: NET_FRAGMENT,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    this.net.visible = false;
+    this.net.renderOrder = 1;
+    scene.add(this.net);
+  }
+
+  /** The ball struck the barrier at x. */
+  pulse(x: number): void {
+    this.hitX = x;
+    this.hitAge = 0;
+    this.hold = SHIELD_DRAIN_DELAY;
   }
 
   update(world: World, dt: number): void {
-    this.mesh.scale.x = (world.shieldRight - world.shieldLeft) / (FIELD.halfWidth * 2);
-    this.mesh.position.set((world.shieldLeft + world.shieldRight) / 2, world.shieldY, 0.2);
-    this.flash = damp(this.flash, 0, 3, dt);
-    const on = world.shieldCharges > 0;
-    this.mesh.visible = on || this.flash > 0.02;
-    if (!this.mesh.visible) return;
-    // Steady band with a slow, faint breathe; a hit adds a gentle glow that fades over ~1 s.
-    const gain = (on ? 0.5 + world.shieldCharges * 0.25 + Math.sin(world.time * 1.5) * 0.04 : 0) + this.flash * 0.6;
-    // Keep the narrow core above the renderer's bloom threshold, even on its last charge.
-    this.material.color.copy(this.base).multiplyScalar(gain * 2.5);
+    this.time += dt;
+    this.hitAge += dt;
+    const target = world.shieldCharges / SHIELD_CHARGES;
+    const draining = target < this.level;
+    if (target > this.level) {
+      // Picked up (or topped up): strength surges in and, from nothing, the beam ignites outward.
+      if (this.level <= 0.001) this.fill = 0;
+      this.level = Math.min(target, this.level + dt * 2.5);
+      this.hold = 0;
+    } else if (draining) {
+      if (this.hold > 0) this.hold -= dt;
+      // One charge's worth of strength drains over SHIELD_DRAIN.
+      else this.level = Math.max(target, this.level - dt / (SHIELD_DRAIN * SHIELD_CHARGES));
+    }
+    this.fill = target > 0 || this.level > 0 ? Math.min(1, this.fill + dt * 2.2) : this.fill;
+
+    const visible = this.level > 0.002 || this.hitAge < 1;
+    this.mesh.visible = this.net.visible = visible;
+    if (!visible) return;
+
+    let flicker = 1;
+    if (draining && this.hold <= 0) {
+      // Losing energy: hard stutters as it drops.
+      flicker = Math.random() < 0.4 ? 0.25 : 1;
+    } else if (this.level < 1.5 / SHIELD_CHARGES) {
+      // On its last charge: a nervous shimmer with the odd dropout.
+      flicker = 0.8 + 0.2 * Math.sin(this.time * 23) * Math.sin(this.time * 7.1);
+      if (Math.random() < 0.04) flicker = 0.3;
+    }
+
+    const length = world.shieldRight - world.shieldLeft;
+    const cx = (world.shieldLeft + world.shieldRight) / 2;
+    const u = this.uniforms;
+    u.uLength.value = length;
+    u.uTime.value = this.time;
+    u.uLevel.value = this.level;
+    u.uFill.value = this.fill;
+    u.uFlicker.value = flicker;
+    u.uHitX.value = this.hitX - cx;
+    u.uHitAge.value = this.hitAge;
+    // Cyan at full strength, shading toward amber with each charge lost, fully amber on the last.
+    const spent = SHIELD_CHARGES > 1 ? clamp((1 - this.level) / (1 - 1 / SHIELD_CHARGES), 0, 1) : 0;
+    u.uColor.value.copy(this.full).lerp(this.weak, Math.pow(spent, 1.4));
+    this.mesh.scale.set(length, SHIELD_BELOW + SHIELD_ABOVE, 1);
+    this.mesh.position.set(cx, world.shieldY + (SHIELD_ABOVE - SHIELD_BELOW) / 2, 0.2);
+    this.net.scale.set(length, 1, NET_DEPTH);
+    this.net.position.set(cx, world.shieldY + 0.02, 0.2);
   }
 }
 

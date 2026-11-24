@@ -290,70 +290,6 @@ body {
   position: relative;
 }
 
-/* Active power-ups: compact system chips inside the console (at most 3 with a loadout). */
-.powers {
-  left: 262px;
-  top: 12px;
-  display: flex;
-  gap: 10px;
-}
-.power {
-  display: none;
-  position: relative;
-  align-items: center;
-  gap: 8px;
-  height: 48px;
-  padding: 0 12px 0 6px;
-  border-radius: 10px;
-  border: 1.5px solid color-mix(in srgb, var(--c) 55%, transparent);
-  background: rgba(7, 11, 20, 0.72);
-  animation: power-in 0.4s ease-out;
-}
-.power.on {
-  display: flex;
-}
-.power .tile {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.power .tile svg {
-  width: 32px;
-  height: 32px;
-}
-.power .count {
-  position: relative;
-  min-width: 52px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  font-family: var(--mono);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--hud-ink);
-}
-.power .count i {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 7px;
-  height: 3px;
-  border-radius: 1px;
-  background: var(--c);
-  opacity: 0.85;
-  transform-origin: left center;
-}
-@keyframes power-in {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
 /* ------------------------------------------------------- banner / popups */
 
 .banner {
@@ -946,7 +882,6 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .banner.show,
-  .power,
   .combo.pop {
     animation-duration: 0.01s;
   }

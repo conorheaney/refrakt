@@ -20,7 +20,10 @@ export interface GameEvents {
   refraktEnded: { cut: boolean };
   comboChanged: { combo: number; multiplier: number };
   powerUpCollected: { kind: PowerUpKind; x: number; y: number };
-  powerUpExpired: { kind: PowerUpKind };
+  /** A timed power ran out; x is the paddle's position. */
+  powerUpExpired: { kind: PowerUpKind; x: number };
+  /** A timed power is about to run out: `left` whole seconds remain (POWER_WARN down to 1); x is the paddle's position. */
+  powerUpWarning: { kind: PowerUpKind; left: number; x: number };
   shieldHit: { x: number; charges: number };
   laserFired: { x: number; y: number };
   laserHit: { x: number; y: number };

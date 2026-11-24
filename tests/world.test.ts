@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BALL, BOSS_SUMMON, DROP, FIELD, FOREST_ART, FOREST_FIELD, GRID, PADDLE, PLAYER, SIM } from '../src/gameplay/config';
+import { BALL, BOSS_SUMMON, DROP, FIELD, FOREST_ART, FOREST_FIELD, GRID, PADDLE, PLAYER, POWER_WARN, SHIELD_CHARGES, SHIELD_PICKUP, SIM } from '../src/gameplay/config';
 import { LEVELS, LEVEL_CELLS } from '../src/content/levels';
 import { STAGES_PER_WORLD, WORLDS, speedSteps, worldOf } from '../src/content/worlds';
 import { Pool } from '../src/engine/core/Pool';
@@ -35,6 +35,40 @@ describe('paddle level initialization', () => {
     hitPaddle();
     world.loadLevel(1);
     expect(world.time - world.paddle.hitTime).toBeGreaterThan(0.3);
+  });
+});
+
+describe('barrier pickups', () => {
+  it('give SHIELD_PICKUP charges each and stack up to SHIELD_CHARGES', () => {
+    const world = new World();
+    world.newGame(1);
+    const collect = (): void => (world as unknown as { collect(kind: PowerUpKind, x: number, y: number): void }).collect(PowerUpKind.Shield, 0, 0);
+    collect();
+    expect(world.shieldCharges).toBe(SHIELD_PICKUP);
+    collect();
+    expect(world.shieldCharges).toBe(SHIELD_CHARGES);
+    collect();
+    expect(world.shieldCharges).toBe(SHIELD_CHARGES);
+  });
+});
+
+describe('timed power warnings', () => {
+  it('warns once per second for the last POWER_WARN seconds, then expires once', () => {
+    const world = new World();
+    world.newGame(1);
+    world.phase = 'live';
+    const warnings: number[] = [];
+    let expired = 0;
+    world.events.on('powerUpWarning', ({ kind, left }) => {
+      if (kind === PowerUpKind.Laser) warnings.push(left);
+    });
+    world.events.on('powerUpExpired', ({ kind }) => {
+      if (kind === PowerUpKind.Laser) expired++;
+    });
+    world.effectTime[PowerUpKind.Laser] = POWER_WARN + 0.5;
+    for (let i = 0; i < (POWER_WARN + 1) / SIM.step; i++) world.step(SIM.step, { targetX: 0, axis: 0, action: false });
+    expect(warnings).toEqual(Array.from({ length: POWER_WARN }, (_, i) => POWER_WARN - i));
+    expect(expired).toBe(1);
   });
 });
 

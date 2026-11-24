@@ -34,6 +34,7 @@ import { ScarabView, SCARAB_Z } from '../gameplay/hazards/scarabs/ScarabView';
 import { ScarabSystem } from '../gameplay/hazards/scarabs/scarabs';
 import { createGlowTexture } from '../engine/render/textures';
 import { RefraktFx } from '../gameplay/refrakt/RefraktFx';
+import { BAND_Y, PADDLE_POWERS } from '../gameplay/entities/PaddlePowers';
 
 const CELEBRATE_HUES: readonly number[] = [0.07, 0.6, 0.93];
 
@@ -468,9 +469,23 @@ export class GameView {
       p.burst(x, y, tmp, 10, 6, 0.35, 0.55, 0.9);
     });
 
-    ev.on('shieldHit', ({ x }) => {
-      this.shield.pulse();
-      p.sparks(x, world.shieldY + 0.1, 0, 1, tmp.set(0x7df6ff), 6, 7);
+    // A paddle power ran out: its glyph bursts on the paddle's front face (PaddlePowers) and throws sparks.
+    ev.on('powerUpExpired', ({ kind }) => {
+      if (!PADDLE_POWERS.includes(kind)) return;
+      const px = world.paddle.x + this.paddle.powers.slotX(kind);
+      p.burst(px, world.paddle.y + BAND_Y, tmp.set(POWERUPS[kind].color), 12, 4.5, 0.25, 0.45, 0.6);
+    });
+
+    ev.on('shieldHit', ({ x, charges }) => {
+      this.shield.pulse(x);
+      // Cyan while strands remain; the last one going out throws amber.
+      tmp.set(charges > 0 ? 0x7df6ff : 0xffb04a);
+      p.sparks(x, world.shieldY + 0.1, 0, 1, tmp, 14, 9);
+      this.shockwaves.spawn(x, world.shieldY, tmp, 1.6, 0.4);
+      // The spent strand sheds sparks along its length as it drains.
+      const left = world.shieldLeft;
+      const span = world.shieldRight - left;
+      for (let i = 0; i < 8; i++) p.sparks(left + span * (i + 0.5) / 8, world.shieldY, 0, 1, tmp, 2, 3);
     });
 
     ev.on('laserHit', ({ x, y }) => {

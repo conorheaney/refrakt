@@ -536,7 +536,6 @@ export class Game {
     ev.on('powerUpCollected', ({ kind, x, y }) => {
       if (world.demo) return;
       this.popup(POWERUPS[kind].name, x, y + 1.4, POWERUPS[kind].color);
-      if (kind === PowerUpKind.Life) ui.notifyLife();
     });
 
     ev.on('refraktStarted', () => {

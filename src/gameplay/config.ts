@@ -525,7 +525,11 @@ export const POWERUPS: Readonly<Record<PowerUpKind, PowerUpInfo>> = {
   [PowerUpKind.Life]: { name: 'EXTRA LIFE', letter: '+', color: 0xff6bd0, duration: 0, weight: 3 },
 };
 
-export const SHIELD_CHARGES = 2;
+/** Most charges the barrier can hold, and how many each BARRIER pickup adds (pickups stack up to the cap). */
+export const SHIELD_CHARGES = 3;
+export const SHIELD_PICKUP = 2;
+/** Seconds left at which a timed power starts warning that it is about to run out (a tick each second, and its countdown strobes). */
+export const POWER_WARN = 3;
 export const POWERUP_SCORE = 250;
 
 /** Number of power-up kinds the player picks before each level; only those can drop that level. */
@@ -542,7 +546,7 @@ export const POWERUP_DESCRIPTIONS: Readonly<Record<PowerUpKind, string>> = {
   [PowerUpKind.Slow]: `Slows the ball to ${Math.round(BALL.slowFactor * 100)}% speed for ${secs(PowerUpKind.Slow)}.`,
   [PowerUpKind.Fire]: `The ball smashes straight through bricks (not gunmetal) for ${secs(PowerUpKind.Fire)}.`,
   [PowerUpKind.Magnet]: `The paddle catches the ball so you can aim the release, for ${secs(PowerUpKind.Magnet)}.`,
-  [PowerUpKind.Shield]: `A barrier across the floor that saves the ball ${SHIELD_CHARGES} times.`,
+  [PowerUpKind.Shield]: `A barrier across the floor that saves the ball ${SHIELD_PICKUP} times; more stack up to ${SHIELD_CHARGES}.`,
   [PowerUpKind.Life]: `One extra life (up to ${PLAYER.maxLives}).`,
 };
 
