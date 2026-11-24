@@ -1,0 +1,10 @@
+{
+  "name": "refrakt-world-editor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm --prefix .. run dev -- --open /editor/",
+    "build": "npm --prefix .. run build",
+    "typecheck": "npm --prefix .. run typecheck"
+  }
+}

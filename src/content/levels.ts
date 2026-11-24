@@ -1,0 +1,473 @@
+import { BrickKind, type BossDef } from '../gameplay/types';
+import { GRID } from '../gameplay/config';
+
+export interface LevelDef {
+  readonly name: string;
+  /**
+   * One string per brick row, top first, exactly GRID.cols characters:
+   * `.` empty, `1` normal, `2` tough, `3` armored, `S` steel,
+   * `X` explosive, `P` prism, `G` phase.
+   */
+  readonly rows: readonly string[];
+  /** Sky hue (0..1) used by the environment theme. */
+  readonly hue: number;
+  readonly boss?: BossDef;
+}
+
+export interface LevelCell {
+  readonly col: number;
+  readonly row: number;
+  readonly kind: BrickKind;
+}
+
+const SYMBOLS: Readonly<Record<string, BrickKind>> = {
+  '1': BrickKind.Normal,
+  '2': BrickKind.Tough,
+  '3': BrickKind.Armored,
+  S: BrickKind.Steel,
+  X: BrickKind.Explosive,
+  P: BrickKind.Prism,
+  G: BrickKind.Phase,
+};
+
+/*
+ * Levels come in worlds of ten (see worlds.ts): 1-10 are Space, 11-20 are Forest. Each world has a boss
+ * on its fifth and tenth level.
+ *
+ * Layouts are authored for the 13 x 12 grid, which spans most of the arena's
+ * height. Regular stages fill rows 0-10/11 so the formation reaches well down
+ * the frame while leaving about five ball diameters of open space above the
+ * paddle; boss stages leave rows 0-4 to the boss and build in rows 5-8, which
+ * is also the band a summoning boss refills (see BOSS_SUMMON).
+ */
+export let LEVELS: readonly LevelDef[] = [
+  // -------------------------------------------------------------- World 1: Space (levels 1-10)
+  {
+    name: 'FIRST LIGHT',
+    hue: 0.58,
+    rows: [
+      '...221P122...',
+      '..211111112..',
+      '.21111111112.',
+      '2111P111P1112',
+      '2111111111112',
+      '.21111111112.',
+      '.2.1111111.2.',
+      '..2.11111.2..',
+      '...11...11...',
+      '....1...1....',
+    ],
+  },
+  {
+    name: 'SPECTRUM',
+    hue: 0.5,
+    rows: [
+      '2222222222222',
+      '1111111111111',
+      '1X111111111X1',
+      '1111111111111',
+      '111112P211111',
+      '1111111111111',
+      '.............',
+      '1111111111111',
+      '1X111111111X1',
+      '1111111111111',
+      '2.2.2.2.2.2.2',
+    ],
+  },
+  {
+    name: 'PRISM GARDEN',
+    hue: 0.42,
+    rows: [
+      '......P......',
+      '.....121.....',
+      '....12221....',
+      '...1221221...',
+      '..1221P1221..',
+      '.12P11X11P21.',
+      '..1221P1221..',
+      '...1221221...',
+      '....12221....',
+      '.....121.....',
+      '......P......',
+    ],
+  },
+  {
+    name: 'VOLATILE',
+    hue: 0.06,
+    rows: [
+      'S.S.S.S.S.S.S',
+      '1111111111111',
+      '1X11X111X11X1',
+      '2222222222222',
+      '1X11X111X11X1',
+      '1111111111111',
+      '.............',
+      '1111111111111',
+      '1X11X111X11X1',
+      '2222222222222',
+      '..S..1P1..S..',
+    ],
+  },
+  {
+    name: 'THE WARDEN',
+    hue: 0.78,
+    rows: [
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      '2.2.2.2.2.2.2',
+      '.1.1.1.1.1.1.',
+      '2.2.2.2.2.2.2',
+    ],
+    boss: {
+      name: 'THE WARDEN',
+      hp: 22,
+      radius: 1.8,
+      y: 7.6,
+      sway: 9,
+      swaySpeed: 0.6,
+      fireInterval: 2.8,
+      volley: 1,
+      shotSpeed: 7,
+      summonInterval: 0,
+      points: 5000,
+    },
+  },
+  {
+    name: 'PHASE SHIFT',
+    hue: 0.72,
+    rows: [
+      'G1G1G1G1G1G1G',
+      '1G1G1G1G1G1G1',
+      '2222222222222',
+      'GGGGGGGGGGGGG',
+      '11P111X111P11',
+      'GGGGGGGGGGGGG',
+      '1G1G1G1G1G1G1',
+      '2222222222222',
+      'GGGGGGGGGGGGG',
+      '1.1.1.1.1.1.1',
+    ],
+  },
+  {
+    name: 'FORTRESS',
+    hue: 0.12,
+    rows: [
+      'SSSSSS.SSSSSS',
+      'S11113X31111S',
+      'S1P1111111P1S',
+      'S1111X1X1111S',
+      'S11111111111S',
+      'S1P1111111P1S',
+      'S22222222222S',
+      'SSSSX...XSSSS',
+      '.............',
+      '.2.2.2.2.2.2.',
+      '2.2.2.2.2.2.2',
+    ],
+  },
+  {
+    name: 'DIFFRACTION',
+    hue: 0.33,
+    rows: [
+      '3.3.3.3.3.3.3',
+      '.2.2.2.2.2.2.',
+      '1.1.P.1.P.1.1',
+      '.X.1.G.G.1.X.',
+      '1.1.G.G.G.1.1',
+      '.2.2.2.2.2.2.',
+      '3.3.3.3.3.3.3',
+      '.1.1.1.1.1.1.',
+      '1.1.P.1.P.1.1',
+      '.2.2.2.2.2.2.',
+      '1.1.1.1.1.1.1',
+      '.1.1.1.1.1.1.',
+    ],
+  },
+  {
+    name: 'EVENT HORIZON',
+    hue: 0.86,
+    rows: [
+      '3333333333333',
+      '3X222222222X3',
+      '32GGGGPGGGG23',
+      '32G1111111G23',
+      '32G11X1X11G23',
+      '32G1111111G23',
+      '32GGGGPGGGG23',
+      '3X222222222X3',
+      '3333333333333',
+      '.............',
+      'S.S.S.S.S.S.S',
+    ],
+  },
+  {
+    name: 'SINGULARITY',
+    hue: 0.98,
+    rows: [
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      'X.3.3.3.3.3.X',
+      '3.2.2.2.2.2.3',
+      '.G.G.G.G.G.G.',
+      '1.1.1.1.1.1.1',
+    ],
+    boss: {
+      name: 'THE SINGULARITY',
+      hp: 38,
+      radius: 1.9,
+      y: 7.7,
+      sway: 9.5,
+      swaySpeed: 0.75,
+      fireInterval: 2.4,
+      volley: 2,
+      shotSpeed: 8,
+      summonInterval: 9,
+      points: 15000,
+    },
+  },
+
+  // ------------------------------------------------------------ World 2: Forest (levels 11-20)
+  {
+    name: 'GREENWOOD',
+    hue: 0.33,
+    rows: [
+      '....11111....',
+      '...1111111...',
+      '..111P1P111..',
+      '.11111111111.',
+      '.11111111111.',
+      '..111111111..',
+      '...1111111...',
+      '.....222.....',
+      '.....222.....',
+      '....22222....',
+    ],
+  },
+  {
+    name: 'CANOPY',
+    hue: 0.3,
+    // Two stacked beds under a lintel.
+    rows: [
+      '.22222222222.',
+      '.11111111111.',
+      '.1X1111111X1.',
+      '.11111111111.',
+      '.11112P21111.',
+      '.............',
+      '.11111111111.',
+      '.1X1111111X1.',
+      '.11111111111.',
+      '.2.2222222.2.',
+    ],
+  },
+  {
+    name: 'FAIRY RING',
+    hue: 0.02,
+    rows: [
+      '....22222....',
+      '..221111122..',
+      '.2111P1P1112.',
+      '2111111111112',
+      '2111X111X1112',
+      '.22222222222.',
+      '.....111.....',
+      '.....111.....',
+      '.....111.....',
+      '....11111....',
+      '...2222222...',
+    ],
+  },
+  {
+    name: 'WILDFIRE',
+    hue: 0.08,
+    rows: [
+      '1.1.1.1.1.1.1',
+      '.X.1.X.1.X.1.',
+      '1.1.1.1.1.1.1',
+      '2222222222222',
+      '1X111X1X111X1',
+      '1111111111111',
+      '.............',
+      '11P1111111P11',
+      '1X11X111X11X1',
+      '2222222222222',
+      '..3..1X1..3..',
+    ],
+  },
+  {
+    name: 'THE ELDER OAK',
+    hue: 0.26,
+    rows: [
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      '3.2.2.2.2.2.3',
+      '.1.1.1.1.1.1.',
+      '2.1.2.1.2.1.2',
+    ],
+    boss: {
+      name: 'THE ELDER OAK',
+      hp: 28,
+      radius: 1.8,
+      y: 7.6,
+      sway: 9,
+      swaySpeed: 0.65,
+      fireInterval: 2.7,
+      volley: 1,
+      shotSpeed: 7.5,
+      summonInterval: 12,
+      points: 8000,
+    },
+  },
+  {
+    name: "WILL-O'-WISP",
+    hue: 0.7,
+    rows: [
+      'G.G.G.G.G.G.G',
+      '1G1G1G1G1G1G1',
+      '2212212212212',
+      'GG1GG1GG1GG1G',
+      '1111P1X1P1111',
+      'G1GG1GG1GG1GG',
+      '2122122122122',
+      '1G1G1G1G1G1G1',
+      'GGGGGGGGGGGGG',
+      '.1.1.1.1.1.1.',
+    ],
+  },
+  {
+    name: 'STONE CIRCLE',
+    hue: 0.45,
+    rows: [
+      '...SS333SS...',
+      '..S1111111S..',
+      '.S111P1P111S.',
+      'S11111X11111S',
+      '3111111111113',
+      'S11111X11111S',
+      '.S111P1P111S.',
+      '..S1111111S..',
+      '...SS3.3SS...',
+      '.............',
+      '.2.2.2.2.2.2.',
+    ],
+  },
+  {
+    name: 'BRAMBLE',
+    hue: 0.36,
+    rows: [
+      '3.2.3.2.3.2.3',
+      '.1.1.1.1.1.1.',
+      '2.X.1.P.1.X.2',
+      '.G.1.G.G.1.G.',
+      '1.1.3.1.3.1.1',
+      '.2.2.2.2.2.2.',
+      '1.G.1.X.1.G.1',
+      '.1.1.P.P.1.1.',
+      '3.1.1.1.1.1.3',
+      '.2.2.2.2.2.2.',
+      '1.1.1.1.1.1.1',
+    ],
+  },
+  {
+    name: 'MOONLIT GROVE',
+    hue: 0.6,
+    rows: [
+      '3333333333333',
+      '32X2222222X23',
+      '32G1111111G23',
+      '32G1P1X1P1G23',
+      '32G1111111G23',
+      '32GGGGGGGGG23',
+      '3222222222223',
+      '3X333333333X3',
+      '.............',
+      'S.S.2.2.2.S.S',
+      '.1.1.1.1.1.1.',
+    ],
+  },
+  {
+    name: 'HEART OF THE FOREST',
+    hue: 0.95,
+    rows: [
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      '.............',
+      'X.3.G.3.G.3.X',
+      '3.2.2.2.2.2.3',
+      '.G.1.G.1.G.1.',
+      '1.2.1.2.1.2.1',
+    ],
+    boss: {
+      name: 'HEART OF THE FOREST',
+      hp: 44,
+      radius: 1.9,
+      y: 7.7,
+      sway: 9.5,
+      swaySpeed: 0.8,
+      fireInterval: 2.3,
+      volley: 2,
+      shotSpeed: 8.5,
+      summonInterval: 8,
+      points: 20000,
+    },
+  },
+];
+
+export function parseLevel(def: LevelDef, index: number): readonly LevelCell[] {
+  if (def.rows.length > GRID.rows) {
+    throw new Error(`Level ${index + 1} "${def.name}" has ${def.rows.length} rows (max ${GRID.rows})`);
+  }
+  const cells: LevelCell[] = [];
+  def.rows.forEach((line, row) => {
+    if (line.length !== GRID.cols) {
+      throw new Error(`Level ${index + 1} "${def.name}" row ${row} must be ${GRID.cols} characters, got ${line.length}`);
+    }
+    for (let col = 0; col < line.length; col++) {
+      const ch = line[col];
+      if (ch === '.') continue;
+      const kind = SYMBOLS[ch];
+      if (kind === undefined) {
+        throw new Error(`Level ${index + 1} "${def.name}" has unknown symbol "${ch}" at row ${row}, col ${col}`);
+      }
+      cells.push({ col, row, kind });
+    }
+  });
+  return cells;
+}
+
+/** Layouts are parsed and validated once at module load so bad data fails fast. */
+export let LEVEL_CELLS: readonly (readonly LevelCell[])[] = LEVELS.map(parseLevel);
+
+export function appendLevels(levels: readonly LevelDef[]): void {
+  const cells = levels.map((level, i) => parseLevel(level, LEVELS.length + i));
+  LEVELS = [...LEVELS, ...levels];
+  LEVEL_CELLS = [...LEVEL_CELLS, ...cells];
+}
+
+export function replaceBuiltinLevels(index: number, levels: readonly LevelDef[]): void {
+  if ((index !== 0 && index !== 1) || levels.length !== 10) throw new Error('Invalid built-in campaign replacement.');
+  const start = index * 10;
+  const cells = levels.map((level, i) => parseLevel(level, start + i));
+  LEVELS = [...LEVELS.slice(0, start), ...levels, ...LEVELS.slice(start + levels.length)];
+  LEVEL_CELLS = [...LEVEL_CELLS.slice(0, start), ...cells, ...LEVEL_CELLS.slice(start + levels.length)];
+}
+
+/** A dedicated runtime slot for the editor's paused scene; built-in levels are never replaced. */
+export function replaceEditorLevels(start: number, levels: readonly LevelDef[]): void {
+  if (start < 20 || start + levels.length > LEVELS.length) throw new Error('Invalid editor level slot.');
+  const cells = levels.map((level, i) => parseLevel(level, start + i));
+  LEVELS = [...LEVELS.slice(0, start), ...levels, ...LEVELS.slice(start + levels.length)];
+  LEVEL_CELLS = [...LEVEL_CELLS.slice(0, start), ...cells, ...LEVEL_CELLS.slice(start + levels.length)];
+}

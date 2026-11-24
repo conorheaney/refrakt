@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10151e" /><title>Refrakt — World editor</title>
+  </head>
+  <body>
+    <main id="arena" aria-label="Scene editor">
+      <canvas id="scene" aria-label="Original Refrakt scene"></canvas>
+      <div id="grid" role="group" aria-label="Brick layout, 13 columns and 12 rows"></div>
+      <svg id="areas" aria-label="Play area drawing surface"><g id="area-lines"></g><g id="area-handles"></g><g id="snake-layer"></g><g id="icicle-layer"></g><g id="scarab-layer"></g></svg>
+    </main>
+    <header class="hud-panel">
+      <a class="brand" href="../">REFRAKT <span>WORLD EDITOR</span></a>
+      <button id="world-button" class="world-button" aria-haspopup="dialog" title="Choose a world and change its settings"><span class="label">World</span><b id="world-title">Untitled</b></button>
+      <div class="level-picker" role="group" aria-label="Level">
+        <button id="level-prev" aria-label="Previous level">‹</button><select id="level-select" aria-label="Level"></select><button id="level-next" aria-label="Next level">›</button>
+      </div>
+      <div class="actions"><button id="new">New</button><button id="import">Import</button><button id="export">Export</button><button id="save" class="primary">Save world</button><button id="test" class="primary">▶ Test level</button><a id="close-editor" class="close-editor" href="../" title="Close the editor and go back to the game" aria-label="Close the editor">✕</a></div>
+    </header>
+    <nav class="layer-bar hud-panel" aria-label="Layer">
+      <button id="mode-level" aria-pressed="false">Level</button><button id="mode-blocks" aria-pressed="true">Blocks</button><button id="mode-boss" aria-pressed="false">Boss</button><span class="sep"></span><button id="mode-ball" aria-pressed="false">Ball area</button><button id="mode-paddle" aria-pressed="false">Paddle area</button><span class="sep"></span><button id="mode-snakes" aria-pressed="false">Snakes</button><button id="mode-icicles" aria-pressed="false">Icicles</button><button id="mode-scarabs" aria-pressed="false">Scarab nests</button>
+      <span class="sep"></span><button id="guides-toggle" aria-pressed="true" title="Show the brick grid's guides">Guides</button><button id="hud-toggle" aria-pressed="false" title="Hide the editor to see the scene (H)">Hide · H</button>
+    </nav>
+    <section id="level-tools" class="hud-panel layer-panel">
+      <h2>Level <span id="level-number"></span></h2>
+      <label>Name<input id="level-name" maxlength="80" /></label>
+      <label>Sky hue<input id="hue" type="range" min="0" max="1" step="0.01" /></label>
+      <p class="hint" id="level-state"></p>
+    </section>
+    <section id="block-tools" class="hud-panel layer-panel">
+      <h2>Blocks</h2>
+      <div id="palette" class="palette" role="group" aria-label="Brick palette"></div>
+      <div class="actions"><button id="fill">Fill row</button><button id="clear">Clear level</button></div>
+      <p class="hint"><span id="count">0 bricks</span> · Click or drag to paint, right-click to erase. Fill row paints the focused row.</p>
+    </section>
+    <section id="boss-tools" class="hud-panel layer-panel">
+      <h2>Boss</h2>
+      <label>Boss for this level<select id="boss"><option value="">None</option></select></label>
+      <p class="hint">A level with a boss is finished when the boss is beaten; its bricks are optional.</p>
+    </section>
+    <section id="area-tools" class="hud-panel layer-panel" hidden>
+      <h2 id="area-title">Ball area</h2>
+      <div class="actions"><button id="draw-area">Draw new</button><button id="finish-area" disabled>Finish</button><button id="cancel-area" disabled>Cancel</button><button id="reset-area">Use default</button></div>
+      <label>Curve <span id="smoothing-value"></span><input id="smoothing" type="range" /></label>
+      <label class="check"><input id="snap-lines" type="checkbox" checked /> Line up with other points</label>
+      <label class="check"><input id="snap-scene" type="checkbox" checked /> Attract to scene edges (Alt: off)</label>
+      <button id="drain-tool">Choose drain edge</button>
+      <p class="hint">Amber dashes: the drain, where the ball is lost. Mint dots: the paddle's lane.</p>
+      <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
+    </section>
+    <section id="snake-tools" class="hud-panel layer-panel" hidden>
+      <h2>Snakes</h2>
+      <p class="hint" id="snake-summary"></p>
+      <div class="actions"><button id="snake-add">Add snake</button><button id="snake-delete">Delete selected</button></div>
+      <label>Curve <span id="snake-curve-value"></span><input id="snake-curve" type="range" /></label>
+      <label>Strike reach <span id="snake-reach-value"></span><input id="snake-reach" type="range" min="1" max="16" step="0.5" value="7" /></label>
+      <p class="hint">Draw a snake head first, then back along where its body lies. Large handle: the head (its side of centre sets which way it strikes). Hollow: the tail. Dashed ring: its reach.</p>
+      <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
+    </section>
+    <section id="icicle-tools" class="hud-panel layer-panel" hidden>
+      <h2>Icicles</h2>
+      <p class="hint" id="icicle-summary"></p>
+      <div class="actions"><button id="icicle-add">Add area</button><button id="icicle-delete">Delete selected</button><button id="icicle-reshuffle">Reshuffle</button><button id="icicle-even">Even spacing</button></div>
+      <label>Curve <span id="icicle-curve-value"></span><input id="icicle-curve" type="range" /></label>
+      <label>Icicles <span id="icicle-count-value"></span><input id="icicle-count" type="range" min="1" max="16" step="1" value="8" /></label>
+      <label>Shortest <span id="icicle-min-value"></span><input id="icicle-min" type="range" min="0.4" max="3" step="0.05" value="1" /></label>
+      <label>Longest <span id="icicle-max-value"></span><input id="icicle-max" type="range" min="0.4" max="3" step="0.05" value="1.8" /></label>
+      <button id="icicle-convert" hidden>Turn placed icicles into an area</button>
+      <p class="hint">Draw along the underside of the scenery: icicles grow down from the line. Red dashes: the top of the highest bricks. Drag a diamond (an icicle) along the line to pin them all; Even spacing frees them.</p>
+      <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
+    </section>
+    <section id="scarab-tools" class="hud-panel layer-panel" hidden>
+      <h2>Scarab nests</h2>
+      <p class="hint" id="scarab-summary"></p>
+      <div class="actions"><button id="scarab-add-nest">Add nest</button><button id="scarab-delete">Delete selected</button><button id="scarab-clear-path">Clear path</button></div>
+      <label>Curve <span id="scarab-curve-value"></span><input id="scarab-curve" type="range" /></label>
+      <p class="hint">Draw the entry point (large: where scarabs appear, behind the scenery), then the path they walk in along; the hollow last point is where they reach the floor.</p>
+      <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
+    </section>
+    <div id="status-bar" class="hud-panel">
+      <button id="undo" disabled title="Undo (Ctrl+Z)">Undo</button><button id="redo" disabled title="Redo (Ctrl+Shift+Z)">Redo</button>
+      <p id="status" role="status" aria-live="polite">Loading the game scene…</p><span id="dirty">Not saved</span>
+    </div>
+    <dialog id="world-dialog" aria-labelledby="world-dialog-title">
+      <form method="dialog" class="dialog-head"><h2 id="world-dialog-title">World</h2><button>Close</button></form>
+      <div class="dialog-body">
+        <section>
+          <h3>Open</h3>
+          <label>Game worlds<select id="library"><option value="">Choose a world from the game folder…</option></select></label>
+          <button id="refresh-library">Refresh world list</button>
+          <p class="hint">Most recently saved first. The editor opens the most recent one.</p>
+        </section>
+        <section>
+          <h3>Settings</h3>
+          <label>Name<input id="world-name" maxlength="80" autocomplete="off" /></label>
+          <label>Scene / camera<select id="background"><option value="space">Space</option><option value="forest">Forest</option></select></label>
+          <label>Weather<select id="weather"><option value="">Clear</option></select></label>
+          <label class="upload">Scene background<input id="background-file" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+          <button id="remove-background" hidden>Remove uploaded image</button><p class="hint" id="background-info"></p>
+        </section>
+        <section>
+          <h3>Music</h3>
+          <label>Track<select id="music"></select></label>
+          <div class="music-preview" role="group" aria-label="Music preview">
+            <div class="actions"><button id="listen" aria-pressed="false">▶ Listen</button><button id="record">Save recording</button></div>
+            <label>Part<select id="music-mode"><option value="menu">Menu</option><option value="game" selected>Level</option><option value="boss">Boss fight</option></select></label>
+            <label>Intensity <span id="music-intensity-value"></span><input id="music-intensity" type="range" min="0" max="1" step="0.05" value="0.8" /></label>
+            <p class="hint" id="music-hint">Low intensity is the calm bed; high brings in every layer. Change either while it plays.</p>
+          </div>
+        </section>
+      </div>
+    </dialog>
+    <button id="show-hud" hidden>Show editor HUD · H</button><input id="import-file" type="file" accept="application/json,.json" hidden />
+    <dialog id="preview"><div class="preview-bar"><strong>Playtest · original Refrakt gameplay</strong><button id="close-preview">Close playtest</button></div><iframe id="game-preview" title="Refrakt level playtest"></iframe></dialog>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

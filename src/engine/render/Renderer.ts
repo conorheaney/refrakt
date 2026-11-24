@@ -1,0 +1,165 @@
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { SCREEN_FX_SHADER } from './shaders';
+
+export type Quality = 'low' | 'medium' | 'high';
+
+interface QualityProfile {
+  readonly pixelRatio: number;
+  readonly msaa: number;
+  readonly shadows: boolean;
+  readonly shadowMapSize: number;
+  /** Floor reflection resolution as a fraction of the drawing buffer. */
+  readonly reflectionScale: number;
+}
+
+export const QUALITY_PROFILES: Readonly<Record<Quality, QualityProfile>> = {
+  low: { pixelRatio: 1, msaa: 0, shadows: false, shadowMapSize: 512, reflectionScale: 0.25 },
+  medium: { pixelRatio: 1.5, msaa: 2, shadows: true, shadowMapSize: 1024, reflectionScale: 0.35 },
+  high: { pixelRatio: 2, msaa: 4, shadows: true, shadowMapSize: 1024, reflectionScale: 0.4 },
+};
+
+/** Exposure of the ACES tone mapping (the forest painting's shader undoes it; see ForestEnvironment). */
+export const TONE_EXPOSURE = 0.95;
+
+/** Strength of the soft bloom pass. */
+const BLOOM_STRENGTH = 0.3;
+/** Scene luminance (three.js luminance(), Rec. 709 weights, as the bloom's high pass measures it) above which pixels bloom. */
+export const BLOOM_THRESHOLD = 1.25;
+
+/**
+ * WebGL renderer + HDR post-processing chain tuned for a clean "product
+ * render" look: scene -> soft bloom -> gentle vignette / grade -> ACES tone
+ * mapping. Also performs adaptive
+ * resolution scaling to hold the frame rate.
+ */
+export class Renderer {
+  readonly gl: THREE.WebGLRenderer;
+  private composer: EffectComposer | null = null;
+  private scenePass: RenderPass | null = null;
+  private fx: ShaderPass | null = null;
+  private bloom: UnrealBloomPass | null = null;
+  private profile: QualityProfile = QUALITY_PROFILES.high;
+  private dynamicScale = 1;
+  private frames = 0;
+  private elapsed = 0;
+  private slowWindows = 0;
+  private cssWidth = 1920;
+  private cssHeight = 1080;
+
+  constructor(canvas: HTMLCanvasElement) {
+    try {
+      this.gl = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+    } catch (err) {
+      throw new Error('WebGL 2 is required to run Refrakt, but it could not be initialised on this device.', { cause: err });
+    }
+    this.gl.toneMapping = THREE.ACESFilmicToneMapping;
+    this.gl.toneMappingExposure = TONE_EXPOSURE;
+    this.gl.shadowMap.enabled = true;
+    this.gl.shadowMap.type = THREE.VSMShadowMap;
+  }
+
+  attach(scene: THREE.Scene, camera: THREE.Camera): void {
+    const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: this.profile.msaa });
+    const composer = new EffectComposer(this.gl, target);
+    this.scenePass = new RenderPass(scene, camera);
+    composer.addPass(this.scenePass);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), BLOOM_STRENGTH, 0.55, BLOOM_THRESHOLD);
+    composer.addPass(this.bloom);
+    this.fx = new ShaderPass(SCREEN_FX_SHADER);
+    composer.addPass(this.fx);
+    composer.addPass(new OutputPass());
+    this.composer = composer;
+    this.applySize();
+  }
+
+  get bufferHeight(): number {
+    return this.gl.domElement.height;
+  }
+
+  get bufferWidth(): number {
+    return this.gl.domElement.width;
+  }
+
+  get reflectionScale(): number {
+    return this.profile.reflectionScale;
+  }
+
+  setQuality(quality: Quality): void {
+    this.profile = QUALITY_PROFILES[quality];
+    this.dynamicScale = 1;
+    this.slowWindows = 0;
+    if (this.composer) {
+      for (const rt of [this.composer.renderTarget1, this.composer.renderTarget2]) {
+        if (rt.samples !== this.profile.msaa) {
+          rt.samples = this.profile.msaa;
+          rt.dispose();
+        }
+      }
+    }
+    this.applySize();
+  }
+
+  /** Draws the scene with this camera from now on (worlds frame the arena with different cameras). */
+  setCamera(camera: THREE.Camera): void {
+    if (this.scenePass) this.scenePass.camera = camera;
+  }
+
+  /** Refrakt's screen light: the edge spectrum's strength (0..1) and hue, and a colour split (screen UV). */
+  setRefrakt(glow: number, hue: number, chroma: number): void {
+    if (!this.fx) return;
+    const u = this.fx.uniforms;
+    u.uSpectrum.value = glow;
+    u.uHue.value = hue;
+    u.uChroma.value = chroma;
+  }
+
+  /** Sets the CSS size of the (letterboxed) stage the canvas fills. */
+  resize(width: number, height: number): void {
+    this.cssWidth = Math.max(1, width);
+    this.cssHeight = Math.max(1, height);
+    this.applySize();
+  }
+
+  private applySize(): void {
+    const ratio = Math.min(window.devicePixelRatio || 1, this.profile.pixelRatio) * this.dynamicScale;
+    this.gl.setPixelRatio(ratio);
+    this.gl.setSize(this.cssWidth, this.cssHeight, false);
+    this.composer?.setPixelRatio(ratio);
+    this.composer?.setSize(this.cssWidth, this.cssHeight);
+  }
+
+  /** @returns true when the internal resolution changed (callers may need the new buffer size). */
+  render(realDt: number): boolean {
+    if (!this.composer || !this.fx) return false;
+    // Chromatic aberration is off except for Refrakt's brief colour split (setRefrakt).
+    this.composer.render(realDt);
+    return this.adapt(realDt);
+  }
+
+  /** Lowers internal resolution when the frame rate stays below target for consecutive windows. */
+  private adapt(realDt: number): boolean {
+    if (realDt >= 0.1) return false; // tab switch / hitch: not representative
+    this.frames++;
+    this.elapsed += realDt;
+    if (this.elapsed < 1.5) return false;
+    const fps = this.frames / this.elapsed;
+    this.frames = 0;
+    this.elapsed = 0;
+    // Only a sustained slowdown (3 consecutive 1.5 s windows under 45 fps) lowers the resolution. Each drop
+    // reallocates every render target (a hitch and a visible blur change), so it must not fire on a 50 Hz
+    // display or a brief background stall.
+    this.slowWindows = fps < 45 ? this.slowWindows + 1 : 0;
+    if (this.slowWindows >= 3 && this.dynamicScale > 0.55) {
+      this.dynamicScale = Math.max(0.55, this.dynamicScale - 0.15);
+      this.slowWindows = 0;
+      this.applySize();
+      return true;
+    }
+    return false;
+  }
+}

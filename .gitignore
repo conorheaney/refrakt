@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+.vite/
+
+# Local world data: the editor's backups and hand exports (the game's worlds are public/worlds/)
+world-backups/
+exports/
+
+# Scratch space
+.tmp/
+
+# Claude Code local state (personal settings and worktrees)
+.claude/settings.local.json
+.claude/worktrees/
+
+# Python (tools/)
+__pycache__/
+*.pyc
+
+# Blender autosave copies
+*.blend1
+*.blend2
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment files and keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors and OS clutter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup of the repository history from before it was re-initialised (git bundle)
+*.bundle
