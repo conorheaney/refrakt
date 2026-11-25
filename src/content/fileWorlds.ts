@@ -1,6 +1,6 @@
-import { authoredEntry, installWorlds, unfinishedLevels, validateWorld, type AuthoredWorld, type LibraryResult } from './authoredWorlds';
+import { authoredEntry, isPlayable, playProblems, validateWorld, type AuthoredWorld, type LibraryResult } from './authoredWorlds';
+import { Campaign, type WorldEntry } from './campaign';
 import { STAGES_PER_WORLD } from './worlds';
-import type { Campaign } from './campaign';
 
 /** The manifest provides stable play order on both Vite and static hosting. */
 export async function loadFileWorlds(base: URL, request: typeof fetch = fetch): Promise<LibraryResult> {
@@ -19,8 +19,7 @@ export async function loadFileWorlds(base: URL, request: typeof fetch = fetch): 
     const results = await Promise.all(files.map(async (file) => {
       try {
         const world = validateWorld(await json(new URL(file, base)));
-        const missing = unfinishedLevels(world);
-        if (missing.length) throw new Error(`Unfinished levels: ${missing.join(', ')}.`);
+        if (!isPlayable(world)) throw new Error(`Not ready to play: ${playProblems(world)}.`);
         return { file, world };
       } catch (error) { return { file, error }; }
     }));
@@ -35,22 +34,20 @@ export async function loadFileWorlds(base: URL, request: typeof fetch = fetch): 
 }
 
 /**
- * `campaign` with the project's world files applied in order: a file that `replaces` Space or Forest takes
- * over that built-in slot (keeping its campaign position); any other is appended.
+ * The campaign the game plays. Project files that take the Space and Forest slots (`replaces`) come first, in
+ * that order, as the main campaign; then the other project files in manifest order; then browser saves whose
+ * key no project file uses (a save's `replaces` is ignored). Worlds that can't be played yet (unfinished
+ * levels, missing areas) are skipped. Throws when nothing is playable.
  */
-export function installFileWorlds(campaign: Campaign, worlds: readonly AuthoredWorld[]): Campaign {
-  for (const value of worlds) {
-    const data = validateWorld(value);
-    if (unfinishedLevels(data).length) continue;
-    if (!data.replaces) { campaign = installWorlds(campaign, [data]); continue; }
-    const index = data.replaces === 'space' ? 0 : 1;
-    campaign = campaign.withWorldAt(index, authoredEntry(data, index * STAGES_PER_WORLD));
-  }
-  return campaign;
-}
-
-/** Project files take precedence over an older browser save of the same world. */
-export function mergeWorlds(files: readonly AuthoredWorld[], saved: readonly AuthoredWorld[]): AuthoredWorld[] {
-  const keys = new Set(files.map((world) => world.key));
-  return [...files, ...saved.filter((world) => !keys.has(world.key))];
+export function buildCampaign(files: readonly AuthoredWorld[], saved: readonly AuthoredWorld[] = []): Campaign {
+  const playableFiles = files.map((value) => validateWorld(value)).filter(isPlayable);
+  const main = (['space', 'forest'] as const)
+    .map((slot) => playableFiles.find((world) => world.replaces === slot))
+    .filter((world): world is AuthoredWorld => world !== undefined);
+  const fileKeys = new Set(files.map((world) => world.key));
+  const playableSaves = saved.filter((world) => !fileKeys.has(world.key)).map((value) => validateWorld(value)).filter(isPlayable);
+  const ordered = [...main, ...playableFiles.filter((world) => !main.includes(world)), ...playableSaves];
+  const entries: WorldEntry[] = [];
+  for (const world of ordered) entries.push(authoredEntry(world, entries.length * STAGES_PER_WORLD));
+  return new Campaign(entries, main.length);
 }

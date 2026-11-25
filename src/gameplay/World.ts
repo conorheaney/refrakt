@@ -1,16 +1,16 @@
 import { BALL, BITE, FIELD, type FieldDef, GRID, ICICLE, type GridDef, PADDLE, PLAYER } from './config';
-import { BUILTIN_CAMPAIGN, type Campaign } from '../content/campaign';
+import type { Campaign } from '../content/campaign';
 import { STAGES_PER_WORLD, type WorldDef } from '../content/worlds';
 import type { HazardSystem } from './hazards/hazards';
 import { SnakeSystem } from './hazards/snakes/snakes';
 import { IcicleSystem } from './hazards/icicles/icicles';
 import { ScarabSystem } from './hazards/scarabs/scarabs';
-import { areaContour, clampToSpans, findPaddleLane, paddleIntervals, type Interval, type Point } from './arena/playAreas';
+import { areaContour, clampToSpans, findPaddleLane, paddleIntervals, type BallArea, type Interval, type Point } from './arena/playAreas';
 import { EventBus } from '../engine/core/EventBus';
 import { clamp } from '../engine/core/math';
 import { Pool } from '../engine/core/Pool';
 import { Random } from '../engine/core/Random';
-import { createBoundary, RectBoundary, type ArenaBoundary, type BoundaryKind } from './arena/boundary';
+import { PolygonBoundary } from './arena/boundary';
 import { BallPhysics } from './balls/BallPhysics';
 import { BossSystem } from './boss/BossSystem';
 import { BrickField } from './bricks/BrickField';
@@ -18,8 +18,6 @@ import { PowerUpSystem } from './powerups/PowerUpSystem';
 import type { GameEvents } from './events';
 import type { WorldContext } from './WorldContext';
 import type { Ball, Boss, Brick, Drop, Laser, Paddle, PowerUpKind, Shot, WorldPhase } from './types';
-
-export { beyondArch } from './arena/boundary';
 
 /** Per-step player intent. Sampled by the game loop, consumed by the simulation. */
 export interface StepInput {
@@ -96,16 +94,20 @@ export class World implements WorldContext {
   }
 
   shieldCharges = 0;
-  /** Custom paddle lanes carry the barrier with the paddle's lower edge. */
+  /** The barrier runs along the paddle lane, at the paddle's lower edge. */
   get shieldY(): number {
-    return this.paddleContour ? this.paddle.y - PADDLE.halfH : this.field.shieldY;
+    return this.paddle.y - PADDLE.halfH;
   }
   /** Lane spans describe paddle centres; add its half-width to recover the area edges. */
   get shieldLeft(): number {
-    return this.paddleSpan ? this.paddleSpan[0] - this.worldDefValue.paddleExpandedWidth / 2 : -this.field.paddleReach;
+    return this.paddleSpan[0] - this.worldDefValue.paddleExpandedWidth / 2;
   }
   get shieldRight(): number {
-    return this.paddleSpan ? this.paddleSpan[1] + this.worldDefValue.paddleExpandedWidth / 2 : this.field.paddleReach;
+    return this.paddleSpan[1] + this.worldDefValue.paddleExpandedWidth / 2;
+  }
+  /** Below this, falling power-ups and boss shots have left the arena (under both the drain and the paddle). */
+  get lowerLimit(): number {
+    return Math.min(this.boundary.bounds.bottom, this.paddle.y - PADDLE.halfH) - 0.9;
   }
   score = 0;
   lives: number = PLAYER.lives;
@@ -118,25 +120,27 @@ export class World implements WorldContext {
   /** Attract mode: infinite lives, auto-launch, no score bonuses. */
   demo = false;
 
-  /** Arena bounds for the current level's world (see WorldDef). */
+  /** The current world's template arena (see WorldDef): camera framing and effects. The walls are `boundary`. */
   field: FieldDef = FIELD;
   /** Brick cell size and placement for the current level's world (see WorldDef). */
   grid: GridDef = GRID;
-  /** What the ball bounces off in the current world (gameplay/arena/boundary.ts): the field's rectangle or a traced outline. */
-  boundary: ArenaBoundary = new RectBoundary(FIELD);
-  private paddleContour: Point[] | null = null;
-  private paddleSpan: Interval | null = null;
+  /** What the ball bounces off: the current world's drawn ball area (gameplay/arena/boundary.ts). */
+  boundary: PolygonBoundary;
+  private boundaryArea: BallArea;
+  /** The paddle lane's outline, and the stretch of it the paddle centre may travel. */
+  private paddleContour: Point[] = [];
+  private paddleSpan: Interval = [0, 0];
   /** The worlds and levels this game plays (see setCampaign). */
   private campaignValue: Campaign;
   /** The current level's world: arena, brick grid, paddle size and serve gap. */
   private worldDefValue: WorldDef;
-  /** Runtime override of every world's boundary (`?boundary=`, see Game); null uses each world's own. */
-  private boundaryOverride: BoundaryKind | null = null;
   private respawnTimer = 0;
 
-  constructor(campaign: Campaign = BUILTIN_CAMPAIGN) {
+  constructor(campaign: Campaign) {
     this.campaignValue = campaign;
     this.worldDefValue = campaign.worldDefAt(0);
+    this.boundaryArea = campaign.worlds[0].playAreas.ball;
+    this.boundary = new PolygonBoundary(this.boundaryArea);
   }
 
   // ---------------------------------------------------------------- lifecycle
@@ -173,11 +177,6 @@ export class World implements WorldContext {
 
   get ballSpeed(): number {
     return this.ballPhysics.speed;
-  }
-
-  /** True when the world has a drawn paddle lane (the paddle may sit off the default line). */
-  get hasPaddleLane(): boolean {
-    return this.paddleContour !== null;
   }
 
   hasEffect(kind: PowerUpKind): boolean {
@@ -223,18 +222,16 @@ export class World implements WorldContext {
     this.levelIndex = levelIndex;
     this.setWorldDef(entry.def);
     const areas = entry.playAreas;
-    this.ballPhysics.setArea(areas?.ball);
-    this.paddleContour = areas?.paddle ? areaContour(areas.paddle) : null;
-    this.paddleSpan = null;
-    this.paddle.y = PADDLE.y;
-    if (areas?.paddle) {
-      const lane = findPaddleLane(areas.paddle, this.worldDefValue.paddleExpandedWidth, PADDLE.halfH);
-      this.paddle.y = lane.y;
-      // Keep movement in one connected lane, never teleport across holes in a concave polygon.
-      this.paddleSpan = lane.spans.reduce((best, span) => span[1] - span[0] > best[1] - best[0] ? span : best);
-      const spans = this.currentPaddleSpans();
-      this.paddle.x = this.paddle.px = clampToSpans(this.paddle.x, spans);
+    if (areas.ball !== this.boundaryArea) {
+      this.boundaryArea = areas.ball;
+      this.boundary = new PolygonBoundary(areas.ball);
     }
+    this.paddleContour = areaContour(areas.paddle);
+    const lane = findPaddleLane(areas.paddle, this.worldDefValue.paddleExpandedWidth, PADDLE.halfH);
+    this.paddle.y = lane.y;
+    // Keep movement in one connected lane, never teleport across holes in a concave polygon.
+    this.paddleSpan = lane.spans.reduce((best, span) => span[1] - span[0] > best[1] - best[0] ? span : best);
+    this.paddle.x = this.paddle.px = clampToSpans(this.paddle.x, this.currentPaddleSpans());
     this.clearTransient();
     const difficulty = (levelIndex % STAGES_PER_WORLD) / (STAGES_PER_WORLD - 1);
     for (const system of this.hazardSystems) system.load(entry.hazards, difficulty);
@@ -247,27 +244,14 @@ export class World implements WorldContext {
     this.events.emit('levelLoaded', { index: levelIndex, name: def.name, boss: this.boss.active });
   }
 
-  /** Adopts a world's arena, brick grid and paddle size (bricks are re-placed; the paddle snaps to its width). */
+  /** Adopts a world's template arena, brick grid and paddle size (bricks are re-placed; the paddle snaps to its width). */
   private setWorldDef(def: WorldDef): void {
     if (def === this.worldDefValue && def.grid === this.grid && def.field === this.field) return;
     this.worldDefValue = def;
     this.field = def.field;
-    this.boundary = createBoundary(def, this.boundaryOverride);
     this.grid = def.grid;
     this.brickField.layout(def.grid);
     this.paddle.width = def.paddleWidth;
-    const limit = def.field.paddleReach - this.paddle.width / 2;
-    this.paddle.x = this.paddle.px = clamp(this.paddle.x, -limit, limit);
-  }
-
-  /**
-   * Forces every world's ball boundary to 'rect' or 'outline' (null: each world's own choice). A world without
-   * outline data keeps its rectangle. Takes effect immediately.
-   */
-  setBoundaryOverride(kind: BoundaryKind | null): void {
-    this.boundaryOverride = kind;
-    this.boundary = createBoundary(this.worldDefValue, kind);
-    this.ballPhysics.trapGuard.reset();
   }
 
   // --------------------------------------------------------------------- step
@@ -338,16 +322,11 @@ export class World implements WorldContext {
       const maxMove = PADDLE.pointerSpeed * dt;
       p.x += clamp(input.targetX - p.x, -maxMove, maxMove);
     }
-    if (this.paddleContour) p.x = clampToSpans(p.x, this.currentPaddleSpans());
-    else {
-      const limit = this.field.paddleReach - p.width / 2;
-      p.x = clamp(p.x, -limit, limit);
-    }
+    p.x = clampToSpans(p.x, this.currentPaddleSpans());
     p.vx = (p.x - p.px) / dt;
   }
 
   private currentPaddleSpans(): Interval[] {
-    if (!this.paddleContour || !this.paddleSpan) return [];
     const centre = (this.paddleSpan[0] + this.paddleSpan[1]) / 2;
     return paddleIntervals(this.paddleContour, this.paddle.y, this.paddle.width, PADDLE.halfH).filter(([a, b]) => a <= centre && b >= centre);
   }

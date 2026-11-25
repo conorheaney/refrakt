@@ -150,8 +150,9 @@ try {
   await until(async () => (await store.list()).worlds.length === 2, 'imported copy saved to disk');
   assert.equal(JSON.parse(await store.readGameFile('index.json')).length, 2);
   await send('Page.navigate', { url: `${origin}/` });
-  await until(() => evaluate('document.querySelectorAll("[data-world-index]").length === 4'), 'main screen worlds', 60000);
-  await evaluate(`document.querySelector('[data-world-index="2"]').click();document.querySelector('[data-action="play"]').click();`);
+  // The game plays world files only: the two saved here (the smoke folder has no others).
+  await until(() => evaluate('document.querySelectorAll("[data-world-index]").length === 2'), 'main screen worlds', 60000);
+  await evaluate(`document.querySelector('[data-world-index="0"]').click();document.querySelector('[data-action="play"]').click();`);
   await until(() => evaluate(`document.querySelector('[data-screen="loadout"]').classList.contains('visible')`), 'saved-world run');
   assert.equal(await evaluate(`document.querySelector('[data-ref="loadoutLevel"]').textContent`), 'Browser smoke world Level 1');
   assert.equal(errors.length, 0, JSON.stringify(errors));

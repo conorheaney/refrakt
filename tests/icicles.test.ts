@@ -9,7 +9,7 @@ import { icicleAreaIcicles, validateHazards, worldIcicles, type HazardDef, type 
 import { IcicleSystem } from '../src/gameplay/hazards/icicles/icicles';
 import type { Ball, Paddle } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
-import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
+import { classicCampaign } from './support/worlds';
 
 const CEILING: HazardDef[] = [
   { kind: 'icicle', x: -6, y: 8.75, length: 1.2 },
@@ -198,7 +198,7 @@ describe('icicles in a world', () => {
   });
 
   it('pushes a struck paddle along and levels it out again', () => {
-    const world = new World(BUILTIN_CAMPAIGN.withExtrasAt(0, { hazards: CEILING }));
+    const world = new World(classicCampaign({ space: { hazards: CEILING } }));
     world.newGame(1);
     world.paddle.x = world.paddle.px = 0;
     world.paddle.tilt = 1;

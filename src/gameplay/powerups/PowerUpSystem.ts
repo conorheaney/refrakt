@@ -1,6 +1,5 @@
 import { DROP, LASER, PADDLE, POWER_WARN, POWERUP_SCORE } from '../config';
 import { Pool } from '../../engine/core/Pool';
-import { beyondArch } from '../arena/boundary';
 import { POWERUP_KIND_COUNT, PowerUpKind, type Drop, type Laser } from '../types';
 import type { WorldContext } from '../WorldContext';
 import { POWERUPS, type PowerUpFlag } from './powerUps';
@@ -161,7 +160,7 @@ export class PowerUpSystem {
       ) {
         this.drops.release(drop);
         this.collect(drop.kind, drop.x, drop.y);
-      } else if (drop.y < this.world.field.bottom) {
+      } else if (drop.y < this.world.lowerLimit) {
         this.drops.release(drop);
       }
     }
@@ -185,12 +184,13 @@ export class PowerUpSystem {
     const boss = world.bossSystem.boss;
     const bricks = world.brickField;
     const halfH = world.grid.halfH;
+    const top = world.boundary.bounds.top;
     for (const laser of this.lasers.items) {
       if (!laser.active) continue;
       laser.py = laser.y;
       laser.y += LASER.speed * dt;
       const tipY = laser.y + LASER.halfLength;
-      if (beyondArch(laser.x, tipY, 0, world.field)) {
+      if (tipY > top) {
         this.lasers.release(laser);
         continue;
       }

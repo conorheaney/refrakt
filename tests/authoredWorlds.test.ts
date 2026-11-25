@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_LEVEL_COUNT, BUILTIN_WORLD_COUNT, createWorld, installWorlds, LIBRARY_KEY, readLibrary, saveWorld, unfinishedLevels, validateWorld, withBackground } from '../src/content/authoredWorlds';
+import { createWorld, isPlayable, LIBRARY_KEY, missingAreas, playProblems, readLibrary, saveWorld, unfinishedLevels, validateWorld, withBackground } from '../src/content/authoredWorlds';
+import { buildCampaign } from '../src/content/fileWorlds';
 import { GRID } from '../src/gameplay/config';
-import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
-import { BUILTIN_LEVELS as LEVELS } from '../src/content/levels';
-import { BUILTIN_WORLDS as WORLDS } from '../src/content/worlds';
+import { WORLD_TEMPLATES as WORLDS } from '../src/content/worlds';
 import { World } from '../src/gameplay/World';
+import { CLASSIC_LEVELS as LEVELS } from './support/classicLevels';
+import { SHIPPED_WORLDS } from './support/worlds';
 
 function memoryStorage(): Pick<Storage, 'getItem' | 'setItem'> {
   const values = new Map<string, string>();
@@ -77,9 +78,29 @@ describe('authored world files and persistence', () => {
   it('does not publish empty or steel-only drafts', () => {
     const data = createWorld('draft');
     data.levels[0] = { ...data.levels[0], rows: ['SSSSSSSSSSSSS'] };
-    const campaign = installWorlds(BUILTIN_CAMPAIGN, [data]);
-    expect(campaign.worlds.length).toBe(BUILTIN_WORLD_COUNT);
-    expect(campaign.levelCount).toBe(BUILTIN_LEVEL_COUNT);
+    const campaign = buildCampaign(SHIPPED_WORLDS, [data]);
+    expect(campaign.worlds.length).toBe(SHIPPED_WORLDS.length);
+    // Nothing playable at all is an error, not an empty game.
+    expect(() => buildCampaign([data])).toThrow('No playable worlds');
+  });
+
+  it('starts new worlds with both areas, and only plays worlds that have both', () => {
+    const data = createWorld('areas');
+    expect(missingAreas(data)).toEqual([]);
+    data.levels = data.levels.map((level) => ({ ...level, rows: ['1............'] }));
+    expect(isPlayable(data)).toBe(true);
+    // An older draft without areas still loads (so it can be finished in the editor) but is not playable.
+    const old = structuredClone(data);
+    delete old.playAreas;
+    expect(validateWorld(old).playAreas).toBeUndefined();
+    expect(missingAreas(old)).toEqual(['ball', 'paddle']);
+    expect(isPlayable(old)).toBe(false);
+    expect(playProblems(old)).toBe('no ball area drawn; no paddle area drawn');
+    expect(buildCampaign(SHIPPED_WORLDS, [old]).worlds).toHaveLength(SHIPPED_WORLDS.length);
+    // Older files' built-in wall settings are dropped.
+    const legacy = validateWorld({ ...data, world: { ...data.world, boundary: 'outline', outline: 'forest' } });
+    expect(legacy.world).not.toHaveProperty('boundary');
+    expect(legacy.world).not.toHaveProperty('outline');
   });
 
   it('loads saved worlds in the real simulation and keeps their ten-level run boundaries', () => {
@@ -87,13 +108,13 @@ describe('authored world files and persistence', () => {
     data.world = withBackground({ ...data.world, name: 'Authored' }, 'forest');
     data.levels = Array.from({ length: 10 }, (_, i) => ({ name: `Stage ${i}`, hue: 0.4, rows: ['123.XPG......'] }));
     data.backgroundImage = 'data:image/jpeg;base64,YQ==';
-    const first = BUILTIN_CAMPAIGN.levelCount;
-    const campaign = installWorlds(BUILTIN_CAMPAIGN, [data]);
-    // Installing returns a new campaign; the built-in one is untouched.
-    expect(BUILTIN_CAMPAIGN.worlds).toHaveLength(BUILTIN_WORLD_COUNT);
-    // An uploaded image replaces the Forest scenery, so the ball uses the arena rectangle, not the tree outline.
-    expect(campaign.worlds[BUILTIN_WORLD_COUNT].def).toEqual({ ...data.world, boundary: 'rect' });
-    expect(campaign.worlds[BUILTIN_WORLD_COUNT].background).toBe(data.backgroundImage);
+    const campaign = buildCampaign(SHIPPED_WORLDS, [data]);
+    const index = campaign.worlds.length - 1;
+    const first = index * 10;
+    // A browser save comes after every project file.
+    expect(campaign.worlds[index].def).toEqual(data.world);
+    expect(campaign.worlds[index].background).toBe(data.backgroundImage);
+    expect(campaign.worlds[index].playAreas).toEqual(data.playAreas);
     expect(campaign.levelCells(first)).toHaveLength(6);
     const world = new World(campaign);
     world.newGame(123, first);
@@ -104,7 +125,9 @@ describe('authored world files and persistence', () => {
     expect(world.levelIndex).toBe(first + 9);
     expect(campaign.runEndLevel(first)).toBe(first + 10);
     expect(campaign.runEndLevel(first + 9)).toBe(first + 10);
-    expect(campaign.runEndLevel(0)).toBe(BUILTIN_LEVEL_COUNT);
-    expect(campaign.runEndLevel(10)).toBe(BUILTIN_LEVEL_COUNT);
+    // The main campaign (the worlds taking the Space and Forest slots) runs through both.
+    expect(campaign.mainWorldCount).toBe(2);
+    expect(campaign.runEndLevel(0)).toBe(20);
+    expect(campaign.runEndLevel(10)).toBe(20);
   });
 });

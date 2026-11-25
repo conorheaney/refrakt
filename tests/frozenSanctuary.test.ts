@@ -1,10 +1,9 @@
 import frozen from '../public/worlds/Frozen-Sanctuary.json';
-import tomb from '../public/worlds/Pharoughs-Tomb.json';
 import { expect, it } from 'vitest';
-import { installWorlds, validateWorld, unfinishedLevels } from '../src/content/authoredWorlds';
+import { validateWorld, unfinishedLevels } from '../src/content/authoredWorlds';
 import { BALL, BRICK_HP, GRID, SIM } from '../src/gameplay/config';
 import { parseLevel } from '../src/content/levels';
-import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
+import { SHIPPED_CAMPAIGN as campaign } from './support/worlds';
 import { areaContour, pointInPolygon } from '../src/gameplay/arena/playAreas';
 import { BrickKind } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
@@ -38,9 +37,8 @@ it('has ten complete formations with increasing durability, all seven block type
 });
 
 it('can clear every Frozen Sanctuary formation at its actual campaign speed', () => {
-  // Forest replaces the existing slot; Tomb precedes Frozen Sanctuary in the manifest.
-  const campaign = installWorlds(BUILTIN_CAMPAIGN, [validateWorld(tomb), data]);
-  const first = campaign.levelCount - 10;
+  // In the shipped campaign: Outer Space and Verdant Hollow (the main campaign), then Tomb, then Frozen Sanctuary.
+  const first = campaign.worlds.findIndex((world) => world.def.name === 'Frozen Sanctuary') * 10;
   expect(first).toBe(30);
   for (let level = 0; level < 10; level++) {
     let cleared = false;

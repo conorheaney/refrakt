@@ -1,8 +1,8 @@
 import type { AuthoredWorld } from '../../src/content/authoredWorlds';
 import { PADDLE } from '../../src/gameplay/config';
-import { areaSegments, defaultBallArea, distance, findPaddleLane, lowestEdge, nearestOnSegment, simplifyStroke, snapPoint, validateArea, type BallArea, type Point, type PolygonArea } from '../../src/gameplay/arena/playAreas';
+import { areaSegments, distance, findPaddleLane, lowestEdge, nearestOnSegment, snapPoint, validateArea, type BallArea, type Point, type PolygonArea } from '../../src/gameplay/arena/playAreas';
 import forestImage from '../../src/themes/scenery/forest/background.webp';
-import { OUTLINES } from '../../src/gameplay/arena/boundary';
+import { defaultArea } from './defaultAreas';
 import { PathTool, svg, type EditPath, type PathModel } from './PathTool';
 import type { EditorScene } from './Scene';
 
@@ -88,7 +88,7 @@ export class AreaEditor {
   constructor(
     private readonly scene: EditorScene,
     private readonly getData: () => AuthoredWorld,
-    private readonly commit: (mode: 'ball' | 'paddle', area: PolygonArea | undefined) => void,
+    private readonly commit: (mode: 'ball' | 'paddle', area: PolygonArea) => void,
     private readonly status: (message: string, error?: boolean) => void,
   ) {
     const group = (kind: 'ball' | 'paddle', color: string) => ({
@@ -126,7 +126,7 @@ export class AreaEditor {
     button('draw-area').addEventListener('click', () => { if (drawsArea(this.mode)) { this.drainPicking = false; this.tool.draw(this.mode); } });
     button('finish-area').addEventListener('click', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })));
     button('cancel-area').addEventListener('click', () => this.tool.stopDrawing());
-    button('reset-area').addEventListener('click', () => { if (drawsArea(this.mode)) { this.tool.stopDrawing(); this.commit(this.mode, undefined); this.refresh(); } });
+    button('reset-area').addEventListener('click', () => { if (drawsArea(this.mode)) { this.tool.stopDrawing(); const data = this.getData(); this.commit(this.mode, this.mode === 'ball' ? defaultArea(data, 'ball') : defaultArea(data, 'paddle')); this.refresh(); } });
     button('drain-tool').addEventListener('click', () => {
       this.drainPicking = !this.drainPicking;
       this.refresh();
@@ -164,35 +164,10 @@ export class AreaEditor {
     this.tool.refresh();
   }
 
-  private defaultPaddle(): PolygonArea {
-    const reach = this.getData().world.field.paddleReach;
-    return { radius: 0, points: [{ x: -reach, y: PADDLE.y - 0.8 }, { x: reach, y: PADDLE.y - 0.8 }, { x: reach, y: PADDLE.y + 0.8 }, { x: -reach, y: PADDLE.y + 0.8 }] };
-  }
-
-  /**
-   * What the ball bounces off when no ball area is drawn: the world's traced outline (the Forest tree arch)
-   * when it has one and no uploaded image replaces its scenery, otherwise the arena rectangle. Simplified to
-   * the editor's 96-point limit so its handles can be dragged.
-   */
-  private defaultBall(): BallArea {
-    const data = this.getData();
-    const outline = !data.backgroundImage && data.world.boundary === 'outline' && data.world.outline ? OUTLINES[data.world.outline] : undefined;
-    if (!outline) return defaultBallArea(data.world.field);
-    if (this.outlineCache?.source !== outline) {
-      const points: Point[] = [];
-      for (let i = 0; i < outline.length; i += 2) points.push({ x: outline[i], y: outline[i + 1] });
-      let simple = points;
-      for (let tolerance = 0.03; simple.length > 90; tolerance *= 1.5) simple = simplifyStroke(points, tolerance);
-      // The polyline is open at the bottom; closing it adds the bottom edge, which is the drain.
-      this.outlineCache = { source: outline, area: { points: simple, radius: 0, drainEdge: simple.length - 1 } };
-    }
-    return structuredClone(this.outlineCache.area);
-  }
-  private outlineCache: { source: readonly number[]; area: BallArea } | null = null;
-
   /** A play area as a path (the saved one, or the default). */
   private area(mode: 'ball' | 'paddle'): AreaPath {
-    const area = mode === 'ball' ? this.getData().playAreas?.ball ?? this.defaultBall() : this.getData().playAreas?.paddle ?? this.defaultPaddle();
+    const data = this.getData();
+    const area = mode === 'ball' ? data.playAreas?.ball ?? defaultArea(data, 'ball') : data.playAreas?.paddle ?? defaultArea(data, 'paddle');
     return structuredClone(area) as AreaPath;
   }
 

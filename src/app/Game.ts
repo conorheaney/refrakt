@@ -16,7 +16,6 @@ import { GameView } from './GameView';
 import { QUALITY_PROFILES, Renderer } from '../engine/render/Renderer';
 import { STAGES_PER_WORLD } from '../content/worlds';
 import type { ForestAssets } from '../themes/scenery/forest/assets';
-import { parseBoundaryOverride } from '../gameplay/arena/boundary';
 import { World, type StepInput } from '../gameplay/World';
 import { layoutStage } from '../engine/Stage';
 import { UI, type UiAction } from './UI';
@@ -30,9 +29,9 @@ type GameState = 'menu' | 'loadout' | 'playing' | 'paused' | 'transition' | 'gam
 function startLevelFromUrl(campaign: Campaign): number | null {
   const params = new URLSearchParams(window.location.search);
   if (params.has('editorPreview')) {
-    // The previewed world is appended after the built-in campaign (see main.ts).
+    // The previewed world is the whole campaign (see main.ts).
     const stage = Number(params.get('stage'));
-    return campaign.builtinLevelCount + (Number.isInteger(stage) && stage >= 0 && stage < STAGES_PER_WORLD ? stage : 0);
+    return Number.isInteger(stage) && stage >= 0 && stage < STAGES_PER_WORLD && stage < campaign.levelCount ? stage : 0;
   }
   const raw = Number(new URLSearchParams(window.location.search).get('level'));
   return Number.isInteger(raw) && raw >= 1 && raw <= campaign.levelCount ? raw - 1 : null;
@@ -40,13 +39,6 @@ function startLevelFromUrl(campaign: Campaign): number | null {
 
 /** Optional `?autopilot` lets the attract-mode AI play a real run (HUD, scoring, lives); for QA captures. */
 const AUTOPILOT = new URLSearchParams(window.location.search).has('autopilot');
-
-/**
- * Optional `?boundary=rect` or `?boundary=outline` (comparison/debug): forces what the ball bounces off in
- * every world - the rectangle with rounded corners, or the world's traced outline where it has one (see
- * gameplay/arena/boundary.ts and WorldDef.boundary). Absent, or any other value: each world uses its own setting.
- */
-const BOUNDARY_OVERRIDE = parseBoundaryOverride(new URLSearchParams(window.location.search).get('boundary'));
 
 function randomSeed(): number {
   return (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
@@ -113,7 +105,6 @@ export class Game {
     this.runEnd = campaign.runEndLevel(0);
     this.stage = canvas.parentElement ?? document.body;
     this.uiRoot = uiRoot;
-    if (BOUNDARY_OVERRIDE) this.world.setBoundaryOverride(BOUNDARY_OVERRIDE);
     this.renderer = new Renderer(canvas);
     this.view = new GameView(this.world, this.renderer.gl, assets, backgrounds);
     this.renderer.attach(this.view.scene, this.view.rig.camera);

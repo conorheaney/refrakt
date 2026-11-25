@@ -1,7 +1,8 @@
 import './style.css';
-import { createWorld, unfinishedLevels, validateWorld, withBackground, type AuthoredWorld } from '../../src/content/authoredWorlds';
+import { createWorld, missingAreas, playProblems, unfinishedLevels, validateWorld, withBackground, type AuthoredWorld } from '../../src/content/authoredWorlds';
+import { withAreas } from './defaultAreas';
 import { GRID } from '../../src/gameplay/config';
-import { BUILTIN_LEVELS, type LevelDef } from '../../src/content/levels';
+import { BOSS_PRESETS, type LevelDef } from '../../src/content/levels';
 import { isWeather, WEATHER, type WorldId } from '../../src/content/worlds';
 import type { PlayAreas, PolygonArea } from '../../src/gameplay/arena/playAreas';
 import { AreaEditor } from './AreaEditor';
@@ -20,7 +21,7 @@ import { renderMusic, toWav } from '../../src/app/audio/renderMusic';
 function el<T extends HTMLElement>(id: string): T { return document.getElementById(id) as T; }
 const symbols = ['.', '1', '2', '3', 'S', 'X', 'P', 'G'];
 const names = ['Eraser', 'Glass', 'Ceramic', 'Armored', 'Steel', 'Explosive', 'Prism', 'Phase'];
-const bosses = BUILTIN_LEVELS.flatMap((level) => level.boss ? [level.boss] : []);
+const bosses = BOSS_PRESETS;
 let data = createWorld(crypto.randomUUID());
 let selected = 0;
 let brush = '1';
@@ -154,14 +155,12 @@ function commitHazards(hazards: HazardDef[] | undefined): void {
 function previewHazards(hazards: HazardDef[] | undefined): void {
   scene?.sync(hazards ? { ...data, hazards } : data, selected);
 }
-/** Applies (or with undefined, resets to the default) a ball or paddle play area, with undo. */
-function commitArea(mode: 'ball' | 'paddle', area: PolygonArea | undefined): void {
+/** Applies a ball or paddle play area, with undo. (Reset applies the default shape; an area is never removed.) */
+function commitArea(mode: 'ball' | 'paddle', area: PolygonArea): void {
   snapshot();
   const next: PlayAreas = { ...data.playAreas };
-  if (area) (next as Record<string, PolygonArea>)[mode] = structuredClone(area);
-  else delete next[mode];
-  if (next.ball || next.paddle) data.playAreas = next;
-  else delete data.playAreas;
+  (next as Record<string, PolygonArea>)[mode] = structuredClone(area);
+  data.playAreas = next;
   render();
 }
 function render(): void {
@@ -397,7 +396,9 @@ async function refreshLibrary(): Promise<void> {
 function canReplace(): boolean { return !saving && (!dirty || confirm('Discard unsaved changes to this world?')); }
 function replace(next: AuthoredWorld, saved: boolean, file: WorldFile | null = null): void {
   currentFile = file ? { filename: file.filename, revision: file.revision } : null;
-  data = structuredClone(next); selected = 0; undo = []; redo = []; dirty = !saved; render();
+  // The game needs both areas; an older draft without them gets the default shapes (saved with the world).
+  const { world, added } = withAreas(structuredClone(next));
+  data = world; selected = 0; undo = []; redo = []; dirty = !saved || added; render();
   el<HTMLSelectElement>('library').value = currentFile?.filename ?? '';
 }
 el('new').addEventListener('click', () => { if (canReplace()) { replace(createWorld(crypto.randomUUID()), false); status('Created 10 blank levels. Choose a background and start painting.'); } });
@@ -419,9 +420,9 @@ el('save').addEventListener('click', async () => {
     currentFile = { filename: saved.filename, revision: saved.revision };
     dirty = JSON.stringify(data) !== JSON.stringify(snapshot);
     render();
-    const missing = unfinishedLevels(snapshot);
-    status(missing.length
-      ? `Draft saved in the game folder. Timestamped backup created. Add bricks to levels ${missing.join(', ')} to make it playable.`
+    const problems = playProblems(snapshot);
+    status(problems
+      ? `Draft saved in the game folder. Timestamped backup created. Not playable yet: ${problems}.`
       : `World saved for play in the game folder. Timestamped backup created. Refresh the game to load it.${dirty ? ' You have newer unsaved changes.' : ''}`);
     await refreshLibrary();
   } catch (error) { report(error); }
@@ -453,6 +454,7 @@ el('test').addEventListener('click', () => {
   try {
     const value = validateWorld(data);
     if (unfinishedLevels(value).includes(selected + 1)) throw new Error('Add a breakable brick or a boss to this level before testing.');
+    if (missingAreas(value).length) throw new Error('Draw a ball area and a paddle area before testing.');
     sessionStorage.setItem('refrakt.editor-preview', JSON.stringify(value));
     el<HTMLIFrameElement>('game-preview').src = `../?editorPreview=1&stage=${selected}`;
     el<HTMLDialogElement>('preview').showModal();

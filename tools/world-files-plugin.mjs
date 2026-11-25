@@ -4,8 +4,8 @@ import { createWorldStore, worldFileMiddleware } from './world-store.mjs';
 export function worldFilesPlugin() {
   let root;
   async function middleware(server) {
-    const { validateWorld, unfinishedLevels } = await server.ssrLoadModule('/src/content/authoredWorlds.ts');
-    return worldFileMiddleware(createWorldStore(root, validateWorld, (world) => unfinishedLevels(world).length === 0));
+    const { validateWorld, isPlayable } = await server.ssrLoadModule('/src/content/authoredWorlds.ts');
+    return worldFileMiddleware(createWorldStore(root, validateWorld, isPlayable));
   }
   return {
     name: 'refrakt-world-files',

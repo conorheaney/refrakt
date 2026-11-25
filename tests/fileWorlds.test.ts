@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { createWorld } from '../src/content/authoredWorlds';
-import { loadFileWorlds, mergeWorlds } from '../src/content/fileWorlds';
+import { buildCampaign, loadFileWorlds } from '../src/content/fileWorlds';
 
 const base = new URL('https://example.test/refrakt/worlds/');
 function world(key: string) {
@@ -52,7 +52,7 @@ it('prefers project data while retaining unrelated browser worlds without mutati
   const project = world('tomb'), old = world('tomb'), other = world('other');
   old.world = { ...old.world, name: 'Older Tomb' };
   const saved = [old, other];
-  expect(mergeWorlds([project], saved)).toEqual([project, other]);
+  expect(buildCampaign([project], saved).worlds.map((entry) => entry.def)).toEqual([project.world, other.world]);
   expect(saved).toEqual([old, other]);
   expect(old.world.name).toBe('Older Tomb');
 });

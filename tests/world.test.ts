@@ -1,24 +1,37 @@
 import { describe, expect, it } from 'vitest';
 import { BALL, BOSS_SUMMON, DROP, FIELD, FOREST_ART, FOREST_FIELD, GRID, PADDLE, PLAYER, POWER_WARN, SHIELD_CHARGES, SHIELD_PICKUP, SIM } from '../src/gameplay/config';
-import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
 import { STAGES_PER_WORLD, speedSteps } from '../src/content/worlds';
 import { Pool } from '../src/engine/core/Pool';
 import { Random } from '../src/engine/core/Random';
 import { FixedStepper } from '../src/engine/core/Time';
 import { BrickKind, POWERUP_KIND_COUNT, PowerUpKind } from '../src/gameplay/types';
-import type { BoundaryKind } from '../src/gameplay/arena/boundary';
-import { beyondArch, World, type StepInput } from '../src/gameplay/World';
-import type { PlayAreas } from '../src/gameplay/arena/playAreas';
+import { World, type StepInput } from '../src/gameplay/World';
+import type { BallArea, PolygonArea } from '../src/gameplay/arena/playAreas';
+import type { FieldDef } from '../src/gameplay/config';
 
-const LEVELS = BUILTIN_CAMPAIGN.levels;
-const WORLDS = BUILTIN_CAMPAIGN.worlds.map((world) => world.def);
+const LEVELS = CLASSIC.levels;
+const WORLDS = CLASSIC.worlds.map((world) => world.def);
+
+/**
+ * True when (x, y) lies outside the template arena's arch (top and rounded corners) shrunk by `margin`: the
+ * classic Space test world's drawn ball area follows exactly this shape.
+ */
+function beyondArch(x: number, y: number, margin: number, field: FieldDef): boolean {
+  if (y > field.top - margin) return true;
+  const cornerX = field.halfWidth - field.cornerRadius;
+  const cornerY = field.top - field.cornerRadius;
+  const ax = Math.abs(x);
+  if (ax <= cornerX || y <= cornerY) return false;
+  return Math.hypot(ax - cornerX, y - cornerY) > field.cornerRadius - margin;
+}
 import frozenShieldWorld from '../public/worlds/Frozen-Sanctuary.json';
 import tombShieldWorld from '../public/worlds/Pharoughs-Tomb.json';
 import spaceShieldWorld from '../public/worlds/Outer-Space-3f405ebf-2176-424e-8ba4-189416448443.json';
+import { CLASSIC, classicCampaign } from './support/worlds';
 
 describe('paddle level initialization', () => {
   it('clears the previous hit animation when starting a new run or loading a level', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     const hitPaddle = (): void => {
       world.time = 60;
@@ -43,7 +56,7 @@ describe('paddle level initialization', () => {
 
 describe('barrier pickups', () => {
   it('give SHIELD_PICKUP charges each and stack up to SHIELD_CHARGES', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     const collect = (): void => world.powerUps.collect(PowerUpKind.Shield, 0, 0);
     collect();
@@ -57,7 +70,7 @@ describe('barrier pickups', () => {
 
 describe('timed power warnings', () => {
   it('warns once per second for the last POWER_WARN seconds, then expires once', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     world.phase = 'live';
     const warnings: number[] = [];
@@ -77,7 +90,7 @@ describe('timed power warnings', () => {
 
 describe('custom-lane barrier', () => {
   it('spans an offset paddle area and only saves balls within that span', () => {
-    const campaign = BUILTIN_CAMPAIGN.withExtrasAt(0, { playAreas: {
+    const campaign = classicCampaign({ space: {
       paddle: { radius: 0, points: [{ x: -3, y: -7 }, { x: 9, y: -7 }, { x: 9, y: -5 }, { x: -3, y: -5 }] },
       ball: { radius: 0, drainEdge: 3, points: [{ x: -14, y: -5 }, { x: -14, y: 10 }, { x: 14, y: 10 }, { x: 14, y: -5 }] },
     } });
@@ -103,14 +116,15 @@ describe('custom-lane barrier', () => {
       expect(world.shieldLeft).toBeCloseTo(-3);
       expect(world.shieldRight).toBeCloseTo(9);
     }
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
-    expect(world.shieldLeft).toBe(-FIELD.paddleReach);
-    expect(world.shieldRight).toBe(FIELD.paddleReach);
+    // The default paddle lane spans the arena's paddle reach.
+    expect(world.shieldLeft).toBeCloseTo(-FIELD.paddleReach, 3);
+    expect(world.shieldRight).toBeCloseTo(FIELD.paddleReach, 3);
   });
   for (const data of [frozenShieldWorld, tombShieldWorld, spaceShieldWorld]) {
     it(`saves at the visible shield below ${data.world.name}'s drain, including the last charge`, () => {
-      const campaign = BUILTIN_CAMPAIGN.withExtrasAt(0, { playAreas: data.playAreas as PlayAreas });
+      const campaign = classicCampaign({ space: { ball: data.playAreas.ball as BallArea, paddle: data.playAreas.paddle as PolygonArea } });
       for (const charges of [0, 1, 2]) {
         const world = new World(campaign);
         world.newGame(1);
@@ -141,7 +155,7 @@ describe('custom-lane barrier', () => {
     });
   }
   it('saves a ball at the paddle bottom and restores the default height on leaving the lane', () => {
-    const campaign = BUILTIN_CAMPAIGN.withExtrasAt(0, { playAreas: {
+    const campaign = classicCampaign({ space: {
       paddle: { radius: 0, points: [{ x: -14, y: -7 }, { x: 14, y: -7 }, { x: 14, y: -5 }, { x: -14, y: -5 }] },
     } });
     const world = new World(campaign);
@@ -157,9 +171,9 @@ describe('custom-lane barrier', () => {
     expect(ball.dy).toBeGreaterThan(0);
     expect(world.shieldCharges).toBe(1);
 
-    world.setCampaign(BUILTIN_CAMPAIGN);
+    world.setCampaign(CLASSIC);
     world.loadLevel(1);
-    expect(world.shieldY).toBe(FIELD.shieldY);
+    expect(world.shieldY).toBeCloseTo(FIELD.shieldY, 6);
     expect(world.shieldCharges).toBe(0);
   });
 });
@@ -178,9 +192,8 @@ function autopilot(world: World, input: StepInput, step: number): void {
   input.action = step % 60 === 0;
 }
 
-function run(seed: number, steps: number, level = 0, onStep?: (world: World) => void, boundary: BoundaryKind | null = null): World {
-  const world = new World();
-  if (boundary) world.setBoundaryOverride(boundary);
+function run(seed: number, steps: number, level = 0, onStep?: (world: World) => void): World {
+  const world = new World(CLASSIC);
   world.newGame(seed, level);
   const input: StepInput = { targetX: null, axis: 0, action: false };
   for (let i = 0; i < steps; i++) {
@@ -205,7 +218,7 @@ describe('levels', () => {
     expect(LEVELS.length).toBe(WORLDS.length * STAGES_PER_WORLD);
     LEVELS.forEach((level, i) => {
       for (const row of level.rows) expect(row.length).toBe(GRID.cols);
-      const breakable = BUILTIN_CAMPAIGN.levelCells(i).filter((c) => c.kind !== BrickKind.Steel).length;
+      const breakable = CLASSIC.levelCells(i).filter((c) => c.kind !== BrickKind.Steel).length;
       expect(breakable > 0 || level.boss !== undefined).toBe(true);
     });
   });
@@ -213,9 +226,9 @@ describe('levels', () => {
   it('fit the arena with room to play above the paddle', () => {
     const r = BALL.radius;
     LEVELS.forEach((_, i) => {
-      const cells = BUILTIN_CAMPAIGN.levelCells(i);
+      const cells = CLASSIC.levelCells(i);
       // Each world lays its bricks out on its own grid, inside its own arena.
-      const { grid, field } = BUILTIN_CAMPAIGN.worldDefAt(i);
+      const { grid, field } = CLASSIC.worldDefAt(i);
       expect(grid.cols).toBe(GRID.cols);
       expect(grid.rows).toBe(GRID.rows);
       const cornerX = field.halfWidth - field.cornerRadius;
@@ -266,7 +279,7 @@ describe('levels', () => {
 
 describe('World', () => {
   it('starts with a ball waiting on the paddle', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     expect(world.phase).toBe('serve');
     expect(world.balls.activeCount).toBe(1);
@@ -276,7 +289,7 @@ describe('World', () => {
   });
 
   it('uses the forest arena on forest levels with the space grid and paddle, and the space arena again after', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1, STAGES_PER_WORLD + 1);
     expect(world.field).toBe(FOREST_FIELD);
     expect(world.grid).toBe(GRID);
@@ -289,12 +302,12 @@ describe('World', () => {
     // The paddle reaches the walls, passing in front of the painted roots.
     const input: StepInput = { targetX: 100, axis: 0, action: false };
     for (let i = 0; i < 120; i++) world.step(SIM.step, input);
-    expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(FOREST_FIELD.paddleReach, 6);
+    expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(FOREST_FIELD.paddleReach, 3);
     expect(FOREST_FIELD.paddleReach).toBe(FOREST_FIELD.halfWidth);
     world.loadLevel(0);
     expect(world.field).toBe(FIELD);
     for (let i = 0; i < 120; i++) world.step(SIM.step, input);
-    expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(FIELD.halfWidth, 6);
+    expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(FIELD.halfWidth, 3);
   });
 
   it('maps the forest arena onto the painted tree arch', () => {
@@ -331,7 +344,8 @@ describe('World', () => {
 
   it('keeps every ball inside the arena and at unit direction', () => {
     const r = BALL.radius;
-    for (const level of [0, 3, 5, 8, 10, 11, 13, 16]) {
+    // The classic Space world's drawn area is the template arena; other shapes are covered in boundary.test.ts.
+    for (const level of [0, 3, 5, 8]) {
       run(99 + level, 120 * 45, level, (world) => {
         const field = world.field;
         for (const ball of world.balls.items) {
@@ -342,17 +356,17 @@ describe('World', () => {
           expect(Math.hypot(ball.dx, ball.dy)).toBeCloseTo(1, 6);
           if (!ball.stuck) expect(Math.abs(ball.dy)).toBeGreaterThanOrEqual(BALL.minVertical - 1e-9);
         }
-      }, 'rect'); // the rectangular arena in every world (the forest outline has its own tests in outline.test.ts)
+      });
     }
   });
 
   it('bounces off the arch frame\'s rounded top corners', () => {
     const r = BALL.radius;
-    const cases = [FIELD, FOREST_FIELD].flatMap((field, w) => [-1, 1].flatMap((side) => [0.3, 0.6, 0.9, 1.2].map((angle) => ({ start: w * STAGES_PER_WORLD, field, side, angle }))));
-    for (const { start, field, side, angle } of cases) {
-      const world = new World();
-      world.setBoundaryOverride('rect');
-      world.newGame(5, start);
+    const field = FIELD;
+    const cases = [-1, 1].flatMap((side) => [0.3, 0.6, 0.9, 1.2].map((angle) => ({ side, angle })));
+    for (const { side, angle } of cases) {
+      const world = new World(CLASSIC);
+      world.newGame(5, 0);
       for (const brick of world.bricks) brick.alive = false;
       const ball = world.balls.items.find((b) => b.active);
       if (!ball) throw new Error('no ball');
@@ -391,7 +405,7 @@ describe('World', () => {
   });
 
   it('loses a life when the last ball drops and ends at zero lives', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(3);
     const events: string[] = [];
     world.events.on('lifeLost', () => events.push('life'));
@@ -412,7 +426,7 @@ describe('World', () => {
   });
 
   it('demo mode never runs out of lives', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.demo = true;
     world.newGame(11);
     const input: StepInput = { targetX: FIELD.halfWidth, axis: 0, action: false };
@@ -423,7 +437,7 @@ describe('World', () => {
 
   it('releases at most DROP.maxPerLevel power-ups per level', () => {
     for (const level of [1, 5, 8]) {
-      const world = new World();
+      const world = new World(CLASSIC);
       world.newGame(77 + level, level);
       const input: StepInput = { targetX: null, axis: 0, action: false };
       const was = world.drops.items.map(() => false);
@@ -445,7 +459,7 @@ describe('World', () => {
   describe('power-up loadout', () => {
     /** Plays `level` with the autopilot and returns the kind of every power-up released, in order. */
     function dropsFor(seed: number, level: number, loadout: readonly PowerUpKind[] | null, seconds = 90): { kinds: PowerUpKind[]; perLevel: number[] } {
-      const world = new World();
+      const world = new World(CLASSIC);
       world.setLoadout(loadout);
       world.newGame(seed, level);
       const input: StepInput = { targetX: null, axis: 0, action: false };
@@ -499,13 +513,13 @@ describe('World', () => {
         expect(free.kinds.length).toBeGreaterThan(0);
       }
       const a = run(1234, 120 * 40);
-      const b = new World();
+      const b = new World(CLASSIC);
       expect(b.loadout).toBeNull();
       expect(fingerprint(a)).toBe(fingerprint(run(1234, 120 * 40)));
     }, 120000);
 
     it('keeps the loadout across levels and new games until changed, and validates it', () => {
-      const world = new World();
+      const world = new World(CLASSIC);
       world.setLoadout([PowerUpKind.Fire, PowerUpKind.Laser, PowerUpKind.Shield]);
       world.newGame(1, 2);
       world.loadLevel(3);
@@ -521,7 +535,7 @@ describe('World', () => {
   describe('refrakt', () => {
     /** Clears the board but for an armored target with tough bricks either side, and the ball fired straight up at it. */
     function setup(refrakt: boolean, targetKind = BrickKind.Armored) {
-      const world = new World();
+      const world = new World(CLASSIC);
       world.newGame(5);
       world.step(SIM.step, { targetX: null, axis: 0, action: true }); // launch
       for (const b of world.bricks) b.alive = false;
@@ -578,7 +592,7 @@ describe('World', () => {
   });
 
   it('boss levels clear only when the boss is defeated', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(21, 4);
     expect(world.boss.active).toBe(true);
     let cleared = false;

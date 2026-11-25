@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
 import { STAGES_PER_WORLD } from '../src/content/worlds';
 import { BALL, ICICLE, SIM } from '../src/gameplay/config';
 import { PowerUpKind } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
+import { CLASSIC, classicCampaign } from './support/worlds';
 
 const idle = { targetX: null, axis: 0, action: false };
 
 // Regression tests for the bugs found in code review 001 (reviews/bobs-code-review-001.md).
 describe('code review 001 fixes', () => {
   it('Q1: forgets trapped-ball history when balls are cleared (new game, level change, lost life)', () => {
-    const world = new World();
-    world.newGame(1, STAGES_PER_WORLD); // Forest: the outline boundary uses the trap guard
+    const world = new World(CLASSIC);
+    world.newGame(1, STAGES_PER_WORLD); // the Forest tree arch
     const ball = world.balls.items.find((b) => b.active)!;
     const guard = world.ballPhysics.trapGuard;
     for (let i = 0; i < 3; i++) guard.onContact(ball, 50 + i * 0.01, 0, 0);
@@ -22,7 +22,7 @@ describe('code review 001 fixes', () => {
   });
 
   it('Q3: Multiball splits a ball held by Magnet, launching the copies upwards', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     world.phase = 'live';
     const held = world.balls.items.find((b) => b.active)!;
@@ -37,7 +37,7 @@ describe('code review 001 fixes', () => {
   });
 
   it('Q4: an icicle shove moves the paddle even while the pointer holds still', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     world.paddle.x = world.paddle.px = 0;
     world.paddle.tilt = 1;
@@ -55,7 +55,7 @@ describe('code review 001 fixes', () => {
   });
 
   it('Q5: a ball that escapes a drawn ball area is lost instead of flying off forever', () => {
-    const campaign = BUILTIN_CAMPAIGN.withExtrasAt(0, { playAreas: {
+    const campaign = classicCampaign({ space: {
       ball: { radius: 0, drainEdge: 3, points: [{ x: -10, y: -5 }, { x: -10, y: 8 }, { x: 10, y: 8 }, { x: 10, y: -5 }] },
     } });
     const world = new World(campaign);

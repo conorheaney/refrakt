@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BALL, DROP, type FieldDef } from '../gameplay/config';
+import { DROP } from '../gameplay/config';
 import { POWERUPS } from '../gameplay/powerups/powerUps';
 import type { WeatherId, WorldId } from '../content/worlds';
 import { areaSegments } from '../gameplay/arena/playAreas';
@@ -39,63 +39,10 @@ import { BAND_Y, PADDLE_POWERS } from '../gameplay/entities/PaddlePowers';
 const CELEBRATE_HUES: readonly number[] = [0.07, 0.6, 0.93];
 
 /**
- * Optional `?debugArena` (debug): draws the arena over the scene, so it can be checked against the scenery:
- * the walls, ceiling and rounded corners the ball bounces off (red), the path of the ball's centre along
- * them (thin orange), the floor (green) and how far the paddle's ends can travel (yellow ticks).
+ * Optional `?debugArena` (debug): draws the walls the ball bounces off (the world's drawn ball area, drain left
+ * out) over the scene, so they can be checked against the scenery.
  */
 const DEBUG_ARENA = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debugArena');
-
-function createArenaOverlay(field: FieldDef, backdrop = false, ballPath: readonly number[] | null = null): THREE.Group {
-  const group = new THREE.Group();
-  if (ballPath && !backdrop) {
-    // A traced outline boundary (gameplay/arena/boundary.ts): draw exactly the polyline the ball collides with (red,
-    // with its vertices as small ticks), plus the floor and the paddle's travel.
-    const pts: THREE.Vector3[] = [];
-    for (let i = 0; i < ballPath.length; i += 2) pts.push(new THREE.Vector3(ballPath[i], ballPath[i + 1], 0));
-    const mat = new THREE.LineBasicMaterial({ color: new THREE.Color(0xff2020).multiplyScalar(4), depthTest: false, transparent: true });
-    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
-    l.renderOrder = 20;
-    group.add(l);
-    const ticks = new THREE.Points(new THREE.BufferGeometry().setFromPoints(pts), new THREE.PointsMaterial({ color: new THREE.Color(0xffe020).multiplyScalar(3), size: 3, sizeAttenuation: false, depthTest: false }));
-    ticks.renderOrder = 20;
-    group.add(ticks);
-  }
-  const outline = (inset: number): THREE.Vector3[] => {
-    const hw = field.halfWidth - inset;
-    const radius = field.cornerRadius - inset;
-    const cx = field.halfWidth - field.cornerRadius;
-    const cy = field.top - field.cornerRadius;
-    const pts = [new THREE.Vector3(-hw, field.floorY, 0)];
-    for (let i = 0; i <= 24; i++) {
-      const a = Math.PI - (i / 24) * (Math.PI / 2);
-      pts.push(new THREE.Vector3(-cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 0));
-    }
-    for (let i = 0; i <= 24; i++) {
-      const a = Math.PI / 2 - (i / 24) * (Math.PI / 2);
-      pts.push(new THREE.Vector3(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius, 0));
-    }
-    pts.push(new THREE.Vector3(hw, field.floorY, 0));
-    return pts;
-  };
-  const line = (pts: THREE.Vector3[], color: number, opacity = 1): THREE.Line => {
-    const material = new THREE.LineBasicMaterial({ color: new THREE.Color(color).multiplyScalar(4), depthTest: false, transparent: true, opacity });
-    const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), material);
-    l.renderOrder = 20;
-    return l;
-  };
-  if (!ballPath || backdrop) group.add(line(outline(0), backdrop ? 0x829ca9 : 0xff2020, backdrop ? 0.35 : 1));
-  if (backdrop) {
-    group.add(line([new THREE.Vector3(-field.halfWidth, field.floorY, 0), new THREE.Vector3(field.halfWidth, field.floorY, 0)], 0x829ca9, 0.35));
-    return group;
-  }
-  if (!ballPath) group.add(line(outline(BALL.radius), 0xff9020, 0.5));
-  group.add(line([new THREE.Vector3(-field.halfWidth, field.floorY, 0), new THREE.Vector3(field.halfWidth, field.floorY, 0)], 0x20ff40));
-  for (const s of [-1, 1]) {
-    const x = s * field.paddleReach;
-    group.add(line([new THREE.Vector3(x, field.floorY - 0.6, 0), new THREE.Vector3(x, field.floorY + 1.4, 0)], 0xffe020));
-  }
-  return group;
-}
 
 /**
  * Presentation layer. Mirrors simulation state into the Three.js scene each
@@ -111,7 +58,6 @@ export class GameView {
   private readonly env: Environment;
   private readonly bricks: BrickView;
   private worldId: WorldId = 'space';
-  private arenaOverlay: THREE.Group | null = null;
   private backdropOutline: THREE.Group | null = null;
   private readonly balls: BallsView;
   private readonly paddle: PaddleView;
@@ -190,10 +136,6 @@ export class GameView {
     scene.add(this.particles.points, this.dustPuffs.points, this.debris.mesh);
     this.refrakt = new RefraktFx(scene, glow, this.shockwaves, this.flashes, this.particles, this.debris);
     this.rig.setAspect(STAGE_ASPECT);
-    if (DEBUG_ARENA) {
-      this.arenaOverlay = createArenaOverlay(world.field);
-      scene.add(this.arenaOverlay);
-    }
     this.bindEvents();
   }
 
@@ -247,12 +189,6 @@ export class GameView {
     this.worldId = id;
     this.env.setWorld(id);
     this.paddle.setWorld(id);
-    if (DEBUG_ARENA) {
-      if (this.arenaOverlay) this.scene.remove(this.arenaOverlay);
-      const b = this.world.boundary;
-      this.arenaOverlay = createArenaOverlay(this.world.field, false, b.kind === 'outline' ? b.path(this.world.field.bottom) : null);
-      this.scene.add(this.arenaOverlay);
-    }
     // Each world frames the arena with its own lens; point sizes follow the field of view.
     this.rig.setWorld(id);
     this.bricks.flatView = this.rig.isFlat;
@@ -362,16 +298,12 @@ export class GameView {
         });
         this.backdropOutline = null;
       }
-      const area = campaign.worldAt(index).playAreas?.ball;
-      // Collision guides are opt-in diagnostics, including for authored worlds.
-      // The editor owns its editable SVG guides separately.
-      if (DEBUG_ARENA && area) {
+      const area = campaign.worldAt(index).playAreas.ball;
+      // Collision guides are opt-in diagnostics. The editor owns its editable SVG guides separately.
+      if (DEBUG_ARENA) {
         this.backdropOutline = new THREE.Group();
         const points = areaSegments(area, area.drainEdge).filter((segment) => !segment.drain).flatMap(({ a, b }) => [new THREE.Vector3(a.x, a.y, 0), new THREE.Vector3(b.x, b.y, 0)]);
         this.backdropOutline.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0xb1e5ed, transparent: true, opacity: 0.55 })));
-        this.scene.add(this.backdropOutline);
-      } else if (DEBUG_ARENA && backdrop) {
-        this.backdropOutline = createArenaOverlay(world.field, true);
         this.scene.add(this.backdropOutline);
       }
       this.env.setTheme(campaign.level(index).hue, boss, changed);

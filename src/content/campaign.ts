@@ -1,8 +1,14 @@
 import type { MusicTrackId } from './musicTracks';
-import type { PlayAreas } from '../gameplay/arena/playAreas';
+import type { BallArea, PolygonArea } from '../gameplay/arena/playAreas';
 import type { HazardDef } from '../gameplay/hazards/hazards';
-import { BUILTIN_LEVELS, parseLevel, type LevelCell, type LevelDef } from './levels';
-import { BUILTIN_WORLDS, levelNumber, STAGES_PER_WORLD, type WorldDef } from './worlds';
+import { parseLevel, type LevelCell, type LevelDef } from './levels';
+import { levelNumber, STAGES_PER_WORLD, type WorldDef } from './worlds';
+
+/** A playable world's drawn areas: the walls the ball bounces off and the lane the paddle runs in. */
+export interface WorldAreas {
+  readonly ball: BallArea;
+  readonly paddle: PolygonArea;
+}
 
 /** One world of a campaign: its definition, its ten levels and everything authored alongside them. */
 export interface WorldEntry {
@@ -11,8 +17,8 @@ export interface WorldEntry {
   readonly levels: readonly LevelDef[];
   /** `levels` parsed into brick cells (parseLevel), once, when the entry is made. */
   readonly cells: readonly (readonly LevelCell[])[];
-  /** Drawn ball and paddle areas (gameplay/arena/playAreas.ts); absent: the world's own arena. */
-  readonly playAreas?: PlayAreas;
+  /** Drawn ball and paddle areas (gameplay/arena/playAreas.ts). Every playable world has both. */
+  readonly playAreas: WorldAreas;
   /** Enemies active in every level of this world (gameplay/hazards/hazards.ts). */
   readonly hazards?: readonly HazardDef[];
   /** Uploaded scenery image (a data: URL) replacing the built-in backdrop. */
@@ -20,7 +26,6 @@ export interface WorldEntry {
 }
 
 export interface WorldExtras {
-  readonly playAreas?: PlayAreas;
   readonly hazards?: readonly HazardDef[];
   readonly background?: string;
 }
@@ -29,21 +34,23 @@ export interface WorldExtras {
  * Builds a WorldEntry, parsing (and so validating) its levels. `firstLevel` only numbers the levels in
  * parse errors.
  */
-export function worldEntry(def: WorldDef, levels: readonly LevelDef[], extras: WorldExtras = {}, firstLevel = 0): WorldEntry {
+export function worldEntry(def: WorldDef, levels: readonly LevelDef[], areas: WorldAreas, extras: WorldExtras = {}, firstLevel = 0): WorldEntry {
   if (levels.length !== STAGES_PER_WORLD) throw new Error(`A world must contain exactly ${STAGES_PER_WORLD} levels.`);
+  if (!areas.ball || !areas.paddle) throw new Error(`${def.name}: draw a ball area and a paddle area before playing.`);
   return {
     def,
     levels,
     cells: levels.map((level, i) => parseLevel(level, firstLevel + i)),
-    ...(extras.playAreas ? { playAreas: extras.playAreas } : {}),
+    playAreas: { ball: areas.ball, paddle: areas.paddle },
     ...(extras.hazards ? { hazards: extras.hazards } : {}),
     ...(extras.background ? { background: extras.background } : {}),
   };
 }
 
 /**
- * The worlds a game plays, in order: built once at boot (built-ins, then project files and browser saves)
- * and handed to the simulation, view and UI. Immutable; the `with...` methods return a new campaign.
+ * The worlds a game plays, in order: built once at boot from the project's world files and browser saves (see
+ * content/fileWorlds.ts) and handed to the simulation, view and UI. Immutable; the `with...` methods return a
+ * new campaign.
  *
  * Level index n belongs to worlds[floor(n / STAGES_PER_WORLD)].
  */
@@ -52,26 +59,20 @@ export class Campaign {
   readonly levels: readonly LevelDef[];
 
   /**
-   * @param builtinWorldCount How many leading worlds are the built-in campaign (Space, Forest or their
-   *   project-file replacements); a run started there plays through all of them (see runEndLevel).
+   * @param mainWorldCount How many leading worlds form the main campaign (the world files that take the Space
+   *   and Forest slots, `replaces`); a run started there plays through all of them (see runEndLevel).
    */
-  constructor(readonly worlds: readonly WorldEntry[], readonly builtinWorldCount: number = worlds.length) {
-    if (worlds.length === 0) throw new Error('A campaign needs at least one world.');
+  constructor(readonly worlds: readonly WorldEntry[], readonly mainWorldCount = 0) {
+    if (worlds.length === 0) throw new Error('No playable worlds: add a finished world file with a ball area and a paddle area.');
     this.levels = worlds.flatMap((world) => world.levels);
-  }
-
-  /** The built-in Space and Forest worlds. */
-  static builtin(): Campaign {
-    return new Campaign(BUILTIN_WORLDS.map((def, w) =>
-      worldEntry(def, BUILTIN_LEVELS.slice(w * STAGES_PER_WORLD, (w + 1) * STAGES_PER_WORLD), {}, w * STAGES_PER_WORLD)));
   }
 
   get levelCount(): number {
     return this.levels.length;
   }
 
-  get builtinLevelCount(): number {
-    return this.builtinWorldCount * STAGES_PER_WORLD;
+  get mainLevelCount(): number {
+    return this.mainWorldCount * STAGES_PER_WORLD;
   }
 
   /** The world a level belongs to (clamped to the campaign). */
@@ -107,36 +108,36 @@ export class Campaign {
     return `${this.worldDefAt(levelIndex).name} Level ${levelNumber(levelIndex)}`;
   }
 
-  /** Index one past a run's last level: the built-in campaign runs to its end, any other world for its ten levels. */
+  /** Index one past a run's last level: the main campaign runs to its end, any other world for its ten levels. */
   runEndLevel(start: number): number {
-    return start < this.builtinLevelCount ? this.builtinLevelCount : (Math.floor(start / STAGES_PER_WORLD) + 1) * STAGES_PER_WORLD;
+    return start < this.mainLevelCount ? this.mainLevelCount : (Math.floor(start / STAGES_PER_WORLD) + 1) * STAGES_PER_WORLD;
   }
 
   /** This campaign with `entry` appended as a new world. */
   withWorld(entry: WorldEntry): Campaign {
-    return new Campaign([...this.worlds, entry], this.builtinWorldCount);
+    return new Campaign([...this.worlds, entry], this.mainWorldCount);
   }
 
   /** This campaign with world `index` replaced by `entry` (levels keep their position). */
   withWorldAt(index: number, entry: WorldEntry): Campaign {
     if (!Number.isInteger(index) || index < 0 || index >= this.worlds.length) throw new Error(`No world slot ${index}.`);
-    return new Campaign(this.worlds.map((world, i) => (i === index ? entry : world)), this.builtinWorldCount);
+    return new Campaign(this.worlds.map((world, i) => (i === index ? entry : world)), this.mainWorldCount);
   }
 
-  /** This campaign with world `index`'s extras (areas, hazards, background) replaced. */
-  withExtrasAt(index: number, extras: WorldExtras): Campaign {
+  /** This campaign with world `index`'s areas and extras (hazards, background) replaced. */
+  withWorldPartsAt(index: number, parts: { playAreas?: WorldAreas } & WorldExtras): Campaign {
     const world = this.worlds[index];
     if (!world) throw new Error(`No world slot ${index}.`);
+    const hazards = 'hazards' in parts ? parts.hazards : world.hazards;
+    const background = 'background' in parts ? parts.background : world.background;
     return this.withWorldAt(index, {
       def: world.def,
       levels: world.levels,
       cells: world.cells,
-      ...(extras.playAreas ? { playAreas: extras.playAreas } : {}),
-      ...(extras.hazards ? { hazards: extras.hazards } : {}),
-      ...(extras.background ? { background: extras.background } : {}),
+      playAreas: parts.playAreas ?? world.playAreas,
+      ...(hazards ? { hazards } : {}),
+      ...(background ? { background } : {}),
     });
   }
 }
 
-/** The built-in campaign, for tools and tests that don't load any world files. */
-export const BUILTIN_CAMPAIGN = Campaign.builtin();

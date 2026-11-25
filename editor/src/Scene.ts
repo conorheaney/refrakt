@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { STAGES_PER_WORLD } from '../../src/content/worlds';
-import { BUILTIN_CAMPAIGN } from '../../src/content/campaign';
+import { Campaign } from '../../src/content/campaign';
 import { authoredEntry, type AuthoredWorld } from '../../src/content/authoredWorlds';
 import { GameView } from '../../src/app/GameView';
 import { Renderer } from '../../src/engine/render/Renderer';
@@ -11,12 +11,12 @@ import { STAGE_ASPECT, STAGE_MIN_ASPECT } from '../../src/engine/Stage';
 
 /** Paused original game renderer. Editor hit targets project through the same camera. */
 export class EditorScene {
-  /** The edited world plays as one more world after the built-in campaign, rebuilt on every change. */
+  /** The edited world is the scene's whole campaign, rebuilt on every change. */
   private readonly world: World;
   private readonly backgrounds = new Map<number, THREE.Texture>();
   private readonly renderer: Renderer;
   private view!: GameView;
-  private readonly index = BUILTIN_CAMPAIGN.worlds.length;
+  private readonly index = 0;
   private readonly ray = new THREE.Raycaster();
   private readonly plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   private readonly hit = new THREE.Vector3();
@@ -32,7 +32,7 @@ export class EditorScene {
 
   constructor(private readonly stage: HTMLElement, canvas: HTMLCanvasElement, initial: AuthoredWorld) {
     this.data = initial;
-    this.world = new World(BUILTIN_CAMPAIGN.withWorld(authoredEntry(initial, BUILTIN_CAMPAIGN.levelCount)));
+    this.world = new World(new Campaign([authoredEntry(initial)]));
     this.renderer = new Renderer(canvas);
     window.addEventListener('resize', () => this.resize());
   }
@@ -53,7 +53,7 @@ export class EditorScene {
   }
 
   private refresh(): void {
-    this.world.setCampaign(BUILTIN_CAMPAIGN.withWorld(authoredEntry(this.data, BUILTIN_CAMPAIGN.levelCount)));
+    this.world.setCampaign(new Campaign([authoredEntry(this.data)]));
     if (this.image !== this.data.backgroundImage) {
       this.image = this.data.backgroundImage;
       const generation = ++this.imageGeneration;

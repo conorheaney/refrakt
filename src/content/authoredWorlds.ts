@@ -1,10 +1,10 @@
 import { isMusicTrack } from './musicTracks';
 import { GRID, PADDLE } from '../gameplay/config';
-import { findPaddleLane, validateArea, type PlayAreas } from '../gameplay/arena/playAreas';
+import { defaultBallArea, defaultPaddleArea, findPaddleLane, validateArea, type PlayAreas } from '../gameplay/arena/playAreas';
 import { validateHazards, type HazardDef } from '../gameplay/hazards/hazards';
-import { BUILTIN_LEVELS, parseLevel, type LevelDef } from './levels';
-import { BUILTIN_WORLDS, isWeather, STAGES_PER_WORLD, type WorldDef, type WorldId } from './worlds';
-import { worldEntry, type Campaign, type WorldEntry } from './campaign';
+import { parseLevel, type LevelDef } from './levels';
+import { isWeather, STAGES_PER_WORLD, WORLD_TEMPLATES, type WorldDef, type WorldId } from './worlds';
+import { worldEntry, type WorldEntry } from './campaign';
 
 /** Editor/library envelope only. WorldDef, LevelDef and their row alphabet are unchanged. */
 export interface AuthoredWorld {
@@ -15,6 +15,7 @@ export interface AuthoredWorld {
   levels: LevelDef[];
   /** Editor asset metadata; not part of WorldDef or LevelDef. Embedded for portable exports. */
   backgroundImage?: string;
+  /** The ball's walls and the paddle's lane; a world needs both to be played (see missingAreas). */
   playAreas?: PlayAreas;
   /** Enemies active in every level of this world (gameplay/hazards/hazards.ts). */
   hazards?: HazardDef[];
@@ -22,14 +23,14 @@ export interface AuthoredWorld {
 
 export const LIBRARY_KEY = 'refrakt.authored-worlds';
 /** The scenery an authored world can be built on (its arena, grid and paddle come with it). */
-export const BACKGROUNDS = BUILTIN_WORLDS;
-export const BUILTIN_LEVEL_COUNT = BUILTIN_LEVELS.length;
-export const BUILTIN_WORLD_COUNT = BUILTIN_WORLDS.length;
+export const BACKGROUNDS = WORLD_TEMPLATES;
 
 export function createWorld(key: string): AuthoredWorld {
   return {
     key,
     world: { ...BACKGROUNDS[0], name: 'Untitled world' },
+    // A world starts with the template arena's walls and paddle line, ready to be reshaped in the editor.
+    playAreas: { ball: defaultBallArea(BACKGROUNDS[0].field), paddle: defaultPaddleArea(BACKGROUNDS[0].field) },
     levels: Array.from({ length: STAGES_PER_WORLD }, (_, i) => ({
       name: `LEVEL ${i + 1}`, hue: 0.58,
       rows: Array.from({ length: GRID.rows }, () => '.'.repeat(GRID.cols)),
@@ -104,7 +105,32 @@ export function validateWorld(value: unknown): AuthoredWorld {
       if (!Number.isInteger(boss.volley) || !Number.isInteger(boss.hp)) throw new Error('Boss HP and volley must be integers.');
     }
   });
-  return structuredClone(data) as unknown as AuthoredWorld;
+  const result = structuredClone(data) as unknown as AuthoredWorld;
+  // Older files name a built-in wall shape ('rect' or a traced 'outline'); walls now always come from the drawn
+  // ball area, so those settings are dropped.
+  const legacy = result.world as WorldDef & { boundary?: unknown; outline?: unknown };
+  delete legacy.boundary;
+  delete legacy.outline;
+  return result;
+}
+
+/** The drawn areas a world still needs before it can be played. */
+export function missingAreas(data: Pick<AuthoredWorld, 'playAreas'>): ('ball' | 'paddle')[] {
+  return (['ball', 'paddle'] as const).filter((area) => !data.playAreas?.[area]);
+}
+
+/** Ready to play: every level has something to break and both areas are drawn. */
+export function isPlayable(data: AuthoredWorld): boolean {
+  return unfinishedLevels(data).length === 0 && missingAreas(data).length === 0;
+}
+
+/** Why a world can't be played yet, as one line for status messages (empty when it can). */
+export function playProblems(data: AuthoredWorld): string {
+  const problems: string[] = [];
+  const levels = unfinishedLevels(data);
+  if (levels.length) problems.push(`unfinished levels: ${levels.join(', ')}`);
+  for (const area of missingAreas(data)) problems.push(`no ${area} area drawn`);
+  return problems.join('; ');
 }
 
 export function unfinishedLevels(data: AuthoredWorld): number[] {
@@ -142,31 +168,9 @@ export function saveWorld(storage: Pick<Storage, 'getItem' | 'setItem'>, value: 
   storage.setItem(LIBRARY_KEY, JSON.stringify(worlds));
 }
 
-/**
- * The WorldDef the game runs for an authored world. An uploaded image replaces the built-in scenery, so a
- * traced outline of that scenery (the Forest tree arch, WorldDef.boundary) no longer matches what is shown:
- * the ball then uses the arena rectangle instead (a drawn ball area, if any, still takes priority).
- */
-export function playableWorld(data: Pick<AuthoredWorld, 'world' | 'backgroundImage'>): WorldDef {
-  if (!data.backgroundImage || data.world.boundary !== 'outline') return data.world;
-  return { ...data.world, boundary: 'rect' };
-}
-
-/** The campaign entry for a validated authored world (its levels are numbered from `firstLevel` in errors). */
+/** The campaign entry for a playable authored world (its levels are numbered from `firstLevel` in errors). */
 export function authoredEntry(data: AuthoredWorld, firstLevel = 0): WorldEntry {
-  return worldEntry(playableWorld(data), data.levels, {
-    playAreas: data.playAreas,
-    hazards: data.hazards,
-    background: data.backgroundImage,
-  }, firstLevel);
-}
-
-/** `campaign` with every finished world in `worlds` appended, in order (unfinished drafts are skipped). */
-export function installWorlds(campaign: Campaign, worlds: readonly AuthoredWorld[]): Campaign {
-  for (const value of worlds) {
-    const data = validateWorld(value);
-    if (unfinishedLevels(data).length) continue;
-    campaign = campaign.withWorld(authoredEntry(data, campaign.levelCount));
-  }
-  return campaign;
+  const { ball, paddle } = data.playAreas ?? {};
+  if (!ball || !paddle) throw new Error(`${data.world.name}: draw a ball area and a paddle area before playing.`);
+  return worldEntry(data.world, data.levels, { ball, paddle }, { hazards: data.hazards, background: data.backgroundImage }, firstLevel);
 }

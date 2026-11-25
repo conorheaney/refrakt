@@ -1,9 +1,9 @@
 import tomb from '../public/worlds/Pharoughs-Tomb.json';
 import { expect, it } from 'vitest';
-import { installWorlds, validateWorld, unfinishedLevels } from '../src/content/authoredWorlds';
+import { validateWorld, unfinishedLevels } from '../src/content/authoredWorlds';
 import { BALL, BRICK_HP, GRID, SIM } from '../src/gameplay/config';
 import { parseLevel } from '../src/content/levels';
-import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
+import { SHIPPED_CAMPAIGN as campaign } from './support/worlds';
 import { areaContour, pointInPolygon } from '../src/gameplay/arena/playAreas';
 import { World } from '../src/gameplay/World';
 
@@ -32,8 +32,8 @@ it('contains ten complete Tomb formations inside the saved arena with increasing
 });
 
 it('can clear every exported formation in the real simulation', () => {
-  const first = BUILTIN_CAMPAIGN.levelCount;
-  const campaign = installWorlds(BUILTIN_CAMPAIGN, [data]);
+  const first = campaign.worlds.findIndex((world) => world.def.name === 'Pharoughs Tomb') * 10;
+  expect(first).toBe(20);
   for (let level = 0; level < 10; level++) {
     let cleared = false;
     for (let seed = 1; seed <= 3 && !cleared; seed++) {

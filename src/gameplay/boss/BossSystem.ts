@@ -78,14 +78,15 @@ export class BossSystem {
       }
     }
 
-    const field = world.field;
+    const bounds = world.boundary.bounds;
+    const lower = world.lowerLimit;
     for (const shot of this.shots.items) {
       if (!shot.active) continue;
       shot.px = shot.x;
       shot.py = shot.y;
       shot.x += shot.vx * dt;
       shot.y += shot.vy * dt;
-      if (shot.y < field.bottom || Math.abs(shot.x) > field.halfWidth || (world.shieldCharges > 0 && shot.y < world.shieldY && shot.x >= world.shieldLeft && shot.x <= world.shieldRight)) {
+      if (shot.y < lower || shot.x < bounds.left || shot.x > bounds.right || (world.shieldCharges > 0 && shot.y < world.shieldY && shot.x >= world.shieldLeft && shot.x <= world.shieldRight)) {
         this.shots.release(shot);
       } else if (overlapCircleAabb(shot.x, shot.y, SHOT.radius, p.x, p.y, p.width / 2, PADDLE.halfH, this.hit)) {
         this.shots.release(shot);

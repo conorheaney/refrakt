@@ -26,9 +26,7 @@
     "paddleWidth": 4.2,
     "paddleExpandedWidth": 6.3,
     "serveLift": 0,
-    "music": "forest",
-    "boundary": "outline",
-    "outline": "forest"
+    "music": "forest"
   },
   "levels": [
     {

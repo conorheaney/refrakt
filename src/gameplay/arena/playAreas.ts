@@ -1,5 +1,4 @@
-import type { FieldDef } from '../config';
-import { sweepCircleCircle, type SweepHit } from './collision';
+import { PADDLE, type FieldDef } from '../config';
 
 export interface Point { x: number; y: number }
 export interface PolygonArea {
@@ -80,6 +79,12 @@ export function defaultBallArea(field: FieldDef): BallArea {
   }
   points.push({ x: field.halfWidth, y: field.bottom });
   return { points, radius: 0, drainEdge: points.length - 1 };
+}
+
+/** The paddle lane a new world starts with: the classic paddle line across the arena's paddle reach. */
+export function defaultPaddleArea(field: FieldDef): PolygonArea {
+  const reach = field.paddleReach;
+  return { radius: 0, points: [{ x: -reach, y: PADDLE.y - 0.8 }, { x: reach, y: PADDLE.y - 0.8 }, { x: reach, y: PADDLE.y + 0.8 }, { x: -reach, y: PADDLE.y + 0.8 }] };
 }
 
 export function lowestEdge(points: readonly Point[]): number {
@@ -195,32 +200,3 @@ export function clampToSpans(x: number, spans: readonly Interval[]): number {
   return result;
 }
 
-/** Continuous swept circle against solid polygon segments; the drain is crossed by the ball centre. */
-export function sweepArea(px: number, py: number, dx: number, dy: number, radius: number, segments: readonly BoundarySegment[], orientation: number, out: SweepHit, ignoreDrain = false): 'wall' | 'drain' | null {
-  let best = 2;
-  let result: 'wall' | 'drain' | null = null;
-  const temp: SweepHit = { t: 0, nx: 0, ny: 0 };
-  for (const { a, b, drain } of segments) {
-    if (drain && ignoreDrain) continue;
-    const length = distance(a, b), tx = (b.x - a.x) / length, ty = (b.y - a.y) / length;
-    const nx = -ty * orientation, ny = tx * orientation;
-    const velocity = dx * nx + dy * ny;
-    if (velocity < -1e-9) {
-      const signed = (px - a.x) * nx + (py - a.y) * ny;
-      const t = ((drain ? 0 : radius) - signed) / velocity;
-      if (t >= -1e-8 && t <= 1 && t < best) {
-        const along = (px + dx * t - a.x) * tx + (py + dy * t - a.y) * ty;
-        if (along >= 0 && along <= length) {
-          best = Math.max(0, t); result = drain ? 'drain' : 'wall'; out.t = best; out.nx = nx; out.ny = ny;
-        }
-      }
-    }
-    if (drain) continue;
-    for (const endpoint of [a, b]) {
-      if (sweepCircleCircle(px, py, dx, dy, radius, endpoint.x, endpoint.y, 0, temp) && temp.t < best) {
-        best = temp.t; result = 'wall'; Object.assign(out, temp);
-      }
-    }
-  }
-  return result;
-}

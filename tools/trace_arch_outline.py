@@ -1,4 +1,4 @@
-"""Traces the inside edge of the forest painting's tree arch into the ball's collision outline.
+"""Traces the inside edge of the forest painting's tree arch: the editor's starting ball area for Forest worlds.
 
     python tools/trace_arch_outline.py "<path to the forest painting>" [--out src/content/outlines/forest.ts]
 

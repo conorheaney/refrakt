@@ -6,11 +6,11 @@ import path from 'node:path';
 import { createServer, preview } from 'vite';
 import { createWorldStore, worldFileMiddleware } from './world-store.mjs';
 
-let validator, validateWorld, unfinishedLevels, fixture;
+let validator, validateWorld, isPlayable, fixture;
 const roots = [];
 before(async () => {
   validator = await createServer({ configFile: false, server: { middlewareMode: true, ws: false }, appType: 'custom' });
-  ({ validateWorld, unfinishedLevels } = await validator.ssrLoadModule('/src/content/authoredWorlds.ts'));
+  ({ validateWorld, isPlayable } = await validator.ssrLoadModule('/src/content/authoredWorlds.ts'));
   fixture = JSON.parse(await readFile('public/worlds/Frozen-Sanctuary.json', 'utf8'));
 });
 after(async () => {
@@ -25,7 +25,7 @@ async function setup() {
   await mkdir('.tmp', { recursive: true });
   const root = await mkdtemp(path.resolve('.tmp/world-store-test-'));
   roots.push(root);
-  const store = createWorldStore(root, validateWorld, (world) => unfinishedLevels(world).length === 0);
+  const store = createWorldStore(root, validateWorld, isPlayable);
   const world = structuredClone(fixture);
   return { root, store, world };
 }

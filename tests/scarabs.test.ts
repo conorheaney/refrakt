@@ -9,6 +9,7 @@ import { SCARAB_PATH_POINTS, validateHazards, type ScarabNestDef } from '../src/
 import { rideLimit, ScarabSystem, type Scarab } from '../src/gameplay/hazards/scarabs/scarabs';
 import type { Ball, Paddle } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
+import { CLASSIC } from './support/worlds';
 
 const LEFT: ScarabNestDef = { kind: 'scarabs', x: -16, y: -9.2 };
 const RIGHT: ScarabNestDef = { kind: 'scarabs', x: 16, y: -9.2 };
@@ -446,7 +447,7 @@ describe('scarab nests', () => {
 
   it('a ball dropped straight down comes off a leaning paddle towards its low end, off the sloped top', () => {
     const drop = (lean: number, at: number) => {
-      const world = new World();
+      const world = new World(CLASSIC);
       world.newGame(1);
       world.step(SIM.step, { targetX: null, axis: 0, action: true });
       const p = world.paddle;
@@ -590,7 +591,7 @@ describe('scarab nests', () => {
   });
 
   it('a landing shove shows even with the paddle held under a finger', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     world.paddle.x = world.paddle.px = 0;
     world.paddle.shove = SCARAB.landShove[0];

@@ -5,6 +5,7 @@ import { lerp } from '../src/engine/core/math';
 import { FixedStepper, stepFraction } from '../src/engine/core/Time';
 import { CameraRig } from '../src/gameplay/CameraRig';
 import { World, type StepInput } from '../src/gameplay/World';
+import { CLASSIC } from './support/worlds';
 
 /** Deterministic frame-time generator: a nominal refresh rate with +/- jitter, like real rAF timestamps. */
 function frameTimes(hz: number, jitter: number, count: number): number[] {
@@ -23,7 +24,7 @@ function frameTimes(hz: number, jitter: number, count: number): number[] {
  * paddle X after every frame.
  */
 function renderPointerSweep(dts: number[], speed: number, startX: number): { xs: number[]; t: number[] } {
-  const world = new World();
+  const world = new World(CLASSIC);
   world.newGame(1);
   const stepper = new FixedStepper(SIM.step, SIM.maxStepsPerFrame);
   const input: StepInput = { targetX: startX, axis: 0, action: false };
@@ -76,7 +77,7 @@ describe('paddle smoothness', () => {
 describe('paddle responsiveness at direction changes', () => {
   /** Mirrors Game's pointer path; returns rendered paddle X per frame for a pointer path target(t). */
   function render(dts: number[], target: (t: number) => number): number[] {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     const stepper = new FixedStepper(SIM.step, SIM.maxStepsPerFrame);
     const input: StepInput = { targetX: target(0), axis: 0, action: false };
@@ -123,7 +124,7 @@ describe('paddle responsiveness at direction changes', () => {
   }
 
   it('a keyboard reversal changes direction on the very next step', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     const input: StepInput = { targetX: null, axis: 1, action: false };
     for (let i = 0; i < 30; i++) world.step(SIM.step, input);
@@ -137,7 +138,7 @@ describe('paddle responsiveness at direction changes', () => {
 
 describe('ball smoothness', () => {
   it('rendered ball never moves further in a frame than its speed allows', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(3);
     const stepper = new FixedStepper(SIM.step, SIM.maxStepsPerFrame);
     const input: StepInput = { targetX: null, axis: 0, action: true };

@@ -1,9 +1,8 @@
 import { BALL, PADDLE, REFRAKT, SCARAB } from '../config';
 import { clamp } from '../../engine/core/math';
 import { speedSteps } from '../../content/worlds';
-import { TrapGuard } from '../arena/boundary';
+import { Contact, TrapGuard } from '../arena/boundary';
 import { overlapCircleAabb, sweepCircleAabb, sweepCircleCircle, type SweepHit } from '../arena/collision';
-import { areaContour, areaSegments, distance, nearestOnSegment, pointInPolygon, polygonSignedArea, sweepArea, type BallArea, type BoundarySegment, type Point } from '../arena/playAreas';
 import { paddleSlope } from '../hazards/scarabs/scarabs';
 import { BrickKind, type Ball, type Brick } from '../types';
 import type { WorldContext } from '../WorldContext';
@@ -23,23 +22,14 @@ const CONTACT_EPS = 1e-4;
 const ESCAPE_MARGIN = BALL.radius * 4;
 
 /**
- * The balls: serving, launching, swept movement with bounces off walls, shield, bricks, paddle and boss, and
- * clearing residual overlaps. Also holds a world's drawn ball area when it has one. Owned by World.
+ * The balls: serving, launching, swept movement with bounces off the walls (the world's drawn ball area), the
+ * barrier, bricks, paddle and boss, and clearing residual overlaps. Owned by World.
  */
 export class BallPhysics {
-  /** Frees balls trapped by an outline boundary (never used with the rectangle). */
+  /** Frees balls trapped in a pocket of the walls. */
   readonly trapGuard = new TrapGuard();
   private readonly hit: SweepHit = { t: 0, nx: 0, ny: 0 };
   private readonly scratchBalls: Ball[] = [];
-  /** A drawn ball area (gameplay/arena/playAreas.ts), or null for the world's own boundary. */
-  private ballBoundary: BoundarySegment[] | null = null;
-  private ballContour: Point[] = [];
-  private ballOrientation = 1;
-  private customBottom: number | null = null;
-  /** The drawn ball area's bounds grown by ESCAPE_MARGIN; a ball outside them has escaped the arena. */
-  private escapeLeft = -Infinity;
-  private escapeRight = Infinity;
-  private escapeTop = Infinity;
   private baseSpeed: number = BALL.baseSpeed;
   private speedBonus = 0;
   /** The ball being depenetrated, for the allocation-free reflect callback below. */
@@ -53,18 +43,6 @@ export class BallPhysics {
   /** Current ball speed: the level's base, paddle-hit bonus and any power-up scaling. */
   get speed(): number {
     return (this.baseSpeed + this.speedBonus) * this.world.powerUps.ballSpeedScale;
-  }
-
-  /** Adopts a world's drawn ball area (undefined: the world's own boundary). */
-  setArea(area: BallArea | undefined): void {
-    this.ballBoundary = area ? areaSegments(area, area.drainEdge) : null;
-    this.ballContour = area ? areaContour(area) : [];
-    this.ballOrientation = area ? Math.sign(polygonSignedArea(area.points)) : 1;
-    this.customBottom = area ? Math.min(...this.ballContour.map((p) => p.y)) - BALL.radius * 3 : null;
-    const xs = this.ballContour.map((p) => p.x);
-    this.escapeLeft = area ? Math.min(...xs) - ESCAPE_MARGIN : -Infinity;
-    this.escapeRight = area ? Math.max(...xs) + ESCAPE_MARGIN : Infinity;
-    this.escapeTop = area ? Math.max(...this.ballContour.map((p) => p.y)) + ESCAPE_MARGIN : Infinity;
   }
 
   /** A new level: its base speed, with the paddle-hit bonus cleared. */
@@ -127,8 +105,9 @@ export class BallPhysics {
       if (ball.stuck) {
         const half = paddle.width / 2 - 0.2;
         ball.stuckOffset = clamp(ball.stuckOffset, -half, half);
-        const wall = world.field.halfWidth - BALL.radius;
-        ball.x = this.ballBoundary || world.hasPaddleLane ? paddle.x + ball.stuckOffset : clamp(paddle.x + ball.stuckOffset, -wall, wall);
+        // Held clear of the ball area's sides (a paddle lane may reach right up to them).
+        const bounds = world.boundary.bounds;
+        ball.x = clamp(paddle.x + ball.stuckOffset, bounds.left + BALL.radius, bounds.right - BALL.radius);
         ball.y = paddle.y + PADDLE.halfH + BALL.radius + world.worldDef.serveLift + ball.stuckOffset * Math.tan(paddleSlope(paddle));
         ball.stuckTime += dt;
         const autoLaunch =
@@ -141,15 +120,14 @@ export class BallPhysics {
       if (ball.stuck || !ball.active) continue;
       this.depenetrate(ball);
 
-      // Custom drains can sit above the paddle-bottom shield. Keep the fallback below it,
-      // including just after the final charge bounces a ball back towards the play area.
-      const lossY = this.customBottom !== null
-        ? Math.min(this.customBottom, world.shieldY - BALL.radius * 3)
-        : world.hasPaddleLane ? Math.min(world.field.bottom, paddle.y - 2) : world.field.bottom;
-      // A ball that slipped out through a drawn area's wall (between two segments, say) would otherwise fly
-      // off for ever with the level still live; count it as lost.
-      const escaped = ball.x < this.escapeLeft || ball.x > this.escapeRight || ball.y > this.escapeTop;
-      if (escaped) console.warn(`Ball escaped the drawn ball area at (${ball.x.toFixed(2)}, ${ball.y.toFixed(2)}); counted as lost.`);
+      // A drain can sit above the barrier. Keep the loss line below both, including just after the final charge
+      // bounces a ball back towards the play area.
+      const bounds = world.boundary.bounds;
+      const lossY = Math.min(bounds.bottom, world.shieldY) - BALL.radius * 3;
+      // A ball that got out through a wall despite depenetration would otherwise fly off for ever with the
+      // level still live; count it as lost.
+      const escaped = ball.x < bounds.left - ESCAPE_MARGIN || ball.x > bounds.right + ESCAPE_MARGIN || ball.y > bounds.top + ESCAPE_MARGIN;
+      if (escaped) console.warn(`Ball escaped the ball area at (${ball.x.toFixed(2)}, ${ball.y.toFixed(2)}); counted as lost.`);
       if (ball.y < lossY || escaped) {
         world.balls.release(ball);
         world.events.emit('ballLost', { x: ball.x, remaining: world.balls.activeCount });
@@ -224,9 +202,8 @@ export class BallPhysics {
     const fire = world.powerUps.grants('pierce');
     const refrakt = world.refraktTime > 0;
     let remaining = this.speed * dt;
-    const field = world.field;
     const boundary = world.boundary;
-    /** Outline contacts this step that made no progress (the ball wedged between surfaces). */
+    /** Wall contacts this step that made no progress (the ball wedged between surfaces). */
     let wedged = 0;
 
     for (let iter = 0; iter < BALL.maxBouncesPerStep && remaining > 1e-7; iter++) {
@@ -242,22 +219,13 @@ export class BallPhysics {
       const shieldWillCatch = dy < 0 && world.shieldCharges > 0 && shieldT >= 0
         && shieldX + r >= world.shieldLeft && shieldX - r <= world.shieldRight;
 
-      if (this.ballBoundary) {
-        // While protected, let the ball cross the custom drain to reach the visible shield.
-        // Solid walls still participate in the sweep.
-        const result = sweepArea(ball.x, ball.y, dx, dy, r, this.ballBoundary, this.ballOrientation, hit, shieldWillCatch);
-        if (result) {
-          bestT = hit.t;
-          bestNx = hit.nx;
-          bestNy = hit.ny;
-          kind = result === 'drain' ? HitKind.Drain : HitKind.Wall;
-        }
-      } else if (boundary.sweep(ball.x, ball.y, dx, dy, r, hit)) {
-        // Walls: the world's arena boundary (the rectangle with rounded top corners, or a traced outline).
+      // Walls and drain. While the barrier will catch the ball, let it cross the drain to reach the barrier.
+      const contact = boundary.sweep(ball.x, ball.y, dx, dy, r, hit, shieldWillCatch);
+      if (contact !== Contact.None) {
         bestT = hit.t;
         bestNx = hit.nx;
         bestNy = hit.ny;
-        kind = HitKind.Wall;
+        kind = contact === Contact.Drain ? HitKind.Drain : HitKind.Wall;
       }
       if (shieldWillCatch) {
         const t = shieldT;
@@ -338,19 +306,18 @@ export class BallPhysics {
         case HitKind.Wall:
           this.reflect(ball, bestNx, bestNy);
           world.events.emit('ballWall', { x: cx, y: cy, nx: bestNx, ny: bestNy });
-          if (boundary.kind === 'outline') {
-            // The minimum-vertical rule can turn a ball back into a sloping surface (a root flare, a branch
-            // wave); then it leaves the other way vertically instead.
+          {
+            // The minimum-vertical rule can turn a ball back into a sloping wall; then it leaves the other way
+            // vertically instead.
             if (ball.dx * bestNx + ball.dy * bestNy < 0) ball.dy = -ball.dy;
             if (bestT < 1e-6) wedged++;
-            // Anti-stuck: a ball wedged in a concave spot within one step, or touching the outline again and
-            // again without getting anywhere, is turned towards the middle of the arena.
-            const centreY = (field.top + field.floorY) / 2;
+            // Anti-stuck: a ball wedged in a concave spot within one step, or touching the walls again and again
+            // without getting anywhere, is turned towards the middle of the area.
             if (wedged >= 3) {
-              this.trapGuard.free(ball, 0, centreY);
+              this.trapGuard.free(ball, boundary.centreX, boundary.centreY);
               this.fixDirection(ball);
               wedged = 0;
-            } else if (this.trapGuard.onContact(ball, world.time, 0, centreY)) {
+            } else if (this.trapGuard.onContact(ball, world.time, boundary.centreX, boundary.centreY)) {
               this.fixDirection(ball);
             }
           }
@@ -465,24 +432,6 @@ export class BallPhysics {
       }
     }
 
-    if (this.ballBoundary) {
-      // Residual overlaps after moving bricks/paddle. Never clamp against the old rectangular arena.
-      if (pointInPolygon(ball, this.ballContour)) {
-        for (let pass = 0; pass < 3; pass++) {
-          for (const segment of this.ballBoundary) {
-            if (segment.drain) continue;
-            const closest = nearestOnSegment(ball, segment.a, segment.b);
-            const d = distance(ball, closest);
-            if (d > 1e-7 && d < r) {
-              const nx = (ball.x - closest.x) / d, ny = (ball.y - closest.y) / d;
-              ball.x += nx * (r - d + CONTACT_EPS); ball.y += ny * (r - d + CONTACT_EPS);
-              this.reflect(ball, nx, ny);
-            }
-          }
-        }
-      }
-      return;
-    }
     this.depBall = ball;
     world.boundary.depenetrate(ball, r, this.reflectDepBall);
     this.depBall = null;

@@ -2,7 +2,7 @@ import type { EventBus } from '../engine/core/EventBus';
 import type { Pool } from '../engine/core/Pool';
 import type { Random } from '../engine/core/Random';
 import type { WorldDef } from '../content/worlds';
-import type { ArenaBoundary } from './arena/boundary';
+import type { PolygonBoundary } from './arena/boundary';
 import type { BallPhysics } from './balls/BallPhysics';
 import type { BossSystem } from './boss/BossSystem';
 import type { BrickField } from './bricks/BrickField';
@@ -36,11 +36,13 @@ export interface WorldContext {
 
   // Arena
   readonly worldDef: WorldDef;
+  /** The world's template arena: framing and effects only; the walls are `boundary`. */
   readonly field: FieldDef;
   readonly grid: GridDef;
-  readonly boundary: ArenaBoundary;
-  /** True when the world has a drawn paddle lane (the paddle may sit off the default line). */
-  readonly hasPaddleLane: boolean;
+  /** The walls: the world's drawn ball area. */
+  readonly boundary: PolygonBoundary;
+  /** Below this, falling power-ups and boss shots have left the arena (under both the drain and the paddle). */
+  readonly lowerLimit: number;
 
   // Player
   readonly paddle: Paddle;

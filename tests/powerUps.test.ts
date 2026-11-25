@@ -3,6 +3,7 @@ import { BALL, SIM } from '../src/gameplay/config';
 import { POWERUPS } from '../src/gameplay/powerups/powerUps';
 import { POWERUP_KIND_COUNT, POWERUP_KINDS, PowerUpKind } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
+import { CLASSIC } from './support/worlds';
 
 describe('power-up table', () => {
   it('derives the kind list from the enum, numbered 0..n-1 (timers and loadouts index by kind)', () => {
@@ -21,7 +22,7 @@ describe('power-up table', () => {
   });
 
   it('applies modifiers only while their timer runs', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     const base = world.ballSpeed;
     expect(world.powerUps.grants('pierce')).toBe(false);

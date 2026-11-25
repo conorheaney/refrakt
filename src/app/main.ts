@@ -1,10 +1,10 @@
 import './styles.css';
 import { Game } from './Game';
 import { loadForestAssets } from '../themes/scenery/forest/assets';
-import { authoredEntry, installWorlds, readLibrary, validateWorld } from '../content/authoredWorlds';
-import { BUILTIN_CAMPAIGN, type Campaign } from '../content/campaign';
+import { authoredEntry, readLibrary, validateWorld, type AuthoredWorld } from '../content/authoredWorlds';
+import { Campaign } from '../content/campaign';
 import * as THREE from 'three';
-import { installFileWorlds, loadFileWorlds, mergeWorlds } from '../content/fileWorlds';
+import { buildCampaign, loadFileWorlds } from '../content/fileWorlds';
 
 function fatal(root: HTMLElement | null, message: string): void {
   if (!root) return;
@@ -23,24 +23,23 @@ async function boot(): Promise<void> {
   const uiRoot = document.getElementById('ui');
   try {
     if (!(canvas instanceof HTMLCanvasElement) || !uiRoot) throw new Error('Page is missing the game canvas or UI root.');
-    let campaign: Campaign = BUILTIN_CAMPAIGN;
+    let campaign: Campaign;
     if (new URLSearchParams(location.search).has('editorPreview')) {
+      // The editor's test play: just the world being edited.
       const preview = validateWorld(JSON.parse(sessionStorage.getItem('refrakt.editor-preview') ?? 'null'));
-      campaign = campaign.withWorld(authoredEntry(preview, campaign.levelCount));
+      campaign = new Campaign([authoredEntry(preview)]);
     } else {
       const files = await loadFileWorlds(new URL('./worlds/', document.baseURI));
-      let worlds = files.worlds;
       if (files.warnings.length) console.warn('Some world files could not load:', files.warnings);
+      let saved: AuthoredWorld[] = [];
       try {
         const library = readLibrary(localStorage);
-        worlds = mergeWorlds(files.worlds, library.worlds);
+        saved = library.worlds;
         if (library.warnings.length) console.warn('Some saved worlds could not load:', library.warnings);
       } catch (error) {
         console.warn('Browser saves unavailable; project worlds remain playable.', error);
       }
-      campaign = installFileWorlds(campaign, files.worlds);
-      const fileKeys = new Set(files.worlds.map((world) => world.key));
-      campaign = installWorlds(campaign, worlds.filter((world) => !fileKeys.has(world.key)));
+      campaign = buildCampaign(files.worlds, saved);
     }
     // Pre-rendered artwork is fetched up front so no world ever pops in half-drawn.
     const assets = await loadForestAssets();

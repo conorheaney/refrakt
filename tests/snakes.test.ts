@@ -9,7 +9,7 @@ import { validateHazards, type HazardDef } from '../src/gameplay/hazards/hazards
 import { SnakeSystem } from '../src/gameplay/hazards/snakes/snakes';
 import type { Paddle } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
-import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
+import { CLASSIC, classicCampaign } from './support/worlds';
 
 const LEFT: HazardDef = { kind: 'snake', x: -14, y: -7.4, reach: 7 };
 
@@ -84,7 +84,7 @@ describe('wall snakes', () => {
   });
 
   it('a bite pushes the paddle towards the centre, ignoring input, then returns control', () => {
-    const world = new World();
+    const world = new World(CLASSIC);
     world.newGame(1);
     world.paddle.x = world.paddle.px = -8;
     world.paddle.shove = BITE.distance;
@@ -106,7 +106,7 @@ describe('Jungle Ruins snakes', () => {
   });
 
   it('loads the world hazards into the simulation and clears them for worlds without any', () => {
-    const world = new World(BUILTIN_CAMPAIGN.withExtrasAt(0, { hazards: validateHazards(jungle.hazards) }));
+    const world = new World(classicCampaign({ space: { hazards: validateHazards(jungle.hazards) } }));
     world.newGame(5, 0);
     expect(world.snakes.items).toHaveLength(2);
     world.loadLevel(10);

@@ -3,7 +3,7 @@ import { FIELD, FOREST_FIELD, GRID, PADDLE, type FieldDef, type GridDef } from '
 
 /**
  * A world is a run of ten levels sharing one scenery and arena. Bricks, ball, paddle and HUD are the same
- * in every world; each world can still set its own arena bounds, brick grid and paddle size.
+ * in every world. WorldId names the scenery (and arena template, WORLD_TEMPLATES) the world is built on.
  */
 export type WorldId = 'space' | 'forest';
 
@@ -37,26 +37,20 @@ export interface WorldDef {
   readonly paddleExpandedWidth: number;
   /** Extra gap between the paddle and a ball waiting to be launched. */
   readonly serveLift: number;
-  /**
-   * What the ball bounces off (see gameplay/arena/boundary.ts): 'rect' (the default when absent) is the field's rectangle
-   * with rounded top corners; 'outline' is the traced outline data set named by `outline` (OUTLINES in
-   * gameplay/arena/boundary.ts). Only the ball uses it; lasers, power-ups, shots and debris keep the rectangle.
-   * `?boundary=rect` / `?boundary=outline` in the URL overrides it at runtime (see Game).
-   */
-  readonly boundary?: 'rect' | 'outline';
-  readonly outline?: string;
 }
 
 /** Levels per world; each world has a boss at its midpoint and at its end. */
 export const STAGES_PER_WORLD = 10;
 
-/** The built-in worlds in play order: Space (levels 1-10), then Forest (11-20). See content/campaign.ts. */
-export const BUILTIN_WORLDS: readonly WorldDef[] = [
+/**
+ * The two arenas a world can be built on, by scenery: Space and Forest. Each gives a world its backdrop, arena
+ * size (used for framing and effects), brick grid and paddle sizes. These are templates, not playable worlds:
+ * every world is a world file (public/worlds) whose walls and paddle lane are drawn in the editor.
+ */
+export const WORLD_TEMPLATES: readonly WorldDef[] = [
   { id: 'space', name: 'Space', field: FIELD, grid: GRID, paddleWidth: PADDLE.width, paddleExpandedWidth: PADDLE.expandedWidth, serveLift: 0 },
   // The tree arch is wider than the Space arena but just as tall; the Space brick grid sits centred in it.
-  // The ball bounces off the traced inside edge of the painted tree arch (content/outlines/forest.ts). To go back
-  // to the rectangular arena, change boundary: 'outline' to boundary: 'rect'.
-  { id: 'forest', name: 'Forest', field: FOREST_FIELD, grid: GRID, paddleWidth: PADDLE.width, paddleExpandedWidth: PADDLE.expandedWidth, serveLift: 0, boundary: 'outline', outline: 'forest', music: 'forest' },
+  { id: 'forest', name: 'Forest', field: FOREST_FIELD, grid: GRID, paddleWidth: PADDLE.width, paddleExpandedWidth: PADDLE.expandedWidth, serveLift: 0, music: 'forest' },
 ];
 
 /** Level number within its world (1-10). */
