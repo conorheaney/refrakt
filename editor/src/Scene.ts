@@ -1,23 +1,22 @@
 import * as THREE from 'three';
-import { appendLevels, LEVELS, replaceEditorLevels } from '../../src/content/levels';
-import { appendWorld, replaceEditorWorld, STAGES_PER_WORLD, WORLDS } from '../../src/content/worlds';
-import { playableWorld, type AuthoredWorld } from '../../src/content/authoredWorlds';
+import { STAGES_PER_WORLD } from '../../src/content/worlds';
+import { BUILTIN_CAMPAIGN } from '../../src/content/campaign';
+import { authoredEntry, type AuthoredWorld } from '../../src/content/authoredWorlds';
 import { GameView } from '../../src/app/GameView';
 import { Renderer } from '../../src/engine/render/Renderer';
 import { loadForestAssets } from '../../src/themes/scenery/forest/assets';
 import { World } from '../../src/gameplay/World';
-import { worldPlayAreas, type Point } from '../../src/gameplay/arena/playAreas';
-import { worldHazards } from '../../src/gameplay/hazards/hazards';
+import type { Point } from '../../src/gameplay/arena/playAreas';
 import { STAGE_ASPECT, STAGE_MIN_ASPECT } from '../../src/engine/Stage';
 
 /** Paused original game renderer. Editor hit targets project through the same camera. */
 export class EditorScene {
-  private readonly world = new World();
+  /** The edited world plays as one more world after the built-in campaign, rebuilt on every change. */
+  private readonly world: World;
   private readonly backgrounds = new Map<number, THREE.Texture>();
   private readonly renderer: Renderer;
   private view!: GameView;
-  private readonly index = WORLDS.length;
-  private readonly start = LEVELS.length;
+  private readonly index = BUILTIN_CAMPAIGN.worlds.length;
   private readonly ray = new THREE.Raycaster();
   private readonly plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
   private readonly hit = new THREE.Vector3();
@@ -33,7 +32,7 @@ export class EditorScene {
 
   constructor(private readonly stage: HTMLElement, canvas: HTMLCanvasElement, initial: AuthoredWorld) {
     this.data = initial;
-    appendWorld(playableWorld(initial)); appendLevels(initial.levels);
+    this.world = new World(BUILTIN_CAMPAIGN.withWorld(authoredEntry(initial, BUILTIN_CAMPAIGN.levelCount)));
     this.renderer = new Renderer(canvas);
     window.addEventListener('resize', () => this.resize());
   }
@@ -54,12 +53,7 @@ export class EditorScene {
   }
 
   private refresh(): void {
-    replaceEditorWorld(this.index, playableWorld(this.data));
-    replaceEditorLevels(this.start, this.data.levels);
-    if (this.data.playAreas) worldPlayAreas.set(this.index, this.data.playAreas);
-    else worldPlayAreas.delete(this.index);
-    if (this.data.hazards) worldHazards.set(this.index, this.data.hazards);
-    else worldHazards.delete(this.index);
+    this.world.setCampaign(BUILTIN_CAMPAIGN.withWorld(authoredEntry(this.data, BUILTIN_CAMPAIGN.levelCount)));
     if (this.image !== this.data.backgroundImage) {
       this.image = this.data.backgroundImage;
       const generation = ++this.imageGeneration;

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { authoredBackgrounds, BUILTIN_LEVEL_COUNT, BUILTIN_WORLD_COUNT, createWorld, installWorlds, LIBRARY_KEY, readLibrary, runEndLevel, saveWorld, unfinishedLevels, validateWorld, withBackground } from '../src/content/authoredWorlds';
+import { BUILTIN_LEVEL_COUNT, BUILTIN_WORLD_COUNT, createWorld, installWorlds, LIBRARY_KEY, readLibrary, saveWorld, unfinishedLevels, validateWorld, withBackground } from '../src/content/authoredWorlds';
 import { GRID } from '../src/gameplay/config';
-import { LEVELS, LEVEL_CELLS } from '../src/content/levels';
-import { WORLDS } from '../src/content/worlds';
+import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
+import { BUILTIN_LEVELS as LEVELS } from '../src/content/levels';
+import { BUILTIN_WORLDS as WORLDS } from '../src/content/worlds';
 import { World } from '../src/gameplay/World';
 
 function memoryStorage(): Pick<Storage, 'getItem' | 'setItem'> {
@@ -76,9 +77,9 @@ describe('authored world files and persistence', () => {
   it('does not publish empty or steel-only drafts', () => {
     const data = createWorld('draft');
     data.levels[0] = { ...data.levels[0], rows: ['SSSSSSSSSSSSS'] };
-    installWorlds([data]);
-    expect(WORLDS.length).toBe(BUILTIN_WORLD_COUNT);
-    expect(LEVELS.length).toBe(BUILTIN_LEVEL_COUNT);
+    const campaign = installWorlds(BUILTIN_CAMPAIGN, [data]);
+    expect(campaign.worlds.length).toBe(BUILTIN_WORLD_COUNT);
+    expect(campaign.levelCount).toBe(BUILTIN_LEVEL_COUNT);
   });
 
   it('loads saved worlds in the real simulation and keeps their ten-level run boundaries', () => {
@@ -86,22 +87,24 @@ describe('authored world files and persistence', () => {
     data.world = withBackground({ ...data.world, name: 'Authored' }, 'forest');
     data.levels = Array.from({ length: 10 }, (_, i) => ({ name: `Stage ${i}`, hue: 0.4, rows: ['123.XPG......'] }));
     data.backgroundImage = 'data:image/jpeg;base64,YQ==';
-    const first = LEVELS.length;
-    installWorlds([data]);
+    const first = BUILTIN_CAMPAIGN.levelCount;
+    const campaign = installWorlds(BUILTIN_CAMPAIGN, [data]);
+    // Installing returns a new campaign; the built-in one is untouched.
+    expect(BUILTIN_CAMPAIGN.worlds).toHaveLength(BUILTIN_WORLD_COUNT);
     // An uploaded image replaces the Forest scenery, so the ball uses the arena rectangle, not the tree outline.
-    expect(WORLDS[BUILTIN_WORLD_COUNT]).toEqual({ ...data.world, boundary: 'rect' });
-    expect(authoredBackgrounds.get(BUILTIN_WORLD_COUNT)).toBe(data.backgroundImage);
-    expect(LEVEL_CELLS[first]).toHaveLength(6);
-    const world = new World();
+    expect(campaign.worlds[BUILTIN_WORLD_COUNT].def).toEqual({ ...data.world, boundary: 'rect' });
+    expect(campaign.worlds[BUILTIN_WORLD_COUNT].background).toBe(data.backgroundImage);
+    expect(campaign.levelCells(first)).toHaveLength(6);
+    const world = new World(campaign);
     world.newGame(123, first);
     expect(world.levelIndex).toBe(first);
     expect(world.bricksRemaining).toBe(6);
     expect(world.field).toEqual(data.world.field);
     world.loadLevel(first + 9);
     expect(world.levelIndex).toBe(first + 9);
-    expect(runEndLevel(first)).toBe(first + 10);
-    expect(runEndLevel(first + 9)).toBe(first + 10);
-    expect(runEndLevel(0)).toBe(BUILTIN_LEVEL_COUNT);
-    expect(runEndLevel(10)).toBe(BUILTIN_LEVEL_COUNT);
+    expect(campaign.runEndLevel(first)).toBe(first + 10);
+    expect(campaign.runEndLevel(first + 9)).toBe(first + 10);
+    expect(campaign.runEndLevel(0)).toBe(BUILTIN_LEVEL_COUNT);
+    expect(campaign.runEndLevel(10)).toBe(BUILTIN_LEVEL_COUNT);
   });
 });

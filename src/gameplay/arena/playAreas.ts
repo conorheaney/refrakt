@@ -11,9 +11,6 @@ export interface BallArea extends PolygonArea { drainEdge: number }
 export interface PlayAreas { ball?: BallArea; paddle?: PolygonArea }
 export interface BoundarySegment { a: Point; b: Point; edge: number; drain: boolean }
 
-/** Sidecar registry: original WorldDef and LevelDef contracts stay unchanged. */
-export const worldPlayAreas = new Map<number, PlayAreas>();
-
 export const distance = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y);
 const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 const cross = (a: Point, b: Point, c: Point): number => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);

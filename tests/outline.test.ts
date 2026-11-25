@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { playableWorld } from '../src/content/authoredWorlds';
 import { BALL, FIELD, FOREST_ART, SIM } from '../src/gameplay/config';
 import { FOREST_OUTLINE, FOREST_OUTLINE_MAPPING } from '../src/content/outlines/forest';
-import { STAGES_PER_WORLD, WORLDS } from '../src/content/worlds';
+import { BUILTIN_WORLDS as WORLDS, STAGES_PER_WORLD } from '../src/content/worlds';
 import { createBoundary, OutlineBoundary, RectBoundary, TrapGuard } from '../src/gameplay/arena/boundary';
 import type { SweepHit } from '../src/gameplay/arena/collision';
 import type { Ball } from '../src/gameplay/types';

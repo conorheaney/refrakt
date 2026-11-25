@@ -1,5 +1,7 @@
-import { LOADOUT_SIZE, PLAYER, POWERUP_DESCRIPTIONS, POWERUPS } from '../gameplay/config';
-import { levelNumber, worldOf, WORLDS } from '../content/worlds';
+import { LOADOUT_SIZE, PLAYER } from '../gameplay/config';
+import { POWERUPS } from '../gameplay/powerups/powerUps';
+import { levelNumber } from '../content/worlds';
+import type { Campaign } from '../content/campaign';
 import type { Quality, Settings } from './Storage';
 import { POWERUP_KIND_COUNT, PowerUpKind } from '../gameplay/types';
 import type { World } from '../gameplay/World';
@@ -14,7 +16,7 @@ export interface UiCallbacks {
   onClick(): void;
   /** The player confirmed a power-up loadout (exactly LOADOUT_SIZE distinct kinds) for the next level. */
   onLoadoutConfirm(kinds: readonly PowerUpKind[]): void;
-  /** The menu's world picker chose where a new run starts (an index into WORLDS). */
+  /** The menu's world picker chose where a new run starts (an index into Campaign.worlds). */
   onWorldSelected(index: number): void;
 }
 
@@ -27,11 +29,6 @@ export interface ResultSummary {
   newBest: boolean;
   level: number;
   bestCombo: number;
-}
-
-/** Levels are shown with their world as a prefix: "Space Level 1" ... "Forest Level 10". */
-export function stageLabel(levelIndex: number): string {
-  return `${worldOf(levelIndex).name} Level ${levelNumber(levelIndex)}`;
 }
 
 const fmt = new Intl.NumberFormat('en-US');
@@ -205,6 +202,7 @@ export class UI {
   constructor(
     private readonly root: HTMLElement,
     private readonly settings: Settings,
+    private readonly campaign: Campaign,
     private readonly callbacks: UiCallbacks,
   ) {
     root.innerHTML = TEMPLATE;
@@ -233,14 +231,14 @@ export class UI {
       card.dataset.kind = String(k);
       card.setAttribute('aria-pressed', 'false');
       card.style.setProperty('--c', hexCss(info.color));
-      card.innerHTML = `<span class="pick-icon">${iconSvg(k as PowerUpKind)}</span><span class="pick-text"><b>${info.name}</b><span>${POWERUP_DESCRIPTIONS[k as PowerUpKind]}</span></span><i class="pick-check" aria-hidden="true"></i>`;
+      card.innerHTML = `<span class="pick-icon">${iconSvg(k as PowerUpKind)}</span><span class="pick-text"><b>${info.name}</b><span>${info.description}</span></span><i class="pick-check" aria-hidden="true"></i>`;
       grid.appendChild(card);
       this.pickCards.push(card);
     }
 
     // Built-in and saved worlds are selectable in development and production.
     const worldPick = this.ref('worldPick');
-    WORLDS.forEach((world, i) => {
+    this.campaign.worlds.forEach(({ def: world }, i) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'btn world';
@@ -261,7 +259,7 @@ export class UI {
   openLoadout(levelIndex: number, preselect: readonly PowerUpKind[]): void {
     this.picks = preselect.filter((k, i) => preselect.indexOf(k) === i).slice(0, LOADOUT_SIZE);
     this.pickBlocked = false;
-    this.ref('loadoutLevel').textContent = stageLabel(levelIndex);
+    this.ref('loadoutLevel').textContent = this.campaign.stageLabel(levelIndex);
     this.renderPicks();
     this.showScreen('loadout');
     // Start keyboard users on the first selected card (or the first card), or on Start if ready.
@@ -449,7 +447,7 @@ export class UI {
 
   setLevel(index: number, _name: string): void {
     // Every world shares the HUD; only the label names the world ("Forest Level 2").
-    this.ref('levelLabel').textContent = `${worldOf(index).name} Level`;
+    this.ref('levelLabel').textContent = `${this.campaign.worldDefAt(index).name} Level`;
     this.ref('levelNum').textContent = String(levelNumber(index));
   }
 
@@ -463,7 +461,7 @@ export class UI {
       ${r.newBest ? '<div class="newbest">New best score</div>' : `<div class="sub">Best ${fmt.format(r.best)}</div>`}
       <div class="sub" data-result-stage></div>`;
     this.ref(screen === 'gameover' ? 'resultOver' : 'resultWin').querySelector('[data-result-stage]')!.textContent =
-      `Reached ${stageLabel(r.level - 1)} · Longest combo ${r.bestCombo}`;
+      `Reached ${this.campaign.stageLabel(r.level - 1)} · Longest combo ${r.bestCombo}`;
   }
 
   banner(title: string, subtitle = '', seconds = 1.8): void {

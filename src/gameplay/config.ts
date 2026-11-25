@@ -1,4 +1,4 @@
-import { BrickKind, PowerUpKind } from './types';
+import { BrickKind } from './types';
 
 /** Simulation runs at a fixed 120 Hz regardless of display refresh rate. */
 export const SIM = {
@@ -505,26 +505,6 @@ export const BRICK_POINTS: Readonly<Record<BrickKind, number>> = {
   [BrickKind.Phase]: 90,
 };
 
-export interface PowerUpInfo {
-  readonly name: string;
-  readonly letter: string;
-  readonly color: number;
-  /** Seconds the effect lasts; 0 for instant effects. */
-  readonly duration: number;
-  readonly weight: number;
-}
-
-export const POWERUPS: Readonly<Record<PowerUpKind, PowerUpInfo>> = {
-  [PowerUpKind.Expand]: { name: 'EXPAND', letter: 'E', color: 0x4dff88, duration: 18, weight: 18 },
-  [PowerUpKind.Multi]: { name: 'MULTIBALL', letter: 'M', color: 0x2be0ff, duration: 0, weight: 16 },
-  [PowerUpKind.Laser]: { name: 'LASER', letter: 'L', color: 0xff3b6b, duration: 12, weight: 14 },
-  [PowerUpKind.Slow]: { name: 'SLOW', letter: 'S', color: 0x4d7dff, duration: 10, weight: 12 },
-  [PowerUpKind.Fire]: { name: 'FIREBALL', letter: 'F', color: 0xff8a2b, duration: 8, weight: 10 },
-  [PowerUpKind.Magnet]: { name: 'MAGNET', letter: 'U', color: 0xb04dff, duration: 14, weight: 10 },
-  [PowerUpKind.Shield]: { name: 'BARRIER', letter: 'B', color: 0x7dfff0, duration: 0, weight: 12 },
-  [PowerUpKind.Life]: { name: 'EXTRA LIFE', letter: '+', color: 0xff6bd0, duration: 0, weight: 3 },
-};
-
 /** Most charges the barrier can hold, and how many each BARRIER pickup adds (pickups stack up to the cap). */
 export const SHIELD_CHARGES = 3;
 export const SHIELD_PICKUP = 2;
@@ -534,21 +514,6 @@ export const POWERUP_SCORE = 250;
 
 /** Number of power-up kinds the player picks before each level; only those can drop that level. */
 export const LOADOUT_SIZE = 3;
-
-/** "<n> s" with a non-breaking space, so the unit never wraps onto its own line. */
-const secs = (kind: PowerUpKind): string => `${POWERUPS[kind].duration} s`;
-
-/** One-line descriptions for the loadout picker, derived from the tuning values above. */
-export const POWERUP_DESCRIPTIONS: Readonly<Record<PowerUpKind, string>> = {
-  [PowerUpKind.Expand]: `Widens the paddle by ${Math.round((PADDLE.expandedWidth / PADDLE.width - 1) * 100)}% for ${secs(PowerUpKind.Expand)}.`,
-  [PowerUpKind.Multi]: 'Splits every ball in play into three.',
-  [PowerUpKind.Laser]: `The paddle fires twin lasers for ${secs(PowerUpKind.Laser)}.`,
-  [PowerUpKind.Slow]: `Slows the ball to ${Math.round(BALL.slowFactor * 100)}% speed for ${secs(PowerUpKind.Slow)}.`,
-  [PowerUpKind.Fire]: `The ball smashes straight through bricks (not gunmetal) for ${secs(PowerUpKind.Fire)}.`,
-  [PowerUpKind.Magnet]: `The paddle catches the ball so you can aim the release, for ${secs(PowerUpKind.Magnet)}.`,
-  [PowerUpKind.Shield]: `A barrier across the floor that saves the ball ${SHIELD_PICKUP} times; more stack up to ${SHIELD_CHARGES}.`,
-  [PowerUpKind.Life]: `One extra life (up to ${PLAYER.maxLives}).`,
-};
 
 /** Glass tints for normal bricks, cycled by row (sRGB hex): amber, rose, sapphire. */
 export const ROW_PALETTE: readonly number[] = [0xff8424, 0xff4f9e, 0x2f84ff];

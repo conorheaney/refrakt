@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { BALL, FIELD, LASER, PADDLE, POWERUPS, SHIELD_CHARGES, SHOT } from '../config';
+import { BALL, FIELD, LASER, PADDLE, SHIELD_CHARGES, SHOT } from '../config';
+import { POWERUPS } from '../powerups/powerUps';
 import type { WorldId } from '../../content/worlds';
 import { clamp, easeOutCubic, lerp } from '../../engine/core/math';
 import { POWERUP_KIND_COUNT, PowerUpKind, type Paddle } from '../types';

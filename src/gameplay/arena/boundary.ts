@@ -1,7 +1,20 @@
-import type { FieldDef } from '../config';
+import { FIELD, type FieldDef } from '../config';
 import { FOREST_OUTLINE } from '../../content/outlines/forest';
 import type { SweepHit } from './collision';
 import type { Ball } from '../types';
+
+/**
+ * True when (x, y) lies outside an arena's arch boundary shrunk by `margin` (top and corners only). The
+ * rounded corners' centres are at (+/-(halfWidth - cornerRadius), top - cornerRadius).
+ */
+export function beyondArch(x: number, y: number, margin = 0, field: FieldDef = FIELD): boolean {
+  if (y > field.top - margin) return true;
+  const cornerX = field.halfWidth - field.cornerRadius;
+  const cornerY = field.top - field.cornerRadius;
+  const ax = Math.abs(x);
+  if (ax <= cornerX || y <= cornerY) return false;
+  return Math.hypot(ax - cornerX, y - cornerY) > field.cornerRadius - margin;
+}
 
 /**
  * The arena boundary the ball bounces off, behind one small interface so worlds can use different shapes:

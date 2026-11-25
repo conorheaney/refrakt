@@ -21,7 +21,9 @@ export enum PowerUpKind {
   Shield = 6,
   Life = 7,
 }
-export const POWERUP_KIND_COUNT = 8;
+/** Every power-up kind in order, derived from the enum so adding a member needs no count to update. */
+export const POWERUP_KINDS: readonly PowerUpKind[] = Object.values(PowerUpKind).filter((v): v is PowerUpKind => typeof v === 'number');
+export const POWERUP_KIND_COUNT = POWERUP_KINDS.length;
 
 export type DamageCause = 'ball' | 'laser' | 'explosion';
 

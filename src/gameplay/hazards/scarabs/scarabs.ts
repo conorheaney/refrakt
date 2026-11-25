@@ -3,7 +3,7 @@ import type { EventBus } from '../../../engine/core/EventBus';
 import type { Random } from '../../../engine/core/Random';
 import type { GameEvents } from '../../events';
 import { roundedPath } from '../../../engine/core/paths';
-import type { HazardDef, ScarabNestDef, ScarabPoint } from '../hazards';
+import type { HazardDef, HazardSystem, ScarabNestDef, ScarabPoint } from '../hazards';
 import type { Ball, Paddle } from '../../types';
 
 /**
@@ -122,7 +122,7 @@ export function paddleSlope(p: Paddle): number {
 }
 
 /** Runs a world's scarab nests. Owned by World; deterministic for a given seed. */
-export class ScarabSystem {
+export class ScarabSystem implements HazardSystem {
   readonly nests: Nest[] = [];
   /** A fixed pool: SCARAB.maxActive scarabs, `active` when out of their nest. */
   readonly items: Scarab[] = [];

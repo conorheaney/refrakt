@@ -40,7 +40,7 @@ const SYMBOLS: Readonly<Record<string, BrickKind>> = {
  * paddle; boss stages leave rows 0-4 to the boss and build in rows 5-8, which
  * is also the band a summoning boss refills (see BOSS_SUMMON).
  */
-export let LEVELS: readonly LevelDef[] = [
+export const BUILTIN_LEVELS: readonly LevelDef[] = [
   // -------------------------------------------------------------- World 1: Space (levels 1-10)
   {
     name: 'FIRST LIGHT',
@@ -445,29 +445,4 @@ export function parseLevel(def: LevelDef, index: number): readonly LevelCell[] {
     }
   });
   return cells;
-}
-
-/** Layouts are parsed and validated once at module load so bad data fails fast. */
-export let LEVEL_CELLS: readonly (readonly LevelCell[])[] = LEVELS.map(parseLevel);
-
-export function appendLevels(levels: readonly LevelDef[]): void {
-  const cells = levels.map((level, i) => parseLevel(level, LEVELS.length + i));
-  LEVELS = [...LEVELS, ...levels];
-  LEVEL_CELLS = [...LEVEL_CELLS, ...cells];
-}
-
-export function replaceBuiltinLevels(index: number, levels: readonly LevelDef[]): void {
-  if ((index !== 0 && index !== 1) || levels.length !== 10) throw new Error('Invalid built-in campaign replacement.');
-  const start = index * 10;
-  const cells = levels.map((level, i) => parseLevel(level, start + i));
-  LEVELS = [...LEVELS.slice(0, start), ...levels, ...LEVELS.slice(start + levels.length)];
-  LEVEL_CELLS = [...LEVEL_CELLS.slice(0, start), ...cells, ...LEVEL_CELLS.slice(start + levels.length)];
-}
-
-/** A dedicated runtime slot for the editor's paused scene; built-in levels are never replaced. */
-export function replaceEditorLevels(start: number, levels: readonly LevelDef[]): void {
-  if (start < 20 || start + levels.length > LEVELS.length) throw new Error('Invalid editor level slot.');
-  const cells = levels.map((level, i) => parseLevel(level, start + i));
-  LEVELS = [...LEVELS.slice(0, start), ...levels, ...LEVELS.slice(start + levels.length)];
-  LEVEL_CELLS = [...LEVEL_CELLS.slice(0, start), ...cells, ...LEVEL_CELLS.slice(start + levels.length)];
 }

@@ -7,7 +7,6 @@ import { CAMERA_HOME, FOREST_VIEW } from '../CameraRig';
 import { createBrickGeometry, type BrickShape } from '../../engine/render/geometry';
 import { applySurfaceFx, type SurfaceFx } from '../../engine/render/shaders';
 import { createGlowTexture } from '../../engine/render/textures';
-import { worldOf } from '../../content/worlds';
 
 interface KindLook {
   /** [front facets, bevel + body] */
@@ -242,7 +241,7 @@ export class BrickView {
   }
 
   update(world: World): void {
-    const forge = worldOf(world.levelIndex).blockStyle === 'forge' && this.forgeLooks.length === BRICK_KIND_COUNT;
+    const forge = world.worldDef.blockStyle === 'forge' && this.forgeLooks.length === BRICK_KIND_COUNT;
     if (forge !== this.forge) {
       this.forge = forge;
       for (let kind = 0; kind < this.meshes.length; kind++) {

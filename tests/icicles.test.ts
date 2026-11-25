@@ -1,14 +1,15 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import frozen from '../public/worlds/Frozen-Sanctuary.json';
 import { BALL, ICICLE, PADDLE, SIM } from '../src/gameplay/config';
 import { validateWorld } from '../src/content/authoredWorlds';
 import { EventBus } from '../src/engine/core/EventBus';
 import { Random } from '../src/engine/core/Random';
 import type { GameEvents } from '../src/gameplay/events';
-import { icicleAreaIcicles, validateHazards, worldHazards, worldIcicles, type HazardDef, type IcicleAreaDef } from '../src/gameplay/hazards/hazards';
+import { icicleAreaIcicles, validateHazards, worldIcicles, type HazardDef, type IcicleAreaDef } from '../src/gameplay/hazards/hazards';
 import { IcicleSystem } from '../src/gameplay/hazards/icicles/icicles';
 import type { Ball, Paddle } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
+import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
 
 const CEILING: HazardDef[] = [
   { kind: 'icicle', x: -6, y: 8.75, length: 1.2 },
@@ -140,8 +141,6 @@ describe('falling icicles', () => {
 });
 
 describe('icicles in a world', () => {
-  afterEach(() => worldHazards.clear());
-
   it('grows nine icicles along the Frozen Sanctuary lintel, clear of the brick rows', () => {
     const data = validateWorld(frozen);
     const icicles = worldIcicles(data.hazards);
@@ -199,8 +198,7 @@ describe('icicles in a world', () => {
   });
 
   it('pushes a struck paddle along and levels it out again', () => {
-    worldHazards.set(0, CEILING);
-    const world = new World();
+    const world = new World(BUILTIN_CAMPAIGN.withExtrasAt(0, { hazards: CEILING }));
     world.newGame(1);
     world.paddle.x = world.paddle.px = 0;
     world.paddle.tilt = 1;

@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { BALL, BOSS_SUMMON, DROP, FIELD, FOREST_ART, FOREST_FIELD, GRID, PADDLE, PLAYER, POWER_WARN, SHIELD_CHARGES, SHIELD_PICKUP, SIM } from '../src/gameplay/config';
-import { LEVELS, LEVEL_CELLS } from '../src/content/levels';
-import { STAGES_PER_WORLD, WORLDS, speedSteps, worldOf } from '../src/content/worlds';
+import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
+import { STAGES_PER_WORLD, speedSteps } from '../src/content/worlds';
 import { Pool } from '../src/engine/core/Pool';
 import { Random } from '../src/engine/core/Random';
 import { FixedStepper } from '../src/engine/core/Time';
 import { BrickKind, POWERUP_KIND_COUNT, PowerUpKind } from '../src/gameplay/types';
 import type { BoundaryKind } from '../src/gameplay/arena/boundary';
 import { beyondArch, World, type StepInput } from '../src/gameplay/World';
-import { worldPlayAreas, type PlayAreas } from '../src/gameplay/arena/playAreas';
+import type { PlayAreas } from '../src/gameplay/arena/playAreas';
+
+const LEVELS = BUILTIN_CAMPAIGN.levels;
+const WORLDS = BUILTIN_CAMPAIGN.worlds.map((world) => world.def);
 import frozenShieldWorld from '../public/worlds/Frozen-Sanctuary.json';
 import tombShieldWorld from '../public/worlds/Pharoughs-Tomb.json';
 import spaceShieldWorld from '../public/worlds/Outer-Space-3f405ebf-2176-424e-8ba4-189416448443.json';
@@ -42,7 +45,7 @@ describe('barrier pickups', () => {
   it('give SHIELD_PICKUP charges each and stack up to SHIELD_CHARGES', () => {
     const world = new World();
     world.newGame(1);
-    const collect = (): void => (world as unknown as { collect(kind: PowerUpKind, x: number, y: number): void }).collect(PowerUpKind.Shield, 0, 0);
+    const collect = (): void => world.powerUps.collect(PowerUpKind.Shield, 0, 0);
     collect();
     expect(world.shieldCharges).toBe(SHIELD_PICKUP);
     collect();
@@ -74,109 +77,90 @@ describe('timed power warnings', () => {
 
 describe('custom-lane barrier', () => {
   it('spans an offset paddle area and only saves balls within that span', () => {
-    const previous = worldPlayAreas.get(0);
-    worldPlayAreas.set(0, {
+    const campaign = BUILTIN_CAMPAIGN.withExtrasAt(0, { playAreas: {
       paddle: { radius: 0, points: [{ x: -3, y: -7 }, { x: 9, y: -7 }, { x: 9, y: -5 }, { x: -3, y: -5 }] },
       ball: { radius: 0, drainEdge: 3, points: [{ x: -14, y: -5 }, { x: -14, y: 10 }, { x: 14, y: 10 }, { x: 14, y: -5 }] },
-    });
-    try {
-      for (const x of [7, -8]) {
-        const world = new World();
-        world.newGame(1);
-        expect(world.shieldLeft).toBeCloseTo(-3);
-        expect(world.shieldRight).toBeCloseTo(9);
-        world.shieldCharges = 2;
-        world.phase = 'live';
-        const ball = world.balls.items.find(item => item.active)!;
-        Object.assign(ball, { stuck: false, x, px: x, y: -4.8, dx: 0, dy: -1 });
-        for (let step = 0; step < 60 && ball.active && ball.dy < 0; step++) {
-          world.step(SIM.step, { targetX: 0, axis: 0, action: false });
-        }
-        expect(ball.active).toBe(x === 7);
-        if (x === 7) {
-          expect(ball.dy).toBeGreaterThan(0);
-          expect(world.shieldCharges).toBe(1);
-        }
-        world.loadLevel(1);
-        world.paddle.width = PADDLE.expandedWidth;
-        expect(world.shieldLeft).toBeCloseTo(-3);
-        expect(world.shieldRight).toBeCloseTo(9);
-      }
-      worldPlayAreas.delete(0);
-      const world = new World();
+    } });
+    for (const x of [7, -8]) {
+      const world = new World(campaign);
       world.newGame(1);
-      expect(world.shieldLeft).toBe(-FIELD.paddleReach);
-      expect(world.shieldRight).toBe(FIELD.paddleReach);
-    } finally {
-      if (previous) worldPlayAreas.set(0, previous);
-      else worldPlayAreas.delete(0);
+      expect(world.shieldLeft).toBeCloseTo(-3);
+      expect(world.shieldRight).toBeCloseTo(9);
+      world.shieldCharges = 2;
+      world.phase = 'live';
+      const ball = world.balls.items.find(item => item.active)!;
+      Object.assign(ball, { stuck: false, x, px: x, y: -4.8, dx: 0, dy: -1 });
+      for (let step = 0; step < 60 && ball.active && ball.dy < 0; step++) {
+        world.step(SIM.step, { targetX: 0, axis: 0, action: false });
+      }
+      expect(ball.active).toBe(x === 7);
+      if (x === 7) {
+        expect(ball.dy).toBeGreaterThan(0);
+        expect(world.shieldCharges).toBe(1);
+      }
+      world.loadLevel(1);
+      world.paddle.width = PADDLE.expandedWidth;
+      expect(world.shieldLeft).toBeCloseTo(-3);
+      expect(world.shieldRight).toBeCloseTo(9);
     }
+    const world = new World();
+    world.newGame(1);
+    expect(world.shieldLeft).toBe(-FIELD.paddleReach);
+    expect(world.shieldRight).toBe(FIELD.paddleReach);
   });
   for (const data of [frozenShieldWorld, tombShieldWorld, spaceShieldWorld]) {
     it(`saves at the visible shield below ${data.world.name}'s drain, including the last charge`, () => {
-      const previous = worldPlayAreas.get(0);
-      worldPlayAreas.set(0, data.playAreas as PlayAreas);
-      try {
-        for (const charges of [0, 1, 2]) {
-          const world = new World();
-          world.newGame(1);
-          world.shieldCharges = charges;
-          world.phase = 'live';
-          const ball = world.balls.items.find((item) => item.active)!;
-          const drainY = data.playAreas.ball.points[data.playAreas.ball.drainEdge].y;
-          Object.assign(ball, { stuck: false, x: 8, px: 8, y: Math.max(drainY, world.shieldY + BALL.radius) + 0.2, dx: 0, dy: -1 });
-          let hitY: number | undefined;
-          world.events.on('shieldHit', () => { hitY = ball.y; });
-          for (let step = 0; step < 60 && ball.active && ball.dy < 0; step++) {
-            world.step(SIM.step, { targetX: 0, axis: 0, action: false });
-          }
-          if (charges === 0) {
-            expect(ball.active).toBe(false);
-            expect(hitY).toBeUndefined();
-          } else {
-            expect(ball.active).toBe(true);
-            expect(ball.dy).toBeGreaterThan(0);
-            expect(hitY).toBeCloseTo(world.shieldY + BALL.radius, 3);
-            expect(world.shieldCharges).toBe(charges - 1);
-            // Continue through the drain from below after spending the final charge.
-            for (let step = 0; step < 20; step++) world.step(SIM.step, { targetX: 0, axis: 0, action: false });
-            expect(ball.active).toBe(true);
-            expect(world.shieldCharges).toBe(charges - 1);
-          }
+      const campaign = BUILTIN_CAMPAIGN.withExtrasAt(0, { playAreas: data.playAreas as PlayAreas });
+      for (const charges of [0, 1, 2]) {
+        const world = new World(campaign);
+        world.newGame(1);
+        world.shieldCharges = charges;
+        world.phase = 'live';
+        const ball = world.balls.items.find((item) => item.active)!;
+        const drainY = data.playAreas.ball.points[data.playAreas.ball.drainEdge].y;
+        Object.assign(ball, { stuck: false, x: 8, px: 8, y: Math.max(drainY, world.shieldY + BALL.radius) + 0.2, dx: 0, dy: -1 });
+        let hitY: number | undefined;
+        world.events.on('shieldHit', () => { hitY = ball.y; });
+        for (let step = 0; step < 60 && ball.active && ball.dy < 0; step++) {
+          world.step(SIM.step, { targetX: 0, axis: 0, action: false });
         }
-      } finally {
-        if (previous) worldPlayAreas.set(0, previous);
-        else worldPlayAreas.delete(0);
+        if (charges === 0) {
+          expect(ball.active).toBe(false);
+          expect(hitY).toBeUndefined();
+        } else {
+          expect(ball.active).toBe(true);
+          expect(ball.dy).toBeGreaterThan(0);
+          expect(hitY).toBeCloseTo(world.shieldY + BALL.radius, 3);
+          expect(world.shieldCharges).toBe(charges - 1);
+          // Continue through the drain from below after spending the final charge.
+          for (let step = 0; step < 20; step++) world.step(SIM.step, { targetX: 0, axis: 0, action: false });
+          expect(ball.active).toBe(true);
+          expect(world.shieldCharges).toBe(charges - 1);
+        }
       }
     });
   }
   it('saves a ball at the paddle bottom and restores the default height on leaving the lane', () => {
-    const previous = worldPlayAreas.get(0);
-    worldPlayAreas.set(0, {
+    const campaign = BUILTIN_CAMPAIGN.withExtrasAt(0, { playAreas: {
       paddle: { radius: 0, points: [{ x: -14, y: -7 }, { x: 14, y: -7 }, { x: 14, y: -5 }, { x: -14, y: -5 }] },
-    });
-    try {
-      const world = new World();
-      world.newGame(1);
-      expect(world.shieldY).toBeCloseTo(world.paddle.y - PADDLE.halfH);
-      expect(world.shieldY).toBeGreaterThan(FIELD.shieldY + 1);
-      world.shieldCharges = 2;
-      world.phase = 'live';
-      const ball = world.balls.items.find((item) => item.active)!;
-      Object.assign(ball, { stuck: false, x: 8, px: 8, y: world.shieldY + BALL.radius + 0.01, dx: 0, dy: -1 });
-      world.step(SIM.step, { targetX: 0, axis: 0, action: false });
-      expect(ball.active).toBe(true);
-      expect(ball.dy).toBeGreaterThan(0);
-      expect(world.shieldCharges).toBe(1);
+    } });
+    const world = new World(campaign);
+    world.newGame(1);
+    expect(world.shieldY).toBeCloseTo(world.paddle.y - PADDLE.halfH);
+    expect(world.shieldY).toBeGreaterThan(FIELD.shieldY + 1);
+    world.shieldCharges = 2;
+    world.phase = 'live';
+    const ball = world.balls.items.find((item) => item.active)!;
+    Object.assign(ball, { stuck: false, x: 8, px: 8, y: world.shieldY + BALL.radius + 0.01, dx: 0, dy: -1 });
+    world.step(SIM.step, { targetX: 0, axis: 0, action: false });
+    expect(ball.active).toBe(true);
+    expect(ball.dy).toBeGreaterThan(0);
+    expect(world.shieldCharges).toBe(1);
 
-      worldPlayAreas.delete(0);
-      world.loadLevel(1);
-      expect(world.shieldY).toBe(FIELD.shieldY);
-      expect(world.shieldCharges).toBe(0);
-    } finally {
-      if (previous) worldPlayAreas.set(0, previous);
-      else worldPlayAreas.delete(0);
-    }
+    world.setCampaign(BUILTIN_CAMPAIGN);
+    world.loadLevel(1);
+    expect(world.shieldY).toBe(FIELD.shieldY);
+    expect(world.shieldCharges).toBe(0);
   });
 });
 
@@ -221,16 +205,17 @@ describe('levels', () => {
     expect(LEVELS.length).toBe(WORLDS.length * STAGES_PER_WORLD);
     LEVELS.forEach((level, i) => {
       for (const row of level.rows) expect(row.length).toBe(GRID.cols);
-      const breakable = LEVEL_CELLS[i].filter((c) => c.kind !== BrickKind.Steel).length;
+      const breakable = BUILTIN_CAMPAIGN.levelCells(i).filter((c) => c.kind !== BrickKind.Steel).length;
       expect(breakable > 0 || level.boss !== undefined).toBe(true);
     });
   });
 
   it('fit the arena with room to play above the paddle', () => {
     const r = BALL.radius;
-    LEVEL_CELLS.forEach((cells, i) => {
+    LEVELS.forEach((_, i) => {
+      const cells = BUILTIN_CAMPAIGN.levelCells(i);
       // Each world lays its bricks out on its own grid, inside its own arena.
-      const { grid, field } = worldOf(i);
+      const { grid, field } = BUILTIN_CAMPAIGN.worldDefAt(i);
       expect(grid.cols).toBe(GRID.cols);
       expect(grid.rows).toBe(GRID.rows);
       const cornerX = field.halfWidth - field.cornerRadius;

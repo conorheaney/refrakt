@@ -50,43 +50,14 @@ export interface WorldDef {
 /** Levels per world; each world has a boss at its midpoint and at its end. */
 export const STAGES_PER_WORLD = 10;
 
-/** Worlds in play order. Level index n belongs to WORLDS[floor(n / STAGES_PER_WORLD)]. */
-export let WORLDS: readonly WorldDef[] = [
+/** The built-in worlds in play order: Space (levels 1-10), then Forest (11-20). See content/campaign.ts. */
+export const BUILTIN_WORLDS: readonly WorldDef[] = [
   { id: 'space', name: 'Space', field: FIELD, grid: GRID, paddleWidth: PADDLE.width, paddleExpandedWidth: PADDLE.expandedWidth, serveLift: 0 },
   // The tree arch is wider than the Space arena but just as tall; the Space brick grid sits centred in it.
   // The ball bounces off the traced inside edge of the painted tree arch (content/outlines/forest.ts). To go back
   // to the rectangular arena, change boundary: 'outline' to boundary: 'rect'.
   { id: 'forest', name: 'Forest', field: FOREST_FIELD, grid: GRID, paddleWidth: PADDLE.width, paddleExpandedWidth: PADDLE.expandedWidth, serveLift: 0, boundary: 'outline', outline: 'forest', music: 'forest' },
 ];
-
-/** Append authored worlds without changing the built-in definitions or their format. */
-export function appendWorld(world: WorldDef): void {
-  WORLDS = [...WORLDS, world];
-}
-
-/** File-loaded campaigns keep the original Space/Forest slots and progression. */
-export function replaceBuiltinWorld(index: number, world: WorldDef): void {
-  if (index !== 0 && index !== 1) throw new Error('Invalid built-in world slot.');
-  WORLDS = WORLDS.map((entry, i) => i === index ? world : entry);
-}
-
-export function replaceEditorWorld(index: number, world: WorldDef): void {
-  if (index < 2 || index >= WORLDS.length) throw new Error('Invalid editor world slot.');
-  WORLDS = WORLDS.map((entry, i) => i === index ? world : entry);
-}
-
-export function worldIndexOf(levelIndex: number): number {
-  return Math.min(WORLDS.length - 1, Math.max(0, Math.floor(levelIndex / STAGES_PER_WORLD)));
-}
-
-export function worldOf(levelIndex: number): WorldDef {
-  return WORLDS[worldIndexOf(levelIndex)];
-}
-
-/** The soundtrack for the world a level belongs to. */
-export function musicTrackOf(levelIndex: number): MusicTrackId {
-  return worldOf(levelIndex).music ?? 'space';
-}
 
 /** Level number within its world (1-10). */
 export function levelNumber(levelIndex: number): number {
@@ -99,7 +70,7 @@ export function levelNumber(levelIndex: number): number {
  * easier than the boss that ended the last one but still finishes faster than it.
  */
 export function speedSteps(levelIndex: number): number {
-  const world = worldIndexOf(levelIndex);
+  const world = Math.max(0, Math.floor(levelIndex / STAGES_PER_WORLD));
   const stage = levelIndex - world * STAGES_PER_WORLD;
   if (world === 0) return stage;
   return 4 + (world - 1) + stage * 0.8;

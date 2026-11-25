@@ -1,8 +1,6 @@
-import { authoredBackgrounds, installWorlds, playableWorld, unfinishedLevels, validateWorld, type AuthoredWorld, type LibraryResult } from './authoredWorlds';
-import { replaceBuiltinLevels } from './levels';
-import { replaceBuiltinWorld } from './worlds';
-import { worldPlayAreas } from '../gameplay/arena/playAreas';
-import { worldHazards } from '../gameplay/hazards/hazards';
+import { authoredEntry, installWorlds, unfinishedLevels, validateWorld, type AuthoredWorld, type LibraryResult } from './authoredWorlds';
+import { STAGES_PER_WORLD } from './worlds';
+import type { Campaign } from './campaign';
 
 /** The manifest provides stable play order on both Vite and static hosting. */
 export async function loadFileWorlds(base: URL, request: typeof fetch = fetch): Promise<LibraryResult> {
@@ -36,22 +34,19 @@ export async function loadFileWorlds(base: URL, request: typeof fetch = fetch): 
   return { worlds, warnings };
 }
 
-/** Apply validated project replacements before appending additional campaigns. */
-export function installFileWorlds(worlds: readonly AuthoredWorld[]): void {
+/**
+ * `campaign` with the project's world files applied in order: a file that `replaces` Space or Forest takes
+ * over that built-in slot (keeping its campaign position); any other is appended.
+ */
+export function installFileWorlds(campaign: Campaign, worlds: readonly AuthoredWorld[]): Campaign {
   for (const value of worlds) {
     const data = validateWorld(value);
     if (unfinishedLevels(data).length) continue;
-    if (!data.replaces) { installWorlds([data]); continue; }
+    if (!data.replaces) { campaign = installWorlds(campaign, [data]); continue; }
     const index = data.replaces === 'space' ? 0 : 1;
-    replaceBuiltinLevels(index, data.levels);
-    replaceBuiltinWorld(index, playableWorld(data));
-    authoredBackgrounds.delete(index);
-    worldPlayAreas.delete(index);
-    worldHazards.delete(index);
-    if (data.backgroundImage) authoredBackgrounds.set(index, data.backgroundImage);
-    if (data.playAreas) worldPlayAreas.set(index, data.playAreas);
-    if (data.hazards) worldHazards.set(index, data.hazards);
+    campaign = campaign.withWorldAt(index, authoredEntry(data, index * STAGES_PER_WORLD));
   }
+  return campaign;
 }
 
 /** Project files take precedence over an older browser save of the same world. */

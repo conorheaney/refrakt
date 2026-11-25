@@ -3,10 +3,10 @@ import { AudioDirector } from './audio/AudioDirector';
 import { AudioEngine } from '../engine/audio/AudioEngine';
 import { Music } from './audio/Music';
 import { SAMPLE_URLS } from './audio/samples';
-import { PADDLE, PLAYER, POWERUPS, REFRAKT, SIM } from '../gameplay/config';
+import { PADDLE, PLAYER, REFRAKT, SIM } from '../gameplay/config';
+import { POWERUPS } from '../gameplay/powerups/powerUps';
 import { PowerUpKind } from '../gameplay/types';
-import { LEVELS } from '../content/levels';
-import { BUILTIN_LEVEL_COUNT, runEndLevel } from '../content/authoredWorlds';
+import type { Campaign } from '../content/campaign';
 import { lerp } from '../engine/core/math';
 import { StateMachine } from '../engine/core/StateMachine';
 import { Storage, type Settings } from './Storage';
@@ -14,12 +14,12 @@ import { FixedStepper, stepFraction, TimeFx } from '../engine/core/Time';
 import { Input } from '../engine/input/Input';
 import { GameView } from './GameView';
 import { QUALITY_PROFILES, Renderer } from '../engine/render/Renderer';
-import { musicTrackOf, STAGES_PER_WORLD } from '../content/worlds';
+import { STAGES_PER_WORLD } from '../content/worlds';
 import type { ForestAssets } from '../themes/scenery/forest/assets';
 import { parseBoundaryOverride } from '../gameplay/arena/boundary';
 import { World, type StepInput } from '../gameplay/World';
 import { layoutStage } from '../engine/Stage';
-import { stageLabel, UI, type UiAction } from './UI';
+import { UI, type UiAction } from './UI';
 
 /** Field units of shove (snake bite, scarab landing) pointer offset worn away per field unit the mouse moves. */
 const POINTER_OFFSET_WEAR = 0.5;
@@ -27,14 +27,15 @@ const POINTER_OFFSET_WEAR = 0.5;
 type GameState = 'menu' | 'loadout' | 'playing' | 'paused' | 'transition' | 'gameover' | 'victory';
 
 /** Optional `?level=N` (1-based) starts a run on that exact level; handy for practice and QA. */
-function startLevelFromUrl(): number | null {
+function startLevelFromUrl(campaign: Campaign): number | null {
   const params = new URLSearchParams(window.location.search);
   if (params.has('editorPreview')) {
+    // The previewed world is appended after the built-in campaign (see main.ts).
     const stage = Number(params.get('stage'));
-    return BUILTIN_LEVEL_COUNT + (Number.isInteger(stage) && stage >= 0 && stage < STAGES_PER_WORLD ? stage : 0);
+    return campaign.builtinLevelCount + (Number.isInteger(stage) && stage >= 0 && stage < STAGES_PER_WORLD ? stage : 0);
   }
   const raw = Number(new URLSearchParams(window.location.search).get('level'));
-  return Number.isInteger(raw) && raw >= 1 && raw <= LEVELS.length ? raw - 1 : null;
+  return Number.isInteger(raw) && raw >= 1 && raw <= campaign.levelCount ? raw - 1 : null;
 }
 
 /** Optional `?autopilot` lets the attract-mode AI play a real run (HUD, scoring, lives); for QA captures. */
@@ -57,7 +58,7 @@ function randomSeed(): number {
  * UI together. Gameplay rules live in World; presentation lives in GameView.
  */
 export class Game {
-  private readonly world = new World();
+  private readonly world: World;
   private readonly renderer: Renderer;
   private readonly view: GameView;
   private readonly audio = new AudioEngine();
@@ -83,7 +84,7 @@ export class Game {
   private demoLevel = 0;
   /** World selected on the main menu. */
   private startWorld = 0;
-  private runEnd = runEndLevel(0);
+  private runEnd: number;
   /** Pointer target (field X) at the previous and current display frame; see tick(). */
   private pointerFrom: number | null = null;
   private pointerTo: number | null = null;
@@ -101,7 +102,15 @@ export class Game {
   /** The player's last confirmed power-up loadout this session (pre-selected next time); null before the first. */
   private lastLoadout: readonly PowerUpKind[] | null = null;
 
-  constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement, assets: ForestAssets, backgrounds: ReadonlyMap<number, THREE.Texture> = new Map()) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    uiRoot: HTMLElement,
+    private readonly campaign: Campaign,
+    assets: ForestAssets,
+    backgrounds: ReadonlyMap<number, THREE.Texture> = new Map(),
+  ) {
+    this.world = new World(campaign);
+    this.runEnd = campaign.runEndLevel(0);
     this.stage = canvas.parentElement ?? document.body;
     this.uiRoot = uiRoot;
     if (BOUNDARY_OVERRIDE) this.world.setBoundaryOverride(BOUNDARY_OVERRIDE);
@@ -120,7 +129,7 @@ export class Game {
     this.view.onRumble = (...args) => this.director.rumble(...args);
     this.view.onTorchFlare = (side, strength) => this.director.torchFlare(side, strength);
 
-    this.ui = new UI(uiRoot, this.settings, {
+    this.ui = new UI(uiRoot, this.settings, campaign, {
       onAction: (action) => this.onUiAction(action),
       onSettingsChanged: () => this.applySettings(true),
       onClick: () => {
@@ -284,7 +293,7 @@ export class Game {
         this.demoTimer = 0;
         world.setLoadout(null); // attract mode drops every kind
         world.newGame(randomSeed(), this.demoLevel);
-        this.music.track = musicTrackOf(this.demoLevel);
+        this.music.track = this.campaign.musicTrackOf(this.demoLevel);
         this.music.mode = 'menu';
         this.music.setIntensity(0.12);
         ui.setHudVisible(false);
@@ -301,7 +310,7 @@ export class Game {
             const first = this.startWorld * STAGES_PER_WORLD;
             for (let n = 0; n < STAGES_PER_WORLD; n++) {
               this.demoLevel = first + ((this.demoLevel - first + 1) % STAGES_PER_WORLD);
-              if (!LEVELS[this.demoLevel].boss) break;
+              if (!this.campaign.level(this.demoLevel).boss) break;
             }
             world.loadLevel(this.demoLevel);
           }
@@ -349,7 +358,7 @@ export class Game {
 
     fsm.register('transition', {
       enter: () => {
-        const bossLevel = LEVELS[world.levelIndex].boss !== undefined;
+        const bossLevel = this.campaign.level(world.levelIndex).boss !== undefined;
         this.transitionTimer = bossLevel ? 4 : 2.6;
         // (No slow motion here: it ran the whole sim, paddle included, at 30% speed, so the paddle felt
         // stuck after every clear.)
@@ -407,20 +416,20 @@ export class Game {
     this.pointerFrom = this.pointerTo = null;
     this.pointerOffset = 0;
     this.lastRawPointer = null;
-    const start = startLevelFromUrl() ?? this.startWorld * STAGES_PER_WORLD;
-    this.runEnd = new URLSearchParams(window.location.search).has('editorPreview') ? start + 1 : runEndLevel(start);
+    const start = startLevelFromUrl(this.campaign) ?? this.startWorld * STAGES_PER_WORLD;
+    this.runEnd = new URLSearchParams(window.location.search).has('editorPreview') ? start + 1 : this.campaign.runEndLevel(start);
     world.newGame(randomSeed(), start);
     this.beginLevel();
   }
 
   /** The next run and menu demo start in the selected world. */
   private selectWorld(index: number): void {
-    if (index === this.startWorld || index < 0 || index * STAGES_PER_WORLD >= LEVELS.length) return;
+    if (index === this.startWorld || index < 0 || index * STAGES_PER_WORLD >= this.campaign.levelCount) return;
     this.startWorld = index;
     if (!this.fsm.is('menu')) return;
     this.demoLevel = index * STAGES_PER_WORLD;
     this.demoTimer = 0;
-    this.music.track = musicTrackOf(this.demoLevel);
+    this.music.track = this.campaign.musicTrackOf(this.demoLevel);
     this.world.loadLevel(this.demoLevel);
   }
 
@@ -452,9 +461,9 @@ export class Game {
 
   private showLevelBanner(): void {
     const index = this.world.levelIndex;
-    const def = LEVELS[index];
+    const def = this.campaign.level(index);
     if (def.boss) this.ui.banner('WARNING', def.name, 2.4);
-    else this.ui.banner(stageLabel(index).toUpperCase(), def.name, 1.9);
+    else this.ui.banner(this.campaign.stageLabel(index).toUpperCase(), def.name, 1.9);
   }
 
   private togglePause(): void {
@@ -498,7 +507,7 @@ export class Game {
     ev.on('levelLoaded', ({ index, name, boss }) => {
       if (world.demo) return;
       ui.setLevel(index, name);
-      this.music.track = musicTrackOf(index);
+      this.music.track = this.campaign.musicTrackOf(index);
       this.music.mode = boss ? 'boss' : 'game';
       // The level banner is shown once the power-up picker is confirmed (see showLevelBanner).
     });

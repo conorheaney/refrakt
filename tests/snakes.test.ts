@@ -1,14 +1,15 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import jungle from '../public/worlds/Jungle-Ruins-jungle-ruins.json';
 import { BITE, PADDLE, SIM, SNAKE } from '../src/gameplay/config';
 import { validateWorld } from '../src/content/authoredWorlds';
 import { EventBus } from '../src/engine/core/EventBus';
 import { Random } from '../src/engine/core/Random';
 import type { GameEvents } from '../src/gameplay/events';
-import { validateHazards, worldHazards, type HazardDef } from '../src/gameplay/hazards/hazards';
+import { validateHazards, type HazardDef } from '../src/gameplay/hazards/hazards';
 import { SnakeSystem } from '../src/gameplay/hazards/snakes/snakes';
 import type { Paddle } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
+import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
 
 const LEFT: HazardDef = { kind: 'snake', x: -14, y: -7.4, reach: 7 };
 
@@ -25,13 +26,13 @@ function warned(aimX: number): { sys: SnakeSystem; paddle: Paddle; bites: number
   sys.load([LEFT], 0);
   const paddle = paddleAt(aimX);
   sys.items[0].timer = 0;
-  sys.update(SIM.step, paddle, true);
+  sys.update(SIM.step, paddle, [], true);
   expect(sys.items[0].state).toBe('warn');
   return { sys, paddle, bites };
 }
 
 function run(sys: SnakeSystem, paddle: Paddle, seconds: number, live = true): void {
-  for (let t = 0; t < seconds; t += SIM.step) sys.update(SIM.step, paddle, live);
+  for (let t = 0; t < seconds; t += SIM.step) sys.update(SIM.step, paddle, [], live);
 }
 
 describe('wall snakes', () => {
@@ -57,7 +58,7 @@ describe('wall snakes', () => {
     expect(Math.hypot(h.targetX - LEFT.x, h.targetY - LEFT.y)).toBeLessThanOrEqual(LEFT.reach + 1e-9);
     let furthest = 0;
     for (let t = 0; t < 2; t += SIM.step) {
-      sys.update(SIM.step, paddle, true);
+      sys.update(SIM.step, paddle, [], true);
       furthest = Math.max(furthest, Math.hypot(h.headX - LEFT.x, h.headY - LEFT.y));
     }
     expect(furthest).toBeLessThanOrEqual(LEFT.reach + 1e-9);
@@ -77,7 +78,7 @@ describe('wall snakes', () => {
     sys.load([LEFT, { ...LEFT, x: 14 }], 1);
     const paddle = paddleAt(0);
     for (let t = 0; t < 60; t += SIM.step) {
-      sys.update(SIM.step, paddle, true);
+      sys.update(SIM.step, paddle, [], true);
       expect(sys.items.filter((h) => h.state !== 'idle').length).toBeLessThanOrEqual(1);
     }
   });
@@ -98,8 +99,6 @@ describe('wall snakes', () => {
 });
 
 describe('Jungle Ruins snakes', () => {
-  afterEach(() => worldHazards.clear());
-
   it('ships with a snake on each side', () => {
     const data = validateWorld(jungle);
     expect(data.hazards).toHaveLength(2);
@@ -107,12 +106,11 @@ describe('Jungle Ruins snakes', () => {
   });
 
   it('loads the world hazards into the simulation and clears them for worlds without any', () => {
-    worldHazards.set(0, validateHazards(jungle.hazards));
-    const world = new World();
+    const world = new World(BUILTIN_CAMPAIGN.withExtrasAt(0, { hazards: validateHazards(jungle.hazards) }));
     world.newGame(5, 0);
-    expect(world.hazards.items).toHaveLength(2);
+    expect(world.snakes.items).toHaveLength(2);
     world.loadLevel(10);
-    expect(world.hazards.items).toHaveLength(0);
+    expect(world.snakes.items).toHaveLength(0);
   });
 
   it('rejects malformed hazards', () => {

@@ -1,9 +1,10 @@
 import { isMusicTrack } from './musicTracks';
 import { GRID, PADDLE } from '../gameplay/config';
-import { findPaddleLane, validateArea, worldPlayAreas, type PlayAreas } from '../gameplay/arena/playAreas';
-import { validateHazards, worldHazards, type HazardDef } from '../gameplay/hazards/hazards';
-import { appendLevels, LEVELS, parseLevel, type LevelDef } from './levels';
-import { appendWorld, isWeather, STAGES_PER_WORLD, WORLDS, type WorldDef, type WorldId } from './worlds';
+import { findPaddleLane, validateArea, type PlayAreas } from '../gameplay/arena/playAreas';
+import { validateHazards, type HazardDef } from '../gameplay/hazards/hazards';
+import { BUILTIN_LEVELS, parseLevel, type LevelDef } from './levels';
+import { BUILTIN_WORLDS, isWeather, STAGES_PER_WORLD, type WorldDef, type WorldId } from './worlds';
+import { worldEntry, type Campaign, type WorldEntry } from './campaign';
 
 /** Editor/library envelope only. WorldDef, LevelDef and their row alphabet are unchanged. */
 export interface AuthoredWorld {
@@ -20,10 +21,10 @@ export interface AuthoredWorld {
 }
 
 export const LIBRARY_KEY = 'refrakt.authored-worlds';
-export const BACKGROUNDS = WORLDS.slice(0, 2);
-export const BUILTIN_LEVEL_COUNT = LEVELS.length;
-export const BUILTIN_WORLD_COUNT = WORLDS.length;
-export const authoredBackgrounds = new Map<number, string>();
+/** The scenery an authored world can be built on (its arena, grid and paddle come with it). */
+export const BACKGROUNDS = BUILTIN_WORLDS;
+export const BUILTIN_LEVEL_COUNT = BUILTIN_LEVELS.length;
+export const BUILTIN_WORLD_COUNT = BUILTIN_WORLDS.length;
 
 export function createWorld(key: string): AuthoredWorld {
   return {
@@ -151,20 +152,21 @@ export function playableWorld(data: Pick<AuthoredWorld, 'world' | 'backgroundIma
   return { ...data.world, boundary: 'rect' };
 }
 
-/** Called once before Game construction. All simulation/rendering code consumes the existing arrays. */
-export function installWorlds(worlds: readonly AuthoredWorld[]): void {
+/** The campaign entry for a validated authored world (its levels are numbered from `firstLevel` in errors). */
+export function authoredEntry(data: AuthoredWorld, firstLevel = 0): WorldEntry {
+  return worldEntry(playableWorld(data), data.levels, {
+    playAreas: data.playAreas,
+    hazards: data.hazards,
+    background: data.backgroundImage,
+  }, firstLevel);
+}
+
+/** `campaign` with every finished world in `worlds` appended, in order (unfinished drafts are skipped). */
+export function installWorlds(campaign: Campaign, worlds: readonly AuthoredWorld[]): Campaign {
   for (const value of worlds) {
     const data = validateWorld(value);
     if (unfinishedLevels(data).length) continue;
-    if (data.backgroundImage) authoredBackgrounds.set(WORLDS.length, data.backgroundImage);
-    if (data.playAreas) worldPlayAreas.set(WORLDS.length, data.playAreas);
-    if (data.hazards) worldHazards.set(WORLDS.length, data.hazards);
-    appendLevels(data.levels);
-    appendWorld(playableWorld(data));
+    campaign = campaign.withWorld(authoredEntry(data, campaign.levelCount));
   }
-}
-
-/** Built-in campaign still ends at its original endpoint; authored runs end after ten levels. */
-export function runEndLevel(start: number): number {
-  return start < BUILTIN_LEVEL_COUNT ? BUILTIN_LEVEL_COUNT : (Math.floor(start / STAGES_PER_WORLD) + 1) * STAGES_PER_WORLD;
+  return campaign;
 }

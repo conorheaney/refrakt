@@ -3,8 +3,8 @@ import type { EventBus } from '../../../engine/core/EventBus';
 import type { Random } from '../../../engine/core/Random';
 import { overlapCircleAabb, type SweepHit } from '../../arena/collision';
 import type { GameEvents } from '../../events';
-import type { HazardDef, SnakeDef } from '../hazards';
-import type { Paddle } from '../../types';
+import type { HazardDef, HazardSystem, SnakeDef } from '../hazards';
+import type { Ball, Paddle } from '../../types';
 
 export type SnakeState = 'idle' | 'warn' | 'strike' | 'hold' | 'retract';
 
@@ -36,7 +36,7 @@ const smooth = (t: number): number => t * t * (3 - 2 * t);
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 /** Runs a world's wall snakes. Owned by World; deterministic for a given seed. */
-export class SnakeSystem {
+export class SnakeSystem implements HazardSystem {
   readonly items: Snake[] = [];
   /** 0 on a world's first level, 1 on its tenth. */
   private difficulty = 0;
@@ -92,10 +92,12 @@ export class SnakeSystem {
   }
 
   /**
+   * @param _balls Unused: snakes only bite the paddle (the parameter keeps the HazardSystem signature).
    * @param live true while the ball is in play: only then do waits count down and bites land. Strikes
    *             already under way still finish their animation otherwise.
+   * @returns 0: snakes never score.
    */
-  update(dt: number, paddle: Paddle, live: boolean): void {
+  update(dt: number, paddle: Paddle, _balls: readonly Ball[], live: boolean): number {
     for (const h of this.items) {
       h.phx = h.headX;
       h.phy = h.headY;
@@ -118,6 +120,7 @@ export class SnakeSystem {
         }
       }
     }
+    return 0;
   }
 
   private tryStrike(h: Snake, paddle: Paddle): void {

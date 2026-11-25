@@ -2,7 +2,7 @@ import { BALL, ICICLE, PADDLE } from '../../config';
 import type { EventBus } from '../../../engine/core/EventBus';
 import type { Random } from '../../../engine/core/Random';
 import type { GameEvents } from '../../events';
-import { worldIcicles, type HazardDef, type IcicleDef } from '../hazards';
+import { worldIcicles, type HazardDef, type IcicleDef, type HazardSystem } from '../hazards';
 import type { Ball, Paddle } from '../../types';
 
 /**
@@ -39,7 +39,7 @@ const BREAKABLE = 0.5;
  * Runs a world's falling icicles (HazardDef kinds 'icicle' and 'icicles', see worldIcicles). Owned by World; deterministic for a given seed.
  * Only one timer runs for the whole ceiling: when it fires, the grown icicle nearest the paddle drops.
  */
-export class IcicleSystem {
+export class IcicleSystem implements HazardSystem {
   readonly items: Icicle[] = [];
   /** 0 on a world's first level, 1 on its tenth. */
   private difficulty = 0;

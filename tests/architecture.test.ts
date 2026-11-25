@@ -12,8 +12,8 @@ declare global {
  * lower ones:
  *
  *   engine    generic code with no game knowledge (core utilities, renderer, audio engine, input)
- *   content   world and level data and loading      } one tier: worlds name gameplay types, and the rules read
- *   gameplay  rules, tuning and each element's view } the level/world registries
+ *   content   world and level data and loading      } one tier: worlds name gameplay types, and the rules run
+ *   gameplay  rules, tuning and each element's view } a content Campaign
  *   themes    scenery, weather and block styles a world can select
  *   app       puts everything together (Game, GameView, HUD, audio director, entry point)
  */

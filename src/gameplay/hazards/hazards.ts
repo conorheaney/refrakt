@@ -1,5 +1,6 @@
 import { Random } from '../../engine/core/Random';
 import { MAX_PATH_RADIUS, roundedPath } from '../../engine/core/paths';
+import type { Ball, Paddle } from '../types';
 
 /**
  * Hazards are enemies that belong to a world rather than to a level: they live in the world's JSON file
@@ -8,6 +9,22 @@ import { MAX_PATH_RADIUS, roundedPath } from '../../engine/core/paths';
  * (gameplay/hazards/icicles/icicles.ts) and scarab nests by ScarabSystem (gameplay/hazards/scarabs/scarabs.ts).
  */
 export type HazardKind = 'snake' | 'icicle' | 'icicles' | 'scarabs';
+
+/**
+ * What World needs from each kind of hazard: it loads, resets and steps every system in its `hazardSystems` list
+ * the same way, so a new kind of enemy is one more system there (plus its definition and validation here).
+ */
+export interface HazardSystem {
+  /** Takes the world's hazards (every kind; each system keeps its own) for a level; `difficulty` is 0 on a world's first level, 1 on its tenth. */
+  load(defs: readonly HazardDef[] | undefined, difficulty: number): void;
+  /** Back to the level's starting state after a life is lost. */
+  reset(): void;
+  /**
+   * Advances one fixed step. `live` is true while the ball is in play. Returns the points scored this step
+   * (0 for hazards that never score).
+   */
+  update(dt: number, paddle: Paddle, balls: readonly Ball[], live: boolean): number;
+}
 
 export type HazardDef = SnakeDef | IcicleDef | IcicleAreaDef | ScarabNestDef;
 
@@ -143,9 +160,6 @@ export interface SnakeDef {
   /** How much the body's bends are rounded off (engine/core/paths.ts); 0 or absent: as given. */
   readonly radius?: number;
 }
-
-/** Hazards by world index, filled when worlds are installed (like worldPlayAreas). */
-export const worldHazards = new Map<number, readonly HazardDef[]>();
 
 export const MAX_HAZARDS = 12;
 

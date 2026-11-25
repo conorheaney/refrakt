@@ -557,7 +557,7 @@ export class SnakesView {
   }
 
   update(world: World, alpha: number): void {
-    const items = world.hazards.items;
+    const items = world.snakes.items;
     while (this.meshes.length < items.length) {
       const mesh = new SnakeMesh(this.skin, this.mouth, this.fang, this.tongue);
       this.meshes.push(mesh);

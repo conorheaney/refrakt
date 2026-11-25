@@ -2,7 +2,8 @@ import tomb from '../public/worlds/Pharoughs-Tomb.json';
 import { expect, it } from 'vitest';
 import { installWorlds, validateWorld, unfinishedLevels } from '../src/content/authoredWorlds';
 import { BALL, BRICK_HP, GRID, SIM } from '../src/gameplay/config';
-import { LEVELS, parseLevel } from '../src/content/levels';
+import { parseLevel } from '../src/content/levels';
+import { BUILTIN_CAMPAIGN } from '../src/content/campaign';
 import { areaContour, pointInPolygon } from '../src/gameplay/arena/playAreas';
 import { World } from '../src/gameplay/World';
 
@@ -31,12 +32,12 @@ it('contains ten complete Tomb formations inside the saved arena with increasing
 });
 
 it('can clear every exported formation in the real simulation', () => {
-  const first = LEVELS.length;
-  installWorlds([data]);
+  const first = BUILTIN_CAMPAIGN.levelCount;
+  const campaign = installWorlds(BUILTIN_CAMPAIGN, [data]);
   for (let level = 0; level < 10; level++) {
     let cleared = false;
     for (let seed = 1; seed <= 3 && !cleared; seed++) {
-      const world = new World();
+      const world = new World(campaign);
       world.newGame(seed, first + level);
       // Extra lives isolate layout accessibility from the simple bot's catching ability.
       world.lives = 100;

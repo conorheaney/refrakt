@@ -1,7 +1,7 @@
 import './style.css';
 import { createWorld, unfinishedLevels, validateWorld, withBackground, type AuthoredWorld } from '../../src/content/authoredWorlds';
 import { GRID } from '../../src/gameplay/config';
-import { LEVELS, type LevelDef } from '../../src/content/levels';
+import { BUILTIN_LEVELS, type LevelDef } from '../../src/content/levels';
 import { isWeather, WEATHER, type WorldId } from '../../src/content/worlds';
 import type { PlayAreas, PolygonArea } from '../../src/gameplay/arena/playAreas';
 import { AreaEditor } from './AreaEditor';
@@ -20,7 +20,7 @@ import { renderMusic, toWav } from '../../src/app/audio/renderMusic';
 function el<T extends HTMLElement>(id: string): T { return document.getElementById(id) as T; }
 const symbols = ['.', '1', '2', '3', 'S', 'X', 'P', 'G'];
 const names = ['Eraser', 'Glass', 'Ceramic', 'Armored', 'Steel', 'Explosive', 'Prism', 'Phase'];
-const bosses = LEVELS.flatMap((level) => level.boss ? [level.boss] : []);
+const bosses = BUILTIN_LEVELS.flatMap((level) => level.boss ? [level.boss] : []);
 let data = createWorld(crypto.randomUUID());
 let selected = 0;
 let brush = '1';

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { PADDLE, POWER_WARN, POWERUPS } from '../config';
+import { PADDLE, POWER_WARN } from '../config';
+import { POWERUPS } from '../powerups/powerUps';
 import { damp } from '../../engine/core/math';
 import { canvas2d } from '../../engine/render/textures';
 import { PowerUpKind } from '../types';

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { BALL, DROP, POWERUPS, type FieldDef } from '../gameplay/config';
-import { LEVELS } from '../content/levels';
-import { worldIndexOf, worldOf, type WeatherId, type WorldId } from '../content/worlds';
-import { areaSegments, worldPlayAreas } from '../gameplay/arena/playAreas';
+import { BALL, DROP, type FieldDef } from '../gameplay/config';
+import { POWERUPS } from '../gameplay/powerups/powerUps';
+import type { WeatherId, WorldId } from '../content/worlds';
+import { areaSegments } from '../gameplay/arena/playAreas';
 import { clamp, damp, lerp } from '../engine/core/math';
 import { BrickKind, PowerUpKind, type Brick } from '../gameplay/types';
 import type { World } from '../gameplay/World';
@@ -338,11 +338,13 @@ export class GameView {
 
     ev.on('levelLoaded', ({ index, boss }) => {
       this.refrakt.clear();
-      const changed = worldOf(index).id !== this.worldId;
-      this.setWorld(worldOf(index).id);
-      const backdrop = this.backgrounds.get(worldIndexOf(index)) ?? null;
+      const campaign = world.campaign;
+      const def = campaign.worldDefAt(index);
+      const changed = def.id !== this.worldId;
+      this.setWorld(def.id);
+      const backdrop = this.backgrounds.get(campaign.worldIndexOf(index)) ?? null;
       this.env.setBackdrop(backdrop);
-      const weather = worldOf(index).weather;
+      const weather = def.weather;
       this.rain.setActive(weather === 'rain');
       this.snow.setActive(weather === 'snow');
       this.dust.setActive(weather === 'dust', world.field);
@@ -360,7 +362,7 @@ export class GameView {
         });
         this.backdropOutline = null;
       }
-      const area = worldPlayAreas.get(worldIndexOf(index))?.ball;
+      const area = campaign.worldAt(index).playAreas?.ball;
       // Collision guides are opt-in diagnostics, including for authored worlds.
       // The editor owns its editable SVG guides separately.
       if (DEBUG_ARENA && area) {
@@ -372,7 +374,7 @@ export class GameView {
         this.backdropOutline = createArenaOverlay(world.field, true);
         this.scene.add(this.backdropOutline);
       }
-      this.env.setTheme(LEVELS[index].hue, boss, changed);
+      this.env.setTheme(campaign.level(index).hue, boss, changed);
       this.celebrate = 0;
     });
 
