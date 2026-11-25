@@ -8,11 +8,19 @@ import { WORLD_TEMPLATES } from '../src/content/worlds';
 import { World } from '../src/gameplay/World';
 import { CLASSIC_LEVELS } from './support/classicLevels';
 
-it('loads Verdant Hollow from JSON as the main campaign\'s Forest world, keeping the original Forest levels', async () => {
+it("loads Verdant Hollow from JSON as the main campaign's Forest world, keeping the original Forest levels", async () => {
   const originalLevels = structuredClone(CLASSIC_LEVELS.slice(10, 20));
   const files = await loadFileWorlds(new URL('https://example.test/worlds/'), async (input) => {
     const path = new URL(String(input)).pathname;
-    return new Response(JSON.stringify(path.endsWith('index.json') ? ['Verdant-Hollow.json', 'Pharoughs-Tomb.json'] : path.endsWith('Verdant-Hollow.json') ? forest : tomb));
+    return new Response(
+      JSON.stringify(
+        path.endsWith('index.json')
+          ? ['Verdant-Hollow.json', 'Pharoughs-Tomb.json']
+          : path.endsWith('Verdant-Hollow.json')
+            ? forest
+            : tomb,
+      ),
+    );
   });
   expect(files.warnings).toEqual([]);
   expect(files.worlds).toHaveLength(2);

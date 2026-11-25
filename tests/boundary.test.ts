@@ -16,7 +16,8 @@ function wallDistance(area: BallArea, x: number, y: number): number {
   let best = Infinity;
   for (const { a, b, drain } of areaSegments(area, area.drainEdge)) {
     if (drain) continue;
-    const ex = b.x - a.x, ey = b.y - a.y;
+    const ex = b.x - a.x,
+      ey = b.y - a.y;
     const u = Math.max(0, Math.min(1, ((x - a.x) * ex + (y - a.y) * ey) / (ex * ex + ey * ey || 1)));
     best = Math.min(best, Math.hypot(x - a.x - ex * u, y - a.y - ey * u));
   }
@@ -37,7 +38,7 @@ function autopilot(world: World, input: StepInput, step: number): void {
   input.action = step % 60 === 0;
 }
 
-describe('forest outline data (the editor\'s starting shape for Forest worlds)', () => {
+describe("forest outline data (the editor's starting shape for Forest worlds)", () => {
   it('was traced with the mapping the forest view uses', () => {
     expect(FOREST_OUTLINE_MAPPING.widthPx).toBe(FOREST_ART.widthPx);
     expect(FOREST_OUTLINE_MAPPING.heightPx).toBe(FOREST_ART.heightPx);
@@ -52,16 +53,30 @@ describe('forest outline data (the editor\'s starting shape for Forest worlds)',
     const boundary = new PolygonBoundary(area);
     expect(area.points.length).toBeLessThanOrEqual(96);
     expect(boundary.bounds.bottom).toBeLessThan(FIELD.bottom + 0.5);
-    for (const [x, y] of [[0, 0], [0, -8.2], [-11, 8.8], [11, 8.8], [0, 9.9]]) {
+    for (const [x, y] of [
+      [0, 0],
+      [0, -8.2],
+      [-11, 8.8],
+      [11, 8.8],
+      [0, 9.9],
+    ]) {
       expect(boundary.contains(x, y)).toBe(true);
       expect(wallDistance(area, x, y)).toBeGreaterThan(r);
     }
-    for (const [x, y] of [[-17, 0], [17, 0], [0, 14]]) expect(boundary.contains(x, y)).toBe(false);
+    for (const [x, y] of [
+      [-17, 0],
+      [17, 0],
+      [0, 14],
+    ])
+      expect(boundary.contains(x, y)).toBe(false);
   });
 });
 
 describe('polygon boundary', () => {
-  for (const [name, area] of [['Space arena', SPACE_AREAS.ball], ['Forest arch', FOREST_AREAS.ball]] as const) {
+  for (const [name, area] of [
+    ['Space arena', SPACE_AREAS.ball],
+    ['Forest arch', FOREST_AREAS.ball],
+  ] as const) {
     it(`stops a ball at any speed before it crosses a wall of the ${name} (no tunnelling)`, () => {
       const boundary = new PolygonBoundary(area);
       for (let k = 0; k < 360; k += 3) {
@@ -110,7 +125,14 @@ describe('polygon boundary', () => {
   });
 
   it('frees a ball sent into the tightest corners of the Forest arch', () => {
-    const targets = [[-14.5, -8.9], [14.5, -8.9], [-14.9, 9.5], [14.9, 9.5], [-12.5, -9.8], [12.5, -9.8]];
+    const targets = [
+      [-14.5, -8.9],
+      [14.5, -8.9],
+      [-14.9, 9.5],
+      [14.9, 9.5],
+      [-12.5, -9.8],
+      [12.5, -9.8],
+    ];
     for (const [tx, ty] of targets) {
       for (const off of [-0.6, 0, 0.6]) {
         const world = new World(CLASSIC);
@@ -132,7 +154,8 @@ describe('polygon boundary', () => {
             seen.lo = Math.min(seen.lo, ball.y);
             seen.hi = Math.max(seen.hi, ball.y);
           }
-          if (ball.active && !world.boundary.belowDrain(ball.x, ball.y)) expect(wallDistance(FOREST_AREAS.ball, ball.x, ball.y)).toBeGreaterThan(r - 1e-3);
+          if (ball.active && !world.boundary.belowDrain(ball.x, ball.y))
+            expect(wallDistance(FOREST_AREAS.ball, ball.x, ball.y)).toBeGreaterThan(r - 1e-3);
         }
         // Either it fell out through the drain (lost) or it is still travelling about the arena, not pinned.
         if (ball.active) expect(seen.hi - seen.lo).toBeGreaterThan(2);
@@ -173,7 +196,9 @@ describe('every shipped world', () => {
         let escaped = 0;
         const history = new Map<Ball, number[]>();
         const warn = console.warn;
-        console.warn = () => { escaped++; };
+        console.warn = () => {
+          escaped++;
+        };
         try {
           for (let i = 0; i < 120 * 45; i++) {
             (world.ballPhysics as unknown as { speedBonus: number }).speedBonus = BALL.maxSpeedBonus; // always at top speed
@@ -193,10 +218,15 @@ describe('every shipped world', () => {
               if (h.length > 120) h.splice(0, 2);
               history.set(ball, h);
               if (h.length === 120) {
-                let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+                let x0 = Infinity,
+                  x1 = -Infinity,
+                  y0 = Infinity,
+                  y1 = -Infinity;
                 for (let k = 0; k < h.length; k += 2) {
-                  x0 = Math.min(x0, h[k]); x1 = Math.max(x1, h[k]);
-                  y0 = Math.min(y0, h[k + 1]); y1 = Math.max(y1, h[k + 1]);
+                  x0 = Math.min(x0, h[k]);
+                  x1 = Math.max(x1, h[k]);
+                  y0 = Math.min(y0, h[k + 1]);
+                  y1 = Math.max(y1, h[k + 1]);
                 }
                 if (x1 - x0 < 0.3 && y1 - y0 < 0.3) still++;
               }

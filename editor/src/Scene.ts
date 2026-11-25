@@ -30,7 +30,11 @@ export class EditorScene {
   onLayout: () => void = () => {};
   onError: (message: string) => void = () => {};
 
-  constructor(private readonly stage: HTMLElement, canvas: HTMLCanvasElement, initial: AuthoredWorld) {
+  constructor(
+    private readonly stage: HTMLElement,
+    canvas: HTMLCanvasElement,
+    initial: AuthoredWorld,
+  ) {
     this.data = initial;
     this.world = new World(new Campaign([authoredEntry(initial)]));
     this.renderer = new Renderer(canvas);
@@ -39,17 +43,22 @@ export class EditorScene {
 
   async init(): Promise<void> {
     this.view = new GameView(this.world, this.renderer.gl, await loadForestAssets(), this.backgrounds);
-    this.view.rig.mode = 'play'; this.view.rig.shakeScale = 0;
+    this.view.rig.mode = 'play';
+    this.view.rig.shakeScale = 0;
     this.renderer.attach(this.view.scene, this.view.rig.camera);
     this.loaded = true;
     this.resize();
   }
 
   sync(data: AuthoredWorld, level: number): void {
-    this.data = data; this.level = level;
+    this.data = data;
+    this.level = level;
     if (!this.loaded || this.pending) return;
     this.pending = true;
-    requestAnimationFrame(() => { this.pending = false; this.refresh(); });
+    requestAnimationFrame(() => {
+      this.pending = false;
+      this.refresh();
+    });
   }
 
   private refresh(): void {
@@ -57,12 +66,21 @@ export class EditorScene {
     if (this.image !== this.data.backgroundImage) {
       this.image = this.data.backgroundImage;
       const generation = ++this.imageGeneration;
-      this.backgrounds.get(this.index)?.dispose(); this.backgrounds.delete(this.index);
-      if (this.image) void new THREE.TextureLoader().loadAsync(this.image).then((texture) => {
-        if (generation !== this.imageGeneration) { texture.dispose(); return; }
-        texture.colorSpace = THREE.SRGBColorSpace;
-        this.backgrounds.set(this.index, texture); this.refresh();
-      }).catch(() => this.onError('The uploaded background could not be displayed.'));
+      this.backgrounds.get(this.index)?.dispose();
+      this.backgrounds.delete(this.index);
+      if (this.image)
+        void new THREE.TextureLoader()
+          .loadAsync(this.image)
+          .then((texture) => {
+            if (generation !== this.imageGeneration) {
+              texture.dispose();
+              return;
+            }
+            texture.colorSpace = THREE.SRGBColorSpace;
+            this.backgrounds.set(this.index, texture);
+            this.refresh();
+          })
+          .catch(() => this.onError('The uploaded background could not be displayed.'));
     }
     this.world.time = 0;
     this.world.loadLevel(this.index * STAGES_PER_WORLD + this.level);
@@ -70,7 +88,8 @@ export class EditorScene {
     // main.ts), so the camera's perspective view of the bricks is left out here.
     for (const brick of this.world.bricks) brick.alive = false;
     this.world.time = 10;
-    this.view.rig.mode = 'play'; this.view.rig.update(100);
+    this.view.rig.mode = 'play';
+    this.view.rig.update(100);
     this.view.update(0, 0, 1);
     this.renderer.setCamera(this.view.rig.camera);
     this.renderer.render(0.1);
@@ -81,8 +100,14 @@ export class EditorScene {
 
   private resize(): void {
     const aspect = Math.min(STAGE_ASPECT, Math.max(STAGE_MIN_ASPECT, innerWidth / innerHeight));
-    const width = Math.min(innerWidth, innerHeight * aspect), height = width / aspect;
-    Object.assign(this.stage.style, { width: `${width}px`, height: `${height}px`, left: `${(innerWidth - width) / 2}px`, top: `${(innerHeight - height) / 2}px` });
+    const width = Math.min(innerWidth, innerHeight * aspect),
+      height = width / aspect;
+    Object.assign(this.stage.style, {
+      width: `${width}px`,
+      height: `${height}px`,
+      left: `${(innerWidth - width) / 2}px`,
+      top: `${(innerHeight - height) / 2}px`,
+    });
     this.renderer.resize(width, height);
     if (this.loaded) {
       const size = this.renderer.gl.getDrawingBufferSize(new THREE.Vector2());
@@ -95,13 +120,19 @@ export class EditorScene {
   project(p: Point, z = 0): Point {
     if (!this.loaded) return { x: 0, y: 0 };
     this.view.rig.project(p.x, p.y, this.vector, z);
-    return { x: (this.vector.x + 1) * this.stage.clientWidth / 2, y: (1 - this.vector.y) * this.stage.clientHeight / 2 };
+    return {
+      x: ((this.vector.x + 1) * this.stage.clientWidth) / 2,
+      y: ((1 - this.vector.y) * this.stage.clientHeight) / 2,
+    };
   }
 
   /** Playfield point under a screen position, on the plane at depth `z`. */
   unproject(p: Point, z = 0): Point {
     if (!this.loaded) return { x: 0, y: 0 };
-    this.ray.setFromCamera(new THREE.Vector2(p.x / this.stage.clientWidth * 2 - 1, 1 - p.y / this.stage.clientHeight * 2), this.view.rig.camera);
+    this.ray.setFromCamera(
+      new THREE.Vector2((p.x / this.stage.clientWidth) * 2 - 1, 1 - (p.y / this.stage.clientHeight) * 2),
+      this.view.rig.camera,
+    );
     this.plane.constant = -z;
     this.ray.ray.intersectPlane(this.plane, this.hit);
     this.plane.constant = 0;

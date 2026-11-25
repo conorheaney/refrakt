@@ -1,6 +1,13 @@
 import type { AuthoredWorld } from '../../src/content/authoredWorlds';
 import { FOREST_OUTLINE } from '../../src/content/outlines/forest';
-import { defaultBallArea, defaultPaddleArea, simplifyStroke, type BallArea, type Point, type PolygonArea } from '../../src/gameplay/arena/playAreas';
+import {
+  defaultBallArea,
+  defaultPaddleArea,
+  simplifyStroke,
+  type BallArea,
+  type Point,
+  type PolygonArea,
+} from '../../src/gameplay/arena/playAreas';
 
 let forestCache: BallArea | null = null;
 
@@ -25,7 +32,10 @@ function forestBallArea(): BallArea {
  */
 export function defaultArea(data: Pick<AuthoredWorld, 'world' | 'backgroundImage'>, mode: 'ball'): BallArea;
 export function defaultArea(data: Pick<AuthoredWorld, 'world' | 'backgroundImage'>, mode: 'paddle'): PolygonArea;
-export function defaultArea(data: Pick<AuthoredWorld, 'world' | 'backgroundImage'>, mode: 'ball' | 'paddle'): PolygonArea {
+export function defaultArea(
+  data: Pick<AuthoredWorld, 'world' | 'backgroundImage'>,
+  mode: 'ball' | 'paddle',
+): PolygonArea {
   if (mode === 'paddle') return defaultPaddleArea(data.world.field);
   return data.world.id === 'forest' && !data.backgroundImage ? forestBallArea() : defaultBallArea(data.world.field);
 }
@@ -39,7 +49,10 @@ export function withAreas(data: AuthoredWorld): { world: AuthoredWorld; added: b
   const paddle = data.playAreas?.paddle;
   if (ball && paddle) return { world: data, added: false };
   return {
-    world: { ...data, playAreas: { ball: ball ?? defaultArea(data, 'ball'), paddle: paddle ?? defaultArea(data, 'paddle') } },
+    world: {
+      ...data,
+      playAreas: { ball: ball ?? defaultArea(data, 'ball'), paddle: paddle ?? defaultArea(data, 'paddle') },
+    },
     added: true,
   };
 }

@@ -69,8 +69,13 @@ describe('source layout', () => {
   });
 
   it('keeps engine free of game code', () => {
-    const leaks = files.filter((f) => layerOf(f) === 'engine')
-      .flatMap((f) => importsOf(f).local.filter((t) => layerOf(t) !== 'engine').map((t) => `${f} -> ${t}`));
+    const leaks = files
+      .filter((f) => layerOf(f) === 'engine')
+      .flatMap((f) =>
+        importsOf(f)
+          .local.filter((t) => layerOf(t) !== 'engine')
+          .map((t) => `${f} -> ${t}`),
+      );
     expect(leaks).toEqual([]);
   });
 

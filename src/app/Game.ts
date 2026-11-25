@@ -271,7 +271,8 @@ export class Game {
     this.stepInput.action = AUTOPILOT && !world.demo && world.balls.items.some((b) => b.active && b.stuck);
     // Wobble scales with the paddle so the autopilot still lands most balls on the narrower paddle.
     const wobble = PADDLE.width * 0.25;
-    this.stepInput.targetX = target === null ? Math.sin(world.time * 0.8) * 7 : target + Math.sin(world.time * 2.1) * wobble;
+    this.stepInput.targetX =
+      target === null ? Math.sin(world.time * 0.8) * 7 : target + Math.sin(world.time * 2.1) * wobble;
   }
 
   // ------------------------------------------------------------------ states
@@ -415,7 +416,9 @@ export class Game {
     this.pointerOffset = 0;
     this.lastRawPointer = null;
     const start = startLevelFromUrl(this.campaign) ?? this.startWorld * STAGES_PER_WORLD;
-    this.runEnd = new URLSearchParams(window.location.search).has('editorPreview') ? start + 1 : this.campaign.runEndLevel(start);
+    this.runEnd = new URLSearchParams(window.location.search).has('editorPreview')
+      ? start + 1
+      : this.campaign.runEndLevel(start);
     world.newGame(randomSeed(), start);
     this.beginLevel();
   }
@@ -512,7 +515,11 @@ export class Game {
 
     ev.on('levelCleared', ({ bonus }) => {
       if (world.demo) return;
-      ui.banner(world.levelIndex + 1 >= this.runEnd ? 'VICTORY' : 'LEVEL CLEAR', `BONUS +${bonus.toLocaleString()}`, 2.2);
+      ui.banner(
+        world.levelIndex + 1 >= this.runEnd ? 'VICTORY' : 'LEVEL CLEAR',
+        `BONUS +${bonus.toLocaleString()}`,
+        2.2,
+      );
       this.fsm.transition('transition');
     });
 
@@ -597,6 +604,11 @@ export class Game {
     const layout = layoutStage(this.stage, this.uiRoot);
     this.input.refreshBounds();
     this.renderer.resize(layout.width, layout.height);
-    this.view.resize(layout.aspect, this.renderer.bufferWidth, this.renderer.bufferHeight, this.renderer.reflectionScale);
+    this.view.resize(
+      layout.aspect,
+      this.renderer.bufferWidth,
+      this.renderer.bufferHeight,
+      this.renderer.reflectionScale,
+    );
   };
 }

@@ -257,7 +257,15 @@ export class SnowLayer {
   }
 
   /** Wisps from one top surface centred on (x, y), `halfW` wide and `halfD` deep. */
-  private liftFrom(particles: ParticleSystem, x: number, y: number, halfW: number, halfD: number, strength: number, dt: number): void {
+  private liftFrom(
+    particles: ParticleSystem,
+    x: number,
+    y: number,
+    halfW: number,
+    halfD: number,
+    strength: number,
+    dt: number,
+  ): void {
     // Expected count this frame, rounded up or down at random so low rates still average out.
     const count = Math.floor(SPINDRIFT_RATE * strength * halfW * 2 * dt + Math.random());
     const wind = Math.sign(WIND.gust);
@@ -271,7 +279,9 @@ export class SnowLayer {
         0.4 + Math.random() * 1.1,
         (Math.random() - 0.5) * 0.6,
         // Additive particles: kept dim, so the wisps read as fine powder rather than sparks.
-        0.42 * g, 0.47 * g, 0.55 * g,
+        0.42 * g,
+        0.47 * g,
+        0.55 * g,
         0.1 + Math.random() * 0.12,
         0.5 + Math.random() * 0.6,
         0.8,

@@ -48,9 +48,26 @@ export const STAGES_PER_WORLD = 10;
  * every world is a world file (public/worlds) whose walls and paddle lane are drawn in the editor.
  */
 export const WORLD_TEMPLATES: readonly WorldDef[] = [
-  { id: 'space', name: 'Space', field: FIELD, grid: GRID, paddleWidth: PADDLE.width, paddleExpandedWidth: PADDLE.expandedWidth, serveLift: 0 },
+  {
+    id: 'space',
+    name: 'Space',
+    field: FIELD,
+    grid: GRID,
+    paddleWidth: PADDLE.width,
+    paddleExpandedWidth: PADDLE.expandedWidth,
+    serveLift: 0,
+  },
   // The tree arch is wider than the Space arena but just as tall; the Space brick grid sits centred in it.
-  { id: 'forest', name: 'Forest', field: FOREST_FIELD, grid: GRID, paddleWidth: PADDLE.width, paddleExpandedWidth: PADDLE.expandedWidth, serveLift: 0, music: 'forest' },
+  {
+    id: 'forest',
+    name: 'Forest',
+    field: FOREST_FIELD,
+    grid: GRID,
+    paddleWidth: PADDLE.width,
+    paddleExpandedWidth: PADDLE.expandedWidth,
+    serveLift: 0,
+    music: 'forest',
+  },
 ];
 
 /** Level number within its world (1-10). */

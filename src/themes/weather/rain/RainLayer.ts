@@ -173,11 +173,15 @@ export class RainLayer {
       const droplets = 2 + (Math.random() < 0.5 ? 1 : 0);
       for (let d = 0; d < droplets; d++) {
         particles.emit(
-          sx, sy, sz,
+          sx,
+          sy,
+          sz,
           (Math.random() - 0.5) * 2.4 + SLANT * 4,
           2 + Math.random() * 2.2,
           (Math.random() - 0.5) * 1.2,
-          SPLASH_R, SPLASH_G, SPLASH_B,
+          SPLASH_R,
+          SPLASH_G,
+          SPLASH_B,
           0.16 + Math.random() * 0.1,
           0.24 + Math.random() * 0.14,
           1,
@@ -222,7 +226,10 @@ export class RainLayer {
   private untilStrike = LIGHTNING.firstMin + Math.random() * (LIGHTNING.firstMax - LIGHTNING.firstMin);
   /** Seconds since the current strike began; -1 between strikes. */
   private strikeAge = -1;
-  private readonly pulses = [{ at: 0, strength: 0 }, { at: 0, strength: 0 }];
+  private readonly pulses = [
+    { at: 0, strength: 0 },
+    { at: 0, strength: 0 },
+  ];
 
   /**
    * A strike is one bright flash and a slightly weaker second one. Two flashes at least 0.35 s apart and

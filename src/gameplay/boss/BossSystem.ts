@@ -86,7 +86,12 @@ export class BossSystem {
       shot.py = shot.y;
       shot.x += shot.vx * dt;
       shot.y += shot.vy * dt;
-      if (shot.y < lower || shot.x < bounds.left || shot.x > bounds.right || (world.shieldCharges > 0 && shot.y < world.shieldY && shot.x >= world.shieldLeft && shot.x <= world.shieldRight)) {
+      if (
+        shot.y < lower ||
+        shot.x < bounds.left ||
+        shot.x > bounds.right ||
+        (world.shieldCharges > 0 && shot.y < world.shieldY && shot.x >= world.shieldLeft && shot.x <= world.shieldRight)
+      ) {
         this.shots.release(shot);
       } else if (overlapCircleAabb(shot.x, shot.y, SHOT.radius, p.x, p.y, p.width / 2, PADDLE.halfH, this.hit)) {
         this.shots.release(shot);

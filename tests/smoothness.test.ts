@@ -214,7 +214,10 @@ describe('pointer mapping', () => {
       expect(((1 - ndc.y) / 2) * FOREST_ART.heightPx).toBeCloseTo(FOREST_ART.ceilingPx, 3);
       // Horizontally it is centred, so the walls land on painting px 268 and 1404 (both on screen).
       const visiblePx = FOREST_ART.heightPx * aspect;
-      for (const [x, px] of [[-FOREST_FIELD.halfWidth, 268], [FOREST_FIELD.halfWidth, 1404]]) {
+      for (const [x, px] of [
+        [-FOREST_FIELD.halfWidth, 268],
+        [FOREST_FIELD.halfWidth, 1404],
+      ]) {
         rig.project(x, PADDLE.y, ndc);
         expect(Math.abs(ndc.x)).toBeLessThan(1);
         expect(FOREST_ART.widthPx / 2 + (ndc.x * visiblePx) / 2).toBeCloseTo(px, 3);

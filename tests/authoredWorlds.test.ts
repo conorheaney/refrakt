@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { createWorld, isPlayable, LIBRARY_KEY, missingAreas, playProblems, readLibrary, saveWorld, unfinishedLevels, validateWorld, withBackground } from '../src/content/authoredWorlds';
+import {
+  createWorld,
+  isPlayable,
+  LIBRARY_KEY,
+  missingAreas,
+  playProblems,
+  readLibrary,
+  saveWorld,
+  unfinishedLevels,
+  validateWorld,
+  withBackground,
+} from '../src/content/authoredWorlds';
 import { buildCampaign } from '../src/content/fileWorlds';
 import { GRID } from '../src/gameplay/config';
 import { WORLD_TEMPLATES as WORLDS } from '../src/content/worlds';
@@ -9,7 +20,12 @@ import { SHIPPED_WORLDS } from './support/worlds';
 
 function memoryStorage(): Pick<Storage, 'getItem' | 'setItem'> {
   const values = new Map<string, string>();
-  return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => { values.set(key, value); } };
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+  };
 }
 
 describe('authored world files and persistence', () => {
@@ -18,7 +34,11 @@ describe('authored world files and persistence', () => {
     expect(data.levels).toHaveLength(10);
     expect(unfinishedLevels(data)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(data.levels[0].rows).not.toBe(data.levels[1].rows);
-    expect(data.levels.every((level) => level.rows.length === GRID.rows && level.rows.every((row) => row === '.'.repeat(GRID.cols)))).toBe(true);
+    expect(
+      data.levels.every(
+        (level) => level.rows.length === GRID.rows && level.rows.every((row) => row === '.'.repeat(GRID.cols)),
+      ),
+    ).toBe(true);
     expect(validateWorld(JSON.parse(JSON.stringify(data)))).toEqual(data);
   });
 
@@ -46,14 +66,17 @@ describe('authored world files and persistence', () => {
     const saved = storage.getItem(LIBRARY_KEY);
     const badRows = ['?', '1'.repeat(GRID.cols + 1)];
     for (const row of badRows) {
-      const bad = structuredClone(data); bad.levels[0] = { ...bad.levels[0], rows: [row] };
+      const bad = structuredClone(data);
+      bad.levels[0] = { ...bad.levels[0], rows: [row] };
       expect(() => saveWorld(storage, bad)).toThrow();
     }
     expect(() => validateWorld({ ...data, levels: data.levels.slice(1) })).toThrow();
     expect(() => validateWorld({ ...data, world: { ...data.world, paddleWidth: -1 } })).toThrow();
-    const badHue = structuredClone(data); badHue.levels[0] = { ...badHue.levels[0], hue: NaN };
+    const badHue = structuredClone(data);
+    badHue.levels[0] = { ...badHue.levels[0], hue: NaN };
     expect(() => validateWorld(badHue)).toThrow();
-    const badBoss = structuredClone(data); badBoss.levels[0] = { ...LEVELS[4], boss: { ...LEVELS[4].boss!, fireInterval: 0 } };
+    const badBoss = structuredClone(data);
+    badBoss.levels[0] = { ...LEVELS[4], boss: { ...LEVELS[4].boss!, fireInterval: 0 } };
     expect(() => validateWorld(badBoss)).toThrow();
     expect(() => validateWorld({ ...data, backgroundImage: 'https://example.com/image.png' })).toThrow();
     expect(storage.getItem(LIBRARY_KEY)).toBe(saved);
@@ -71,7 +94,12 @@ describe('authored world files and persistence', () => {
   });
 
   it('surfaces storage failures instead of claiming a save succeeded', () => {
-    const storage = { getItem: () => null, setItem: () => { throw new Error('Quota exceeded'); } };
+    const storage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('Quota exceeded');
+      },
+    };
     expect(() => saveWorld(storage, createWorld('quota'))).toThrow('Quota exceeded');
   });
 

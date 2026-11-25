@@ -127,7 +127,13 @@ function haloTexture(): THREE.CanvasTexture {
 }
 
 function additive(map: THREE.Texture): THREE.MeshBasicMaterial {
-  return new THREE.MeshBasicMaterial({ map, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  return new THREE.MeshBasicMaterial({
+    map,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
 }
 
 interface Module {
@@ -139,7 +145,12 @@ interface Module {
   readonly haloMat: THREE.MeshBasicMaterial;
   readonly railL: THREE.Mesh;
   readonly railR: THREE.Mesh;
-  readonly rail: { uColor: { value: THREE.Color }; uTime: { value: number }; uLen: { value: number }; uBright: { value: number } };
+  readonly rail: {
+    uColor: { value: THREE.Color };
+    uTime: { value: number };
+    uLen: { value: number };
+    uBright: { value: number };
+  };
   readonly color: THREE.Color;
   active: boolean;
   /** Centre along the band (paddle-local x), eased when the modules reflow. */
@@ -190,7 +201,12 @@ export class PaddlePowers {
       glyph.position.z = 0.004;
       const haloMat = additive(halo);
       const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-      const rail = { uColor: { value: new THREE.Color() }, uTime: { value: 0 }, uLen: { value: 1 }, uBright: { value: 1 } };
+      const rail = {
+        uColor: { value: new THREE.Color() },
+        uTime: { value: 0 },
+        uLen: { value: 1 },
+        uBright: { value: 1 },
+      };
       const railMat = new THREE.ShaderMaterial({
         uniforms: rail,
         vertexShader: RAIL_VERTEX,
@@ -342,7 +358,10 @@ export class PaddlePowers {
     }
     const fade = (1 - t) * (1 - t);
     m.railL.visible = m.railR.visible = false;
-    const c = m.glyphMat.color.copy(m.color).lerp(WHITE, 0.7).multiplyScalar(fade * 2.2);
+    const c = m.glyphMat.color
+      .copy(m.color)
+      .lerp(WHITE, 0.7)
+      .multiplyScalar(fade * 2.2);
     m.haloMat.color.copy(c).multiplyScalar(0.6);
     m.glyph.scale.setScalar(1 + t * 1.3);
     m.halo.scale.setScalar(1 + t * 2.4);

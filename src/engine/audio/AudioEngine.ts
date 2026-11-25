@@ -317,7 +317,7 @@ export class AudioEngine {
       y.set(x.subarray(0, length));
       for (let i = 0; i < xf; i++) {
         const k = i / xf;
-        y[i] = x[i] * Math.sin(k * Math.PI / 2) + x[length + i] * Math.cos(k * Math.PI / 2);
+        y[i] = x[i] * Math.sin((k * Math.PI) / 2) + x[length + i] * Math.cos((k * Math.PI) / 2);
       }
     }
     this.loopBuffers.set(name, out);
@@ -528,4 +528,3 @@ export class AudioEngine {
     };
   }
 }
-

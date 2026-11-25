@@ -144,7 +144,8 @@ export function applySurfaceFx(material: THREE.Material, fx: SurfaceFx, time?: {
   const emblem = fx.emblem ?? 0;
   const stone = fx.stone ?? false;
   material.userData.fx = { glow, rim };
-  material.customProgramCacheKey = () => `fx-${emblem}-${fx.instanceFx ? 1 : 0}-${halfW}-${halfH}-${faceZ}${stone ? '-stone' : ''}`;
+  material.customProgramCacheKey = () =>
+    `fx-${emblem}-${fx.instanceFx ? 1 : 0}-${halfW}-${halfH}-${faceZ}${stone ? '-stone' : ''}`;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uGlow = glow;
     shader.uniforms.uRim = rim;

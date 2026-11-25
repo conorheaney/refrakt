@@ -16,7 +16,11 @@ export interface RecordingPart {
  * stretch a frame at a time, as it does live (scheduling it all up front would leave thousands of nodes
  * waiting in the graph and crawl). Takes a few seconds per minute of music.
  */
-export async function renderMusic(track: MusicTrackId, parts: readonly RecordingPart[], rate = 44100): Promise<AudioBuffer> {
+export async function renderMusic(
+  track: MusicTrackId,
+  parts: readonly RecordingPart[],
+  rate = 44100,
+): Promise<AudioBuffer> {
   const total = parts.reduce((sum, part) => sum + part.seconds, 0);
   // A couple of seconds more so the last notes and echoes ring out.
   const ctx = new OfflineAudioContext(2, Math.ceil((total + 2.5) * rate), rate);

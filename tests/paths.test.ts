@@ -4,8 +4,17 @@ import { areaContour } from '../src/gameplay/arena/playAreas';
 import { icicleAreaIcicles, validateHazards, type IcicleAreaDef } from '../src/gameplay/hazards/hazards';
 import { ScarabSystem } from '../src/gameplay/hazards/scarabs/scarabs';
 
-const L = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }];
-const SQUARE = [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 0, y: 4 }];
+const L = [
+  { x: 0, y: 0 },
+  { x: 4, y: 0 },
+  { x: 4, y: 4 },
+];
+const SQUARE = [
+  { x: 0, y: 0 },
+  { x: 4, y: 0 },
+  { x: 4, y: 4 },
+  { x: 0, y: 4 },
+];
 
 describe('paths', () => {
   it('leaves a path as it is with no rounding', () => {
@@ -13,7 +22,7 @@ describe('paths', () => {
     expect(roundedPath(SQUARE, true, 0)).toEqual(SQUARE);
   });
 
-  it('rounds an open path\'s corners but keeps its ends', () => {
+  it("rounds an open path's corners but keeps its ends", () => {
     const out = roundedPath(L, false, 1, 4);
     expect(out[0]).toEqual(L[0]);
     expect(out[out.length - 1]).toEqual(L[2]);
@@ -48,16 +57,38 @@ describe('curved paths in the game', () => {
     expect(validateHazards([{ kind: 'scarabs', x: -5, y: -9, path: L, radius: 2 }])[0]).toMatchObject({ radius: 2 });
     expect(() => validateHazards([{ kind: 'scarabs', x: -5, y: -9, radius: -1 }])).toThrow(/rounding/);
     expect(validateHazards([{ kind: 'snake', x: -5, y: 0, reach: 4, radius: 1 }])[0]).toMatchObject({ radius: 1 });
-    expect(() => validateHazards([{ kind: 'icicles', points: L, count: 3, minLength: 0.5, maxLength: 1, seed: 1, radius: 'big' }])).toThrow(/rounding/);
+    expect(() =>
+      validateHazards([{ kind: 'icicles', points: L, count: 3, minLength: 0.5, maxLength: 1, seed: 1, radius: 'big' }]),
+    ).toThrow(/rounding/);
   });
 
   it('walks scarabs in along the rounded path', () => {
-    const route = ScarabSystem.route({ kind: 'scarabs', x: 0, y: 0, path: [{ x: 4, y: 0 }, { x: 4, y: 4 }], radius: 1 });
+    const route = ScarabSystem.route({
+      kind: 'scarabs',
+      x: 0,
+      y: 0,
+      path: [
+        { x: 4, y: 0 },
+        { x: 4, y: 4 },
+      ],
+      radius: 1,
+    });
     expect(route).toEqual(roundedPath(L, false, 1));
   });
 
   it('hangs icicles along the rounded line', () => {
-    const area: IcicleAreaDef = { kind: 'icicles', points: [{ x: -4, y: 6 }, { x: 0, y: 8 }, { x: 4, y: 6 }], count: 9, minLength: 1, maxLength: 1, seed: 3 };
+    const area: IcicleAreaDef = {
+      kind: 'icicles',
+      points: [
+        { x: -4, y: 6 },
+        { x: 0, y: 8 },
+        { x: 4, y: 6 },
+      ],
+      count: 9,
+      minLength: 1,
+      maxLength: 1,
+      seed: 3,
+    };
     const sharp = icicleAreaIcicles(area);
     const curved = icicleAreaIcicles({ ...area, radius: 3 });
     // The middle icicle hangs lower under the rounded-off peak.

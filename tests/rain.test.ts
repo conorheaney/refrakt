@@ -24,7 +24,10 @@ it('strikes soon after entering a rainy world, then every 18-38 seconds, with th
   const calls: [number, number][] = [];
   const flashes: number[] = [];
   let now = 0;
-  rain.onThunder = (delay, strength) => { strikes.push(now); calls.push([delay, strength]); };
+  rain.onThunder = (delay, strength) => {
+    strikes.push(now);
+    calls.push([delay, strength]);
+  };
   for (let i = 0; i < 300 / DT; i++) {
     now = (i + 1) * DT;
     rain.update(DT, DT);
@@ -53,7 +56,9 @@ it('never flashes more than three times in any one second', () => {
   const { flashes } = run(rain, 600);
   // A flash starts on a frame where brightness jumps up sharply.
   const starts: number[] = [];
-  flashes.forEach((f, i) => { if (i > 0 && f - flashes[i - 1] > 0.1) starts.push(i * DT); });
+  flashes.forEach((f, i) => {
+    if (i > 0 && f - flashes[i - 1] > 0.1) starts.push(i * DT);
+  });
   expect(starts.length).toBeGreaterThan(15);
   for (let i = 3; i < starts.length; i++) expect(starts[i] - starts[i - 3]).toBeGreaterThan(1);
 });

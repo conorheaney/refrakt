@@ -35,7 +35,7 @@ const SYMBOLS: Readonly<Record<string, BrickKind>> = {
  * is part of its world file; these are only starting points.
  */
 export const BOSS_PRESETS: readonly BossDef[] = [
-{
+  {
     name: 'THE WARDEN',
     hp: 22,
     radius: 1.8,
@@ -48,7 +48,7 @@ export const BOSS_PRESETS: readonly BossDef[] = [
     summonInterval: 0,
     points: 5000,
   },
-{
+  {
     name: 'THE SINGULARITY',
     hp: 38,
     radius: 1.9,
@@ -61,7 +61,7 @@ export const BOSS_PRESETS: readonly BossDef[] = [
     summonInterval: 9,
     points: 15000,
   },
-{
+  {
     name: 'THE ELDER OAK',
     hp: 28,
     radius: 1.8,
@@ -74,7 +74,7 @@ export const BOSS_PRESETS: readonly BossDef[] = [
     summonInterval: 12,
     points: 8000,
   },
-{
+  {
     name: 'HEART OF THE FOREST',
     hp: 44,
     radius: 1.9,
@@ -96,7 +96,9 @@ export function parseLevel(def: LevelDef, index: number): readonly LevelCell[] {
   const cells: LevelCell[] = [];
   def.rows.forEach((line, row) => {
     if (line.length !== GRID.cols) {
-      throw new Error(`Level ${index + 1} "${def.name}" row ${row} must be ${GRID.cols} characters, got ${line.length}`);
+      throw new Error(
+        `Level ${index + 1} "${def.name}" row ${row} must be ${GRID.cols} characters, got ${line.length}`,
+      );
     }
     for (let col = 0; col < line.length; col++) {
       const ch = line[col];

@@ -146,7 +146,16 @@ function scheduleForest({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // Leaf-rustle hats: band-passed noise on the off-beats, rippling 16ths at high intensity.
   if (lvl > 0.32 && pos % 4 === 2) {
-    a.noise({ dur: 0.08, vol: 0.08, filterType: 'bandpass', filter: 6000, endFilter: 4200, pan: 0.3, when: t, bus: 'music' });
+    a.noise({
+      dur: 0.08,
+      vol: 0.08,
+      filterType: 'bandpass',
+      filter: 6000,
+      endFilter: 4200,
+      pan: 0.3,
+      when: t,
+      bus: 'music',
+    });
   } else if (lvl > 0.7 && pos % 2 === 1) {
     a.noise({ dur: 0.035, vol: 0.035, filterType: 'bandpass', filter: 8000, pan: -0.3, when: t, bus: 'music' });
   }
@@ -161,7 +170,15 @@ function scheduleForest({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
   if (lvl > 0.16 && (pos === 0 || pos === 3 || pos === 6 || pos === 10 || pos === 12 || (boss && pos % 2 === 0))) {
     const note = root + (pos === 10 ? 12 : 0);
     a.tone({ freq: semitone(55, note), type: 'sine', dur: stepDur * 1.8, vol: 0.22, when: t, bus: 'music' });
-    a.tone({ freq: semitone(55, note), type: 'triangle', dur: stepDur * 1.4, vol: 0.08, filter: 300 + lvl * 500, when: t, bus: 'music' });
+    a.tone({
+      freq: semitone(55, note),
+      type: 'triangle',
+      dur: stepDur * 1.4,
+      vol: 0.08,
+      filter: 300 + lvl * 500,
+      when: t,
+      bus: 'music',
+    });
   }
 
   // Glassy plucks rippling through the echo: sine plus a quiet octave partial for sparkle.
@@ -176,7 +193,16 @@ function scheduleForest({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // Water droplets: little rising blips scattered on a fixed, irregular pattern.
   if (lvl > 0.3 && (step * 7) % 11 === 3) {
-    a.tone({ freq: 1500 + (step % 5) * 180, endFreq: 2600, dur: 0.06, vol: 0.03, type: 'sine', pan: ((step % 7) - 3) * 0.2, when: t, bus: 'echo' });
+    a.tone({
+      freq: 1500 + (step % 5) * 180,
+      endFreq: 2600,
+      dur: 0.06,
+      vol: 0.03,
+      type: 'sine',
+      pan: ((step % 7) - 3) * 0.2,
+      when: t,
+      bus: 'echo',
+    });
   }
 
   // Counter-melody at high intensity: the chord's top note held over each half bar, an octave up.
@@ -200,16 +226,37 @@ function scheduleForest({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 const JUNGLE_LOW_TOM = new Set([0, 3, 8, 10]);
 const JUNGLE_MID_TOM = new Set([6, 14]);
 /** Marimba on a 3-3-2 rhythm: [step in bar, chord-tone index (3+ climbs an octave)]. */
-const JUNGLE_MARIMBA = new Map<number, number>([[0, 0], [3, 2], [6, 1], [8, 3], [11, 2], [14, 4]]);
+const JUNGLE_MARIMBA = new Map<number, number>([
+  [0, 0],
+  [3, 2],
+  [6, 1],
+  [8, 3],
+  [11, 2],
+  [14, 4],
+]);
 /**
  * Four-bar heroic brass melody over Am - G - F - E: [step 0-63, semitones above A3, length in steps].
  * Climbs through the first three bars and turns on the E chord's G# so the loop pulls back to the start.
  */
 const JUNGLE_MELODY: readonly (readonly [number, number, number])[] = [
-  [0, 7, 3], [3, 12, 3], [6, 10, 2], [8, 12, 6], [14, 15, 2],
-  [16, 14, 6], [22, 12, 2], [24, 10, 4], [28, 7, 4],
-  [32, 8, 3], [35, 12, 3], [38, 15, 2], [40, 17, 6], [46, 15, 2],
-  [48, 14, 6], [54, 11, 2], [56, 8, 4], [60, 11, 4],
+  [0, 7, 3],
+  [3, 12, 3],
+  [6, 10, 2],
+  [8, 12, 6],
+  [14, 15, 2],
+  [16, 14, 6],
+  [22, 12, 2],
+  [24, 10, 4],
+  [28, 7, 4],
+  [32, 8, 3],
+  [35, 12, 3],
+  [38, 15, 2],
+  [40, 17, 6],
+  [46, 15, 2],
+  [48, 14, 6],
+  [54, 11, 2],
+  [56, 8, 4],
+  [60, 11, 4],
 ];
 const JUNGLE_MELODY_AT = new Map(JUNGLE_MELODY.map(([step, note, len]) => [step, { note, len }]));
 
@@ -219,7 +266,10 @@ function jungleTom(a: AudioEngine, t: number, freq: number, vol: number, pan: nu
 }
 
 function brass(a: AudioEngine, t: number, freq: number, dur: number, vol: number, filter: number): void {
-  for (const [detune, pan] of [[0.995, -0.2], [1.005, 0.2]] as const) {
+  for (const [detune, pan] of [
+    [0.995, -0.2],
+    [1.005, 0.2],
+  ] as const) {
     a.tone({ freq: freq * detune, type: 'sawtooth', dur, attack: 0.035, vol, filter, pan, when: t, bus: 'music' });
   }
 }
@@ -265,7 +315,15 @@ function scheduleJungle({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // Shaker: 8ths, then 16ths when things heat up.
   if (lvl > 0.32 && pos % 2 === 0) {
-    a.noise({ dur: 0.05, vol: pos % 4 === 2 ? 0.08 : 0.05, filterType: 'highpass', filter: 6000, pan: 0.35, when: t, bus: 'music' });
+    a.noise({
+      dur: 0.05,
+      vol: pos % 4 === 2 ? 0.08 : 0.05,
+      filterType: 'highpass',
+      filter: 6000,
+      pan: 0.35,
+      when: t,
+      bus: 'music',
+    });
   } else if (lvl > 0.72) {
     a.noise({ dur: 0.03, vol: 0.035, filterType: 'highpass', filter: 7500, pan: 0.35, when: t, bus: 'music' });
   }
@@ -273,7 +331,15 @@ function scheduleJungle({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
   // Bass: plucky, following the toms.
   if (lvl > 0.16 && (JUNGLE_LOW_TOM.has(pos) || pos === 14)) {
     const note = root + (pos === 10 ? 7 : pos === 14 ? 12 : 0);
-    a.tone({ freq: semitone(55, note), type: 'triangle', dur: stepDur * 2.2, vol: 0.26, filter: 400 + lvl * 500, when: t, bus: 'music' });
+    a.tone({
+      freq: semitone(55, note),
+      type: 'triangle',
+      dur: stepDur * 2.2,
+      vol: 0.26,
+      filter: 400 + lvl * 500,
+      when: t,
+      bus: 'music',
+    });
   }
 
   // Marimba: woody triangle with a quick decay plus a faint high partial; 16th fills at high intensity.
@@ -296,7 +362,8 @@ function scheduleJungle({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // Heroic brass lead.
   const phrase = JUNGLE_MELODY_AT.get(step);
-  if (lvl > 0.55 && phrase) brass(a, t, semitone(220, phrase.note), stepDur * phrase.len * 0.92, 0.035, 1500 + lvl * 1300);
+  if (lvl > 0.55 && phrase)
+    brass(a, t, semitone(220, phrase.note), stepDur * phrase.len * 0.92, 0.035, 1500 + lvl * 1300);
 }
 
 // ------------------------------------------------------------------ Crystal: fast music-box electronica
@@ -307,17 +374,40 @@ const CRYSTAL_ARP: readonly number[] = [0, 1, 2, 3, 4, 5, 4, 3, 1, 2, 3, 4, 5, 4
 const CRYSTAL_KICK = new Set([0, 6, 10]);
 /** Bright bell lead at high intensity over Am - C - G - F: [step 0-63, semitones above A4, length in steps]. */
 const CRYSTAL_MELODY: readonly (readonly [number, number, number])[] = [
-  [0, 12, 3], [3, 15, 3], [6, 19, 2], [8, 17, 4], [12, 15, 4],
-  [16, 15, 3], [19, 19, 3], [22, 22, 2], [24, 19, 8],
-  [32, 14, 3], [35, 17, 3], [38, 22, 2], [40, 19, 4], [44, 17, 4],
-  [48, 15, 3], [51, 17, 3], [54, 19, 2], [56, 12, 8],
+  [0, 12, 3],
+  [3, 15, 3],
+  [6, 19, 2],
+  [8, 17, 4],
+  [12, 15, 4],
+  [16, 15, 3],
+  [19, 19, 3],
+  [22, 22, 2],
+  [24, 19, 8],
+  [32, 14, 3],
+  [35, 17, 3],
+  [38, 22, 2],
+  [40, 19, 4],
+  [44, 17, 4],
+  [48, 15, 3],
+  [51, 17, 3],
+  [54, 19, 2],
+  [56, 12, 8],
 ];
 const CRYSTAL_MELODY_AT = new Map(CRYSTAL_MELODY.map(([step, note, len]) => [step, { note, len }]));
 
 /** A small glassy bell: a sine with a faint inharmonic partial, like struck ice or a glockenspiel. */
 function iceBell(a: AudioEngine, t: number, freq: number, vol: number, dur: number, pan: number): void {
   a.tone({ freq, type: 'sine', dur, attack: 0.002, vol, pan, when: t, bus: 'music' });
-  a.tone({ freq: freq * 2.76, type: 'sine', dur: dur * 0.3, attack: 0.002, vol: vol * 0.28, pan, when: t, bus: 'music' });
+  a.tone({
+    freq: freq * 2.76,
+    type: 'sine',
+    dur: dur * 0.3,
+    attack: 0.002,
+    vol: vol * 0.28,
+    pan,
+    when: t,
+    bus: 'music',
+  });
 }
 
 function scheduleCrystal({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
@@ -329,7 +419,16 @@ function scheduleCrystal({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: S
     const bar = stepDur * 16;
     for (let i = 0; i < chord.length; i++) {
       for (const detune of [0.997, 1.003]) {
-        a.tone({ freq: semitone(220, chord[i]) * detune, type: 'sine', dur: bar * 1.05, attack: bar * 0.2, vol: 0.028 + lvl * 0.01, pan: (i - 1) * 0.4 + (detune - 1) * 80, when: t, bus: 'music' });
+        a.tone({
+          freq: semitone(220, chord[i]) * detune,
+          type: 'sine',
+          dur: bar * 1.05,
+          attack: bar * 0.2,
+          vol: 0.028 + lvl * 0.01,
+          pan: (i - 1) * 0.4 + (detune - 1) * 80,
+          when: t,
+          bus: 'music',
+        });
       }
     }
   }
@@ -340,7 +439,16 @@ function scheduleCrystal({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: S
     const note = chord[idx % 3] + 12 * Math.floor(idx / 3);
     const freq = semitone(440, note);
     const pan = Math.sin(step * 0.5) * 0.45;
-    a.tone({ freq, type: 'sine', dur: 0.16, attack: 0.002, vol: pos % 4 === 0 ? 0.06 : 0.042, pan, when: t, bus: 'music' });
+    a.tone({
+      freq,
+      type: 'sine',
+      dur: 0.16,
+      attack: 0.002,
+      vol: pos % 4 === 0 ? 0.06 : 0.042,
+      pan,
+      when: t,
+      bus: 'music',
+    });
     a.tone({ freq: freq * 3, type: 'sine', dur: 0.04, attack: 0.002, vol: 0.01, pan, when: t, bus: 'music' });
   }
 
@@ -368,21 +476,48 @@ function scheduleCrystal({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: S
   // Hats: 8ths, then running 16ths with accented off-beats.
   if (lvl > 0.32 && (pos % 2 === 0 || lvl > 0.62)) {
     const accent = pos % 4 === 2;
-    a.noise({ dur: accent ? 0.045 : 0.025, vol: accent ? 0.08 : 0.04, filterType: 'highpass', filter: 9000, pan: 0.25, when: t, bus: 'music' });
+    a.noise({
+      dur: accent ? 0.045 : 0.025,
+      vol: accent ? 0.08 : 0.04,
+      filterType: 'highpass',
+      filter: 9000,
+      pan: 0.25,
+      when: t,
+      bus: 'music',
+    });
   }
 
   // Bass: pulsing 8ths that bounce between the root and its octave.
   if (lvl > 0.16 && pos % 2 === 0) {
     const note = root + (pos % 4 === 2 ? 12 : 0);
-    a.tone({ freq: semitone(55, note), type: 'triangle', dur: stepDur * 1.5, vol: 0.2, filter: 300 + lvl * 600, when: t, bus: 'music' });
-    if (pos % 4 === 0) a.tone({ freq: semitone(55, root), type: 'sine', dur: stepDur * 1.8, vol: 0.14, when: t, bus: 'music' });
+    a.tone({
+      freq: semitone(55, note),
+      type: 'triangle',
+      dur: stepDur * 1.5,
+      vol: 0.2,
+      filter: 300 + lvl * 600,
+      when: t,
+      bus: 'music',
+    });
+    if (pos % 4 === 0)
+      a.tone({ freq: semitone(55, root), type: 'sine', dur: stepDur * 1.8, vol: 0.14, when: t, bus: 'music' });
   }
 
   // Bright bell lead through the echo at high intensity (bosses keep to the beat and chimes).
   const phrase = CRYSTAL_MELODY_AT.get(step);
   if (!boss && lvl > 0.6 && phrase) {
     const freq = semitone(440, phrase.note);
-    a.tone({ freq, type: 'triangle', dur: stepDur * phrase.len * 0.9, attack: 0.01, vol: 0.045, filter: 3200, pan: 0.1, when: t, bus: 'echo' });
+    a.tone({
+      freq,
+      type: 'triangle',
+      dur: stepDur * phrase.len * 0.9,
+      attack: 0.01,
+      vol: 0.045,
+      filter: 3200,
+      pan: 0.1,
+      when: t,
+      bus: 'echo',
+    });
     a.tone({ freq: freq * 2, type: 'sine', dur: 0.12, attack: 0.002, vol: 0.012, pan: 0.1, when: t, bus: 'echo' });
   }
 }
@@ -402,7 +537,12 @@ const DESERT_TEK = new Set([2, 6, 12]);
 const DESERT_BOSS_DOUM = new Set([0, 2, 8, 10]);
 /** Oud ostinato on a 3-3-2 rhythm: [step in bar, chord-tone index (3+ climbs an octave), ornamented?]. */
 const DESERT_OUD = new Map<number, readonly [number, boolean]>([
-  [0, [0, true]], [3, [1, false]], [6, [2, false]], [8, [3, true]], [11, [2, false]], [14, [1, false]],
+  [0, [0, true]],
+  [3, [1, false]],
+  [6, [2, false]],
+  [8, [3, true]],
+  [11, [2, false]],
+  [14, [1, false]],
 ]);
 /**
  * Four-bar soaring reed melody over Am - Bb - Dm - E: [step 0-63, semitones above A4, length in steps]. It
@@ -410,10 +550,32 @@ const DESERT_OUD = new Map<number, readonly [number, boolean]>([
  * turns on G# over E so the loop pulls back home.
  */
 const DESERT_MELODY: readonly (readonly [number, number, number])[] = [
-  [0, 7, 4], [4, 8, 2], [6, 7, 2], [8, 5, 2], [10, 3, 2], [12, 1, 2], [14, 0, 2],
-  [16, 1, 3], [19, 5, 3], [22, 8, 2], [24, 7, 2], [26, 8, 2], [28, 5, 4],
-  [32, 12, 4], [36, 13, 2], [38, 12, 2], [40, 11, 2], [42, 8, 2], [44, 7, 4],
-  [48, 7, 3], [51, 8, 1], [52, 11, 4], [56, 8, 2], [58, 7, 2], [60, 8, 2], [62, 11, 2],
+  [0, 7, 4],
+  [4, 8, 2],
+  [6, 7, 2],
+  [8, 5, 2],
+  [10, 3, 2],
+  [12, 1, 2],
+  [14, 0, 2],
+  [16, 1, 3],
+  [19, 5, 3],
+  [22, 8, 2],
+  [24, 7, 2],
+  [26, 8, 2],
+  [28, 5, 4],
+  [32, 12, 4],
+  [36, 13, 2],
+  [38, 12, 2],
+  [40, 11, 2],
+  [42, 8, 2],
+  [44, 7, 4],
+  [48, 7, 3],
+  [51, 8, 1],
+  [52, 11, 4],
+  [56, 8, 2],
+  [58, 7, 2],
+  [60, 8, 2],
+  [62, 11, 2],
 ];
 const DESERT_MELODY_AT = new Map(DESERT_MELODY.map(([step, note, len]) => [step, { note, len }]));
 
@@ -445,9 +607,32 @@ function oud(a: AudioEngine, t: number, freq: number, vol: number, pan: number):
 
 /** Reed lead (like a ney or mizmar): scoops up into each note from a little below, then holds it. */
 function reed(a: AudioEngine, t: number, freq: number, dur: number, vol: number, filter: number): void {
-  a.tone({ freq: freq * 0.95, endFreq: freq, type: 'sawtooth', dur: 0.07, attack: 0.03, vol: vol * 0.7, filter, when: t, bus: 'music' });
-  for (const [detune, pan] of [[0.996, -0.15], [1.004, 0.15]] as const) {
-    a.tone({ freq: freq * detune, type: 'sawtooth', dur, attack: 0.06, vol, filter, pan, when: t + 0.05, bus: 'music' });
+  a.tone({
+    freq: freq * 0.95,
+    endFreq: freq,
+    type: 'sawtooth',
+    dur: 0.07,
+    attack: 0.03,
+    vol: vol * 0.7,
+    filter,
+    when: t,
+    bus: 'music',
+  });
+  for (const [detune, pan] of [
+    [0.996, -0.15],
+    [1.004, 0.15],
+  ] as const) {
+    a.tone({
+      freq: freq * detune,
+      type: 'sawtooth',
+      dur,
+      attack: 0.06,
+      vol,
+      filter,
+      pan,
+      when: t + 0.05,
+      bus: 'music',
+    });
   }
   a.tone({ freq, type: 'sine', dur: dur * 1.2, attack: 0.08, vol: vol * 0.5, when: t + 0.05, bus: 'echo' });
 }
@@ -460,12 +645,35 @@ function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // Drone: A and E held under everything, whatever the chord, as in Egyptian music.
   if (pos === 0) {
-    for (const [note, pan] of [[0, -0.3], [7, 0.3]] as const) {
-      a.tone({ freq: semitone(55, note), type: 'sawtooth', dur: bar * 1.05, attack: bar * 0.2, vol: 0.03, filter: 260 + lvl * 220, pan, when: t, bus: 'music' });
+    for (const [note, pan] of [
+      [0, -0.3],
+      [7, 0.3],
+    ] as const) {
+      a.tone({
+        freq: semitone(55, note),
+        type: 'sawtooth',
+        dur: bar * 1.05,
+        attack: bar * 0.2,
+        vol: 0.03,
+        filter: 260 + lvl * 220,
+        pan,
+        when: t,
+        bus: 'music',
+      });
     }
     // Strings: a warm chord swelling under the bar.
     for (let i = 0; i < chord.length; i++) {
-      a.tone({ freq: semitone(220, chord[i]), type: 'sawtooth', dur: bar * 1.05, attack: bar * 0.3, vol: 0.018, filter: 500 + lvl * 800, pan: (i - 1) * 0.45, when: t, bus: 'music' });
+      a.tone({
+        freq: semitone(220, chord[i]),
+        type: 'sawtooth',
+        dur: bar * 1.05,
+        attack: bar * 0.3,
+        vol: 0.018,
+        filter: 500 + lvl * 800,
+        pan: (i - 1) * 0.45,
+        when: t,
+        bus: 'music',
+      });
     }
   }
 
@@ -484,19 +692,37 @@ function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // Riq jingles: a quick double shimmer on the offbeats.
   if (lvl > 0.35 && pos % 4 === 2) {
-    for (const d of [0, 0.03]) a.noise({ dur: 0.05, vol: 0.045, filterType: 'highpass', filter: 7500, pan: -0.35, when: t + d, bus: 'music' });
+    for (const d of [0, 0.03])
+      a.noise({ dur: 0.05, vol: 0.045, filterType: 'highpass', filter: 7500, pan: -0.35, when: t + d, bus: 'music' });
   }
 
   // Bass: plucked on the doum, stepping up to the fifth before the bar turns.
   if (lvl > 0.15 && (DESERT_DOUM.has(pos) || pos === 6 || pos === 14)) {
     const note = root + (pos === 14 ? 7 : pos === 6 ? 12 : 0);
-    a.tone({ freq: semitone(55, note), type: 'triangle', dur: stepDur * 2.2, vol: 0.26, filter: 380 + lvl * 450, when: t, bus: 'music' });
+    a.tone({
+      freq: semitone(55, note),
+      type: 'triangle',
+      dur: stepDur * 2.2,
+      vol: 0.26,
+      filter: 380 + lvl * 450,
+      when: t,
+      bus: 'music',
+    });
   }
 
   // Low strings driving on every beat.
   if (lvl > 0.45 && pos % 4 === 0) {
     for (const detune of [0.997, 1.003]) {
-      a.tone({ freq: semitone(110, root) * detune, type: 'sawtooth', dur: stepDur * 1.6, attack: 0.01, vol: 0.03, filter: 700, when: t, bus: 'music' });
+      a.tone({
+        freq: semitone(110, root) * detune,
+        type: 'sawtooth',
+        dur: stepDur * 1.6,
+        attack: 0.01,
+        vol: 0.03,
+        filter: 700,
+        when: t,
+        bus: 'music',
+      });
     }
   }
 
@@ -522,7 +748,8 @@ function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   if (boss) {
     // War drums and string stabs on the chord instead of the melody.
-    if (lvl > 0.4 && pos % 4 === 0) a.tone({ freq: 62, endFreq: 38, dur: 0.45, vol: 0.4, type: 'sine', when: t, bus: 'music' });
+    if (lvl > 0.4 && pos % 4 === 0)
+      a.tone({ freq: 62, endFreq: 38, dur: 0.45, vol: 0.4, type: 'sine', when: t, bus: 'music' });
     if (lvl > 0.5 && (pos === 0 || pos === 6 || (fillBar && pos === 12))) {
       for (const n of chord) reed(a, t, semitone(220, n), stepDur * 1.4, 0.022, 1300 + lvl * 1000);
     }
@@ -531,16 +758,32 @@ function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // The soaring lead.
   const phrase = DESERT_MELODY_AT.get(step);
-  if (lvl > 0.55 && phrase) reed(a, t, semitone(440, phrase.note), stepDur * phrase.len * 0.95, 0.028, 1700 + lvl * 1100);
+  if (lvl > 0.55 && phrase)
+    reed(a, t, semitone(440, phrase.note), stepDur * phrase.len * 0.95, 0.028, 1700 + lvl * 1100);
 }
 
 const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
   space: {
     tempo: { menu: 104, game: 122, boss: 138 },
     progressions: {
-      menu: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]],
-      game: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]],
-      boss: [[0, 3, 7], [1, 5, 8], [0, 3, 7], [-5, -1, 2]],
+      menu: [
+        [0, 3, 7],
+        [-4, 0, 3],
+        [3, 7, 10],
+        [-2, 2, 5],
+      ],
+      game: [
+        [0, 3, 7],
+        [-4, 0, 3],
+        [3, 7, 10],
+        [-2, 2, 5],
+      ],
+      boss: [
+        [0, 3, 7],
+        [1, 5, 8],
+        [0, 3, 7],
+        [-5, -1, 2],
+      ],
     },
     schedule: scheduleSpace,
   },
@@ -548,11 +791,26 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
     tempo: { menu: 100, game: 120, boss: 134 },
     progressions: {
       // Am - F - Dm - Em: floating and gentle.
-      menu: [[0, 3, 7], [-4, 0, 3], [5, 8, 12], [-5, -2, 2]],
+      menu: [
+        [0, 3, 7],
+        [-4, 0, 3],
+        [5, 8, 12],
+        [-5, -2, 2],
+      ],
       // Am - C - G - D: a bright Dorian lift for play.
-      game: [[0, 3, 7], [3, 7, 10], [-2, 2, 5], [5, 9, 12]],
+      game: [
+        [0, 3, 7],
+        [3, 7, 10],
+        [-2, 2, 5],
+        [5, 9, 12],
+      ],
       // Am - F - Bb - E: darker tension for bosses.
-      boss: [[0, 3, 7], [-4, 0, 3], [1, 5, 8], [-5, -1, 2]],
+      boss: [
+        [0, 3, 7],
+        [-4, 0, 3],
+        [1, 5, 8],
+        [-5, -1, 2],
+      ],
     },
     schedule: scheduleForest,
   },
@@ -560,11 +818,26 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
     tempo: { menu: 96, game: 128, boss: 140 },
     progressions: {
       // Am - F - G - Am: a quest about to begin.
-      menu: [[0, 3, 7], [-4, 0, 3], [-2, 2, 5], [0, 3, 7]],
+      menu: [
+        [0, 3, 7],
+        [-4, 0, 3],
+        [-2, 2, 5],
+        [0, 3, 7],
+      ],
       // Am - G - F - E: the classic adventure descent.
-      game: [[0, 3, 7], [-2, 2, 5], [-4, 0, 3], [-5, -1, 2]],
+      game: [
+        [0, 3, 7],
+        [-2, 2, 5],
+        [-4, 0, 3],
+        [-5, -1, 2],
+      ],
       // Am - Bb - Am - E: menacing half-step stabs.
-      boss: [[0, 3, 7], [1, 5, 8], [0, 3, 7], [-5, -1, 2]],
+      boss: [
+        [0, 3, 7],
+        [1, 5, 8],
+        [0, 3, 7],
+        [-5, -1, 2],
+      ],
     },
     schedule: scheduleJungle,
   },
@@ -572,11 +845,26 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
     tempo: { menu: 108, game: 132, boss: 146 },
     progressions: {
       // Am - Em - F - C: bright and open.
-      menu: [[0, 3, 7], [-5, -2, 2], [-4, 0, 3], [3, 7, 10]],
+      menu: [
+        [0, 3, 7],
+        [-5, -2, 2],
+        [-4, 0, 3],
+        [3, 7, 10],
+      ],
       // Am - C - G - F: a quick, glittering climb and fall.
-      game: [[0, 3, 7], [3, 7, 10], [-2, 2, 5], [-4, 0, 3]],
+      game: [
+        [0, 3, 7],
+        [3, 7, 10],
+        [-2, 2, 5],
+        [-4, 0, 3],
+      ],
       // Am - F - Bb - E: urgent half-step tension.
-      boss: [[0, 3, 7], [-4, 0, 3], [1, 5, 8], [-5, -1, 2]],
+      boss: [
+        [0, 3, 7],
+        [-4, 0, 3],
+        [1, 5, 8],
+        [-5, -1, 2],
+      ],
     },
     schedule: scheduleCrystal,
   },
@@ -584,11 +872,26 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
     tempo: { menu: 92, game: 124, boss: 140 },
     progressions: {
       // Am - Dm - Bb - E: mysterious, the flattened second hanging over the menu.
-      menu: [[0, 3, 7], [5, 8, 12], [1, 5, 8], [-5, -1, 2]],
+      menu: [
+        [0, 3, 7],
+        [5, 8, 12],
+        [1, 5, 8],
+        [-5, -1, 2],
+      ],
       // Am - Bb - Dm - E: the half-step lift and the pull home through E.
-      game: [[0, 3, 7], [1, 5, 8], [5, 8, 12], [-5, -1, 2]],
+      game: [
+        [0, 3, 7],
+        [1, 5, 8],
+        [5, 8, 12],
+        [-5, -1, 2],
+      ],
       // Am - Bb - F - E: the descent to the E, pounding.
-      boss: [[0, 3, 7], [1, 5, 8], [-4, 0, 3], [-5, -1, 2]],
+      boss: [
+        [0, 3, 7],
+        [1, 5, 8],
+        [-4, 0, 3],
+        [-5, -1, 2],
+      ],
     },
     schedule: scheduleDesert,
   },

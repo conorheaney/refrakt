@@ -119,7 +119,13 @@ export class RefraktFx {
 
     for (let i = 0; i < BALL.capacity; i++) {
       const sprite = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: glow, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false }),
+        new THREE.SpriteMaterial({
+          map: glow,
+          blending: THREE.AdditiveBlending,
+          transparent: true,
+          depthWrite: false,
+          toneMapped: false,
+        }),
       );
       sprite.visible = false;
       sprite.renderOrder = 9;
@@ -134,7 +140,17 @@ export class RefraktFx {
     const n = 44;
     for (let i = 0; i < n; i++) {
       const long = i % 2 === 0;
-      this.addRay(x, y, (i / n) * Math.PI * 2 + Math.random() * 0.04, 0.35, (long ? 9 : 5) + Math.random() * 5, 0.35 + Math.random() * 0.35, this.c.setHSL(i / n, 1, 0.6).multiplyScalar(2.4), 1 + Math.random() * 0.3, Math.random() * 0.06);
+      this.addRay(
+        x,
+        y,
+        (i / n) * Math.PI * 2 + Math.random() * 0.04,
+        0.35,
+        (long ? 9 : 5) + Math.random() * 5,
+        0.35 + Math.random() * 0.35,
+        this.c.setHSL(i / n, 1, 0.6).multiplyScalar(2.4),
+        1 + Math.random() * 0.3,
+        Math.random() * 0.06,
+      );
     }
     // A cascade of rings, red outermost to violet, chasing each other out.
     for (let i = 0; i < 7; i++) this.later(i * 0.05, x, y, i / 7, 3 + i * 1.3, 0.7 + i * 0.04);
@@ -154,11 +170,31 @@ export class RefraktFx {
     for (let i = 0; i < fan; i++) {
       const k = i / (fan - 1);
       const a = base + (k - 0.5) * 1.1 + (Math.random() - 0.5) * 0.08;
-      this.addRay(x, y, a, 0, 2.8 + Math.random() * 2.2, 0.28 + Math.random() * 0.12, this.c.setHSL(k * 0.82, 1, 0.6).multiplyScalar(2), 0.42 + Math.random() * 0.15, 0);
+      this.addRay(
+        x,
+        y,
+        a,
+        0,
+        2.8 + Math.random() * 2.2,
+        0.28 + Math.random() * 0.12,
+        this.c.setHSL(k * 0.82, 1, 0.6).multiplyScalar(2),
+        0.42 + Math.random() * 0.15,
+        0,
+      );
     }
     // The fan points along the ball's travel; a faint back-spray keeps it from reading as a cone.
     for (let i = 0; i < 4; i++) {
-      this.addRay(x, y, base + Math.PI + (Math.random() - 0.5) * 2, 0, 1.2 + Math.random(), 0.2, this.c.setHSL(Math.random(), 1, 0.6).multiplyScalar(1.4), 0.3, 0);
+      this.addRay(
+        x,
+        y,
+        base + Math.PI + (Math.random() - 0.5) * 2,
+        0,
+        1.2 + Math.random(),
+        0.2,
+        this.c.setHSL(Math.random(), 1, 0.6).multiplyScalar(1.4),
+        0.3,
+        0,
+      );
     }
     this.later(0, x, y, this.hue, 2.2, 0.38);
     this.later(0.05, x, y, (this.hue + 0.5) % 1, 3, 0.45);
@@ -176,7 +212,17 @@ export class RefraktFx {
     for (const ball of balls) {
       if (!ball.active) continue;
       for (let i = 0; i < 12; i++) {
-        this.addRay(ball.x, ball.y, (i / 12) * Math.PI * 2, -0.6, 2.5 + Math.random() * 1.5, 0.2, this.c.setHSL(i / 12, 1, 0.6).multiplyScalar(1.5), 0.7, 0);
+        this.addRay(
+          ball.x,
+          ball.y,
+          (i / 12) * Math.PI * 2,
+          -0.6,
+          2.5 + Math.random() * 1.5,
+          0.2,
+          this.c.setHSL(i / 12, 1, 0.6).multiplyScalar(1.5),
+          0.7,
+          0,
+        );
       }
       this.later(0, ball.x, ball.y, this.hue, 2.4, 0.6);
     }
@@ -186,7 +232,13 @@ export class RefraktFx {
    * @param active whether Refrakt is on
    * @param ballPos interpolated position of ball i, or null when that ball is not in play
    */
-  update(simDt: number, realDt: number, active: boolean, hue: number, ballPos: (i: number) => THREE.Vector3 | null): void {
+  update(
+    simDt: number,
+    realDt: number,
+    active: boolean,
+    hue: number,
+    ballPos: (i: number) => THREE.Vector3 | null,
+  ): void {
     this.clock += simDt;
     this.hue = hue;
     this.aura += ((active ? 1 : 0) - this.aura) * Math.min(1, realDt * (active ? 5 : 3));
@@ -259,7 +311,17 @@ export class RefraktFx {
     for (const halo of this.halos) halo.visible = false;
   }
 
-  private write(i: number, x: number, y: number, angle: number, length: number, width: number, color: THREE.Color, gain: number, z = RAY_Z): void {
+  private write(
+    i: number,
+    x: number,
+    y: number,
+    angle: number,
+    length: number,
+    width: number,
+    color: THREE.Color,
+    gain: number,
+    z = RAY_Z,
+  ): void {
     this.p.set(x, y, z);
     this.q.setFromAxisAngle(this.zAxis, angle);
     this.s.set(Math.max(0.001, length), Math.max(0.001, width), 1);
@@ -269,7 +331,17 @@ export class RefraktFx {
     colors.setXYZ(i, color.r * gain, color.g * gain, color.b * gain);
   }
 
-  private addRay(x: number, y: number, angle: number, spin: number, length: number, width: number, color: THREE.Color, life: number, delay: number): void {
+  private addRay(
+    x: number,
+    y: number,
+    angle: number,
+    spin: number,
+    length: number,
+    width: number,
+    color: THREE.Color,
+    life: number,
+    delay: number,
+  ): void {
     if (this.rays.length >= RAY_CAPACITY) this.rays.shift();
     this.rays.push({ x, y, angle, spin, length, width, color: color.clone(), age: 0, life, delay });
   }

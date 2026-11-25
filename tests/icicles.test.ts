@@ -5,7 +5,13 @@ import { validateWorld } from '../src/content/authoredWorlds';
 import { EventBus } from '../src/engine/core/EventBus';
 import { Random } from '../src/engine/core/Random';
 import type { GameEvents } from '../src/gameplay/events';
-import { icicleAreaIcicles, validateHazards, worldIcicles, type HazardDef, type IcicleAreaDef } from '../src/gameplay/hazards/hazards';
+import {
+  icicleAreaIcicles,
+  validateHazards,
+  worldIcicles,
+  type HazardDef,
+  type IcicleAreaDef,
+} from '../src/gameplay/hazards/hazards';
 import { IcicleSystem } from '../src/gameplay/hazards/icicles/icicles';
 import type { Ball, Paddle } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
@@ -18,14 +24,29 @@ const CEILING: HazardDef[] = [
 ];
 
 function paddleAt(x: number): Paddle {
-  return { x, px: x, y: PADDLE.y, width: PADDLE.width, vx: 0, stun: 0, shove: 0, tilt: 0, slide: 0, lean: 0, hitTime: -10 };
+  return {
+    x,
+    px: x,
+    y: PADDLE.y,
+    width: PADDLE.width,
+    vx: 0,
+    stun: 0,
+    shove: 0,
+    tilt: 0,
+    slide: 0,
+    lean: 0,
+    hitTime: -10,
+  };
 }
 
 function ballAt(x: number, y: number): Ball {
   return { active: true, x, y, px: x, py: y, dx: 0, dy: 1, stuck: false, stuckOffset: 0, stuckTime: 0 } as Ball;
 }
 
-function setup(): { sys: IcicleSystem; log: { warn: number[]; struck: number[]; shatter: { x: number; byBall: boolean }[] } } {
+function setup(): {
+  sys: IcicleSystem;
+  log: { warn: number[]; struck: number[]; shatter: { x: number; byBall: boolean }[] };
+} {
   const events = new EventBus<GameEvents>();
   const log = { warn: [] as number[], struck: [] as number[], shatter: [] as { x: number; byBall: boolean }[] };
   events.on('icicleWarn', ({ x }) => log.warn.push(x));
@@ -37,7 +58,13 @@ function setup(): { sys: IcicleSystem; log: { warn: number[]; struck: number[]; 
 }
 
 /** Runs the system; `move` can steer the paddle each step. Returns points scored. */
-function run(sys: IcicleSystem, paddle: Paddle, seconds: number, balls: Ball[] = [], move?: (p: Paddle) => void): number {
+function run(
+  sys: IcicleSystem,
+  paddle: Paddle,
+  seconds: number,
+  balls: Ball[] = [],
+  move?: (p: Paddle) => void,
+): number {
   let points = 0;
   for (let t = 0; t < seconds; t += SIM.step) {
     move?.(paddle);
@@ -70,7 +97,9 @@ describe('falling icicles', () => {
     const paddle = paddleAt(0);
     run(sys, paddle, FIRST);
     expect(log.warn).toEqual([0]);
-    run(sys, paddle, DROP, [], (p) => { p.x = -11; });
+    run(sys, paddle, DROP, [], (p) => {
+      p.x = -11;
+    });
     expect(log.struck).toHaveLength(0);
     expect(log.shatter).toContainEqual({ x: 0, byBall: false });
     expect(paddle.tilt).toBe(0);
@@ -153,7 +182,18 @@ describe('icicles in a world', () => {
   });
 
   it('spreads the icicles of an area along its line, the same way every time', () => {
-    const area: IcicleAreaDef = { kind: 'icicles', points: [{ x: -10, y: 9 }, { x: 0, y: 9.4 }, { x: 10, y: 9 }], count: 6, minLength: 1, maxLength: 1.6, seed: 4 };
+    const area: IcicleAreaDef = {
+      kind: 'icicles',
+      points: [
+        { x: -10, y: 9 },
+        { x: 0, y: 9.4 },
+        { x: 10, y: 9 },
+      ],
+      count: 6,
+      minLength: 1,
+      maxLength: 1.6,
+      seed: 4,
+    };
     const icicles = icicleAreaIcicles(area);
     expect(icicles).toHaveLength(6);
     const xs = icicles.map((c) => c.x);
@@ -182,14 +222,26 @@ describe('icicles in a world', () => {
   });
 
   it('rejects malformed icicle areas', () => {
-    const area = { kind: 'icicles', points: [{ x: -5, y: 9 }, { x: 5, y: 9 }], count: 4, minLength: 1, maxLength: 1.5, seed: 1 };
+    const area = {
+      kind: 'icicles',
+      points: [
+        { x: -5, y: 9 },
+        { x: 5, y: 9 },
+      ],
+      count: 4,
+      minLength: 1,
+      maxLength: 1.5,
+      seed: 1,
+    };
     expect(validateHazards([area])).toHaveLength(1);
     expect(() => validateHazards([{ ...area, points: [{ x: 0, y: 9 }] }])).toThrow('2-8 points');
     expect(() => validateHazards([{ ...area, count: 0 }])).toThrow('1-16 icicles');
     expect(() => validateHazards([{ ...area, maxLength: 9 }])).toThrow('invalid maxLength');
     expect(validateHazards([{ ...area, positions: [0, 0.2, 0.5, 1] }])).toHaveLength(1);
     expect(() => validateHazards([{ ...area, positions: [0.1, 0.2] }])).toThrow('one number from 0 to 1 per icicle');
-    expect(() => validateHazards([{ ...area, positions: [0, 0.2, 0.5, 1.2] }])).toThrow('one number from 0 to 1 per icicle');
+    expect(() => validateHazards([{ ...area, positions: [0, 0.2, 0.5, 1.2] }])).toThrow(
+      'one number from 0 to 1 per icicle',
+    );
   });
 
   it('rejects malformed icicles', () => {

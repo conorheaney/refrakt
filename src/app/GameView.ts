@@ -22,7 +22,11 @@ import {
   ShotsView,
 } from '../gameplay/entities/EntityViews';
 import { Environment } from '../themes/scenery/Environment';
-import { createForgeArmorGeometry, createForgeExplosiveGeometry, createForgePrototypeMaterials } from '../themes/blocks/forge/forgeBlocks';
+import {
+  createForgeArmorGeometry,
+  createForgeExplosiveGeometry,
+  createForgePrototypeMaterials,
+} from '../themes/blocks/forge/forgeBlocks';
 import type { ForestAssets } from '../themes/scenery/forest/assets';
 import { ParticleSystem } from '../engine/render/ParticleSystem';
 import { RainLayer } from '../themes/weather/rain/RainLayer';
@@ -162,7 +166,7 @@ export class GameView {
     return this.refrakt;
   }
 
-    /** Called on each lightning strike in a rainy world, for the thunder (see RainLayer.onThunder). */
+  /** Called on each lightning strike in a rainy world, for the thunder (see RainLayer.onThunder). */
   set onThunder(fn: (delay: number, strength: number) => void) {
     this.rain.onThunder = fn;
   }
@@ -234,14 +238,42 @@ export class GameView {
         const count = Math.floor(22 * dt + Math.random());
         const mid = c.def.y - c.drop - c.def.length * 0.5;
         for (let n = 0; n < count; n++) {
-          p.emit(c.def.x + (Math.random() - 0.5) * 0.35, mid + (Math.random() - 0.5) * c.def.length, 0.6, (Math.random() - 0.5) * 0.3, 0.4 + Math.random() * 0.4, 0, 0.6, 0.72, 0.82, 0.05 + Math.random() * 0.05, 0.3 + Math.random() * 0.25, 2, 0);
+          p.emit(
+            c.def.x + (Math.random() - 0.5) * 0.35,
+            mid + (Math.random() - 0.5) * c.def.length,
+            0.6,
+            (Math.random() - 0.5) * 0.3,
+            0.4 + Math.random() * 0.4,
+            0,
+            0.6,
+            0.72,
+            0.82,
+            0.05 + Math.random() * 0.05,
+            0.3 + Math.random() * 0.25,
+            2,
+            0,
+          );
         }
         continue;
       }
       if (c.state !== 'warn') continue;
       const count = Math.floor(28 * dt + Math.random());
       for (let n = 0; n < count; n++) {
-        p.emit(c.def.x + (Math.random() - 0.5) * 0.5, c.def.y - 0.1, 0.6, (Math.random() - 0.5) * 0.4, -0.5 - Math.random(), 0, 0.5, 0.56, 0.62, 0.1 + Math.random() * 0.08, 0.6 + Math.random() * 0.4, 0.5, 2);
+        p.emit(
+          c.def.x + (Math.random() - 0.5) * 0.5,
+          c.def.y - 0.1,
+          0.6,
+          (Math.random() - 0.5) * 0.4,
+          -0.5 - Math.random(),
+          0,
+          0.5,
+          0.56,
+          0.62,
+          0.1 + Math.random() * 0.08,
+          0.6 + Math.random() * 0.4,
+          0.5,
+          2,
+        );
       }
     }
   }
@@ -259,7 +291,10 @@ export class GameView {
       const d = Math.hypot(ball.x - brick.x, ball.y - brick.y);
       if (d < best && d < this.world.grid.cellW * 1.5) {
         best = d;
-        out.set(clamp(ball.x, brick.x - this.world.grid.halfW, brick.x + this.world.grid.halfW), clamp(ball.y, brick.y - this.world.grid.halfH, brick.y + this.world.grid.halfH));
+        out.set(
+          clamp(ball.x, brick.x - this.world.grid.halfW, brick.x + this.world.grid.halfW),
+          clamp(ball.y, brick.y - this.world.grid.halfH, brick.y + this.world.grid.halfH),
+        );
       }
     }
     return out;
@@ -302,8 +337,15 @@ export class GameView {
       // Collision guides are opt-in diagnostics. The editor owns its editable SVG guides separately.
       if (DEBUG_ARENA) {
         this.backdropOutline = new THREE.Group();
-        const points = areaSegments(area, area.drainEdge).filter((segment) => !segment.drain).flatMap(({ a, b }) => [new THREE.Vector3(a.x, a.y, 0), new THREE.Vector3(b.x, b.y, 0)]);
-        this.backdropOutline.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0xb1e5ed, transparent: true, opacity: 0.55 })));
+        const points = areaSegments(area, area.drainEdge)
+          .filter((segment) => !segment.drain)
+          .flatMap(({ a, b }) => [new THREE.Vector3(a.x, a.y, 0), new THREE.Vector3(b.x, b.y, 0)]);
+        this.backdropOutline.add(
+          new THREE.LineSegments(
+            new THREE.BufferGeometry().setFromPoints(points),
+            new THREE.LineBasicMaterial({ color: 0xb1e5ed, transparent: true, opacity: 0.55 }),
+          ),
+        );
         this.scene.add(this.backdropOutline);
       }
       this.env.setTheme(campaign.level(index).hue, boss, changed);
@@ -331,13 +373,28 @@ export class GameView {
       let pushX = 0;
       let pushY = 0;
       for (const ball of world.balls.items) {
-        if (ball.active && Math.abs(ball.x - brick.x) < world.grid.cellW * 1.5 && Math.abs(ball.y - brick.y) < world.grid.cellH * 2) {
+        if (
+          ball.active &&
+          Math.abs(ball.x - brick.x) < world.grid.cellW * 1.5 &&
+          Math.abs(ball.y - brick.y) < world.grid.cellH * 2
+        ) {
           pushX = -ball.dx;
           pushY = -ball.dy;
           break;
         }
       }
-      this.debris.spawn(brick.x, brick.y, tmp, chained ? 3 : 6, chained ? 5 : 4.5, world.grid.halfW * 0.8, world.grid.halfH * 0.7, pushX, pushY, 1.1);
+      this.debris.spawn(
+        brick.x,
+        brick.y,
+        tmp,
+        chained ? 3 : 6,
+        chained ? 5 : 4.5,
+        world.grid.halfW * 0.8,
+        world.grid.halfH * 0.7,
+        pushX,
+        pushY,
+        1.1,
+      );
       p.burst(brick.x, brick.y, tmp, chained ? 4 : 6, 5, 0.3, 0.45, 0.8);
       if (!chained) {
         this.flashes.spawn(at.x, at.y, 2, 0.4, 0.4);
@@ -381,7 +438,7 @@ export class GameView {
       if (!cut) this.refrakt.end(world.balls.items);
     });
 
-        ev.on('ballsSplit', ({ x, y }) => {
+    ev.on('ballsSplit', ({ x, y }) => {
       this.shockwaves.spawn(x, y, this.white, 1.8, 0.5);
       p.burst(x, y, tmp.setHSL(0.6, 0.6, 0.65), 8, 7, 0.35, 0.5, 0.9);
     });
@@ -419,7 +476,7 @@ export class GameView {
       // The spent strand sheds sparks along its length as it drains.
       const left = world.shieldLeft;
       const span = world.shieldRight - left;
-      for (let i = 0; i < 8; i++) p.sparks(left + span * (i + 0.5) / 8, world.shieldY, 0, 1, tmp, 2, 3);
+      for (let i = 0; i < 8; i++) p.sparks(left + (span * (i + 0.5)) / 8, world.shieldY, 0, 1, tmp, 2, 3);
     });
 
     ev.on('laserHit', ({ x, y }) => {
@@ -474,12 +531,40 @@ export class GameView {
       p.sparks(x, root, 1, -0.15, this.iceBlue, 5, 6);
       for (let n = 0; n < 14; n++) {
         // Bright glints that hang in the air a moment.
-        p.emit(x + (Math.random() - 0.5) * 0.5, root + (Math.random() - 0.5) * 0.2, 0.7, (Math.random() - 0.5) * 3, Math.random() * 1.5 - 0.5, 0, 0.9, 1, 1.1, 0.06 + Math.random() * 0.06, 0.4 + Math.random() * 0.4, 2.5, 3);
+        p.emit(
+          x + (Math.random() - 0.5) * 0.5,
+          root + (Math.random() - 0.5) * 0.2,
+          0.7,
+          (Math.random() - 0.5) * 3,
+          Math.random() * 1.5 - 0.5,
+          0,
+          0.9,
+          1,
+          1.1,
+          0.06 + Math.random() * 0.06,
+          0.4 + Math.random() * 0.4,
+          2.5,
+          3,
+        );
       }
       for (let n = 0; n < 30; n++) {
         // Powder snow spilling from the lintel and drifting down.
         const spread = (Math.random() - 0.5) * 1.4;
-        p.emit(x + spread, y + Math.random() * 0.1, 0.55, spread * 1.2, -0.2 - Math.random() * 1.4, 0, 0.55, 0.6, 0.66, 0.1 + Math.random() * 0.14, 0.7 + Math.random() * 0.6, 1.2, 1.5);
+        p.emit(
+          x + spread,
+          y + Math.random() * 0.1,
+          0.55,
+          spread * 1.2,
+          -0.2 - Math.random() * 1.4,
+          0,
+          0.55,
+          0.6,
+          0.66,
+          0.1 + Math.random() * 0.14,
+          0.7 + Math.random() * 0.6,
+          1.2,
+          1.5,
+        );
       }
       this.impact(0.04);
     });
@@ -494,7 +579,21 @@ export class GameView {
     const sandPuff = (x: number, y: number, count: number, up: number): void => {
       const c = ScarabView.sand;
       for (let n = 0; n < count; n++) {
-        p.emit(x + (Math.random() - 0.5) * 0.5, y + Math.random() * 0.1, SCARAB_Z, (Math.random() - 0.5) * 2.4, up * (0.4 + Math.random()), 0, c.r, c.g, c.b, 0.07 + Math.random() * 0.08, 0.4 + Math.random() * 0.4, 2, 4);
+        p.emit(
+          x + (Math.random() - 0.5) * 0.5,
+          y + Math.random() * 0.1,
+          SCARAB_Z,
+          (Math.random() - 0.5) * 2.4,
+          up * (0.4 + Math.random()),
+          0,
+          c.r,
+          c.g,
+          c.b,
+          0.07 + Math.random() * 0.08,
+          0.4 + Math.random() * 0.4,
+          2,
+          4,
+        );
       }
     };
     ev.on('tombGate', ({ duration }) => this.dust.storm(duration));
@@ -506,7 +605,15 @@ export class GameView {
       // hanging in the air before it thins away, finer grit flung higher through it, and a few shell chips.
       const red = ScarabView.redDust;
       const brown = ScarabView.brownDust;
-      const cloud = (count: number, size: number, speed: number, lift: number, life: number, browner: number, gravity: number): void => {
+      const cloud = (
+        count: number,
+        size: number,
+        speed: number,
+        lift: number,
+        life: number,
+        browner: number,
+        gravity: number,
+      ): void => {
         for (let n = 0; n < count; n++) {
           // Out in every direction across the play plane, mostly sideways and up (the paddle is under it).
           const a = Math.PI * (0.05 + 0.9 * Math.random());
@@ -638,7 +745,12 @@ export class GameView {
     this.env.setLightning(this.rain.flash);
     this.snow.update(realDt);
     if (this.snow.active) this.onSnowFrame(realDt, simDt, this.snow.gust);
-    this.dust.setStirrers(this.balls.hasFocus ? { x: this.balls.focusX, y: this.balls.focusY } : null, paddleX, world.paddle.y, world.paddle.width / 2);
+    this.dust.setStirrers(
+      this.balls.hasFocus ? { x: this.balls.focusX, y: this.balls.focusY } : null,
+      paddleX,
+      world.paddle.y,
+      world.paddle.width / 2,
+    );
     this.dust.update(realDt, simDt);
     const dusty = this.dust.active;
     this.env.setTorches(dusty ? this.dust.torches.x : 0, dusty ? this.dust.torches.y : 0, this.dust.flare);

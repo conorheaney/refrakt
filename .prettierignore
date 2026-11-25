@@ -1,0 +1,15 @@
+# Prettier formats the code (TypeScript and JavaScript). Everything else here is generated or prose.
+node_modules/
+dist/
+.tmp/
+world-backups/
+exports/
+public/
+reviews/
+*.md
+*.json
+*.html
+*.css
+*.py
+# Written by tools/trace_arch_outline.py
+src/content/outlines/

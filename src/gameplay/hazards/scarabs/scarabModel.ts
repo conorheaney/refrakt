@@ -44,7 +44,9 @@ function splitAlongSeam(geo: THREE.BufferGeometry): [THREE.BufferGeometry, THREE
       const src = flat.attributes[name] as THREE.BufferAttribute;
       const out = new Float32Array(keep.length * 3 * src.itemSize);
       let o = 0;
-      for (const t of keep) for (let v = 0; v < 3; v++) for (let c = 0; c < src.itemSize; c++) out[o++] = src.array[(t + v) * src.itemSize + c];
+      for (const t of keep)
+        for (let v = 0; v < 3; v++)
+          for (let c = 0; c < src.itemSize; c++) out[o++] = src.array[(t + v) * src.itemSize + c];
       half.setAttribute(name, new THREE.BufferAttribute(out, src.itemSize));
     }
     half.translate(-ELYTRON_HINGE.x, -ELYTRON_HINGE.y, -ELYTRON_HINGE.z);
@@ -171,7 +173,10 @@ const smoothstep = (a: number, b: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-function canvasLayer(w: number, h: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; img: ImageData } {
+function canvasLayer(
+  w: number,
+  h: number,
+): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; img: ImageData } {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -244,7 +249,8 @@ function createShellTextures(): { map: THREE.CanvasTexture; bump: THREE.CanvasTe
       const cloud = noise(u, v, 8) * 0.6 + noise(u, v, 23) * 0.4;
       const depth = 0.55 + 0.27 * (1 - smoothstep(0.1, RIM, theta)) + 0.25 * cloud;
       // Faint grooves running the length of each wing case (from the side they follow the shell's curve).
-      const stria = theta < RIM - 0.03 ? Math.pow(Math.abs(Math.cos(theta * Math.PI * 14)), 24) * smoothstep(0.12, 0.25, theta) : 0;
+      const stria =
+        theta < RIM - 0.03 ? Math.pow(Math.abs(Math.cos(theta * Math.PI * 14)), 24) * smoothstep(0.12, 0.25, theta) : 0;
       const pit = stria * 0.25;
       let r = 150 * depth - 30 * pit;
       let g = 10 * depth + 6 * cloud;
@@ -446,7 +452,12 @@ export function createScarabMaterials(): ScarabMaterials {
       clearcoatRoughness: 0.18,
       envMapIntensity: 0.8,
     }),
-    shadow: new THREE.MeshBasicMaterial({ map: createShadowTexture(), transparent: true, depthWrite: false, color: 0x000000 }),
+    shadow: new THREE.MeshBasicMaterial({
+      map: createShadowTexture(),
+      transparent: true,
+      depthWrite: false,
+      color: 0x000000,
+    }),
     // Thin film: translucent, with a faint rainbow sheen as it catches the light.
     wing: new THREE.MeshPhysicalMaterial({
       map: createWingTexture(),

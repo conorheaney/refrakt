@@ -96,7 +96,14 @@ function createStreakTexture(): THREE.CanvasTexture {
     g.lineWidth = 0.8 + rand() * 2.2;
     g.beginPath();
     g.moveTo(x, h - top);
-    g.bezierCurveTo(x + (rand() - 0.5) * 4, h - top - len / 3, x + (rand() - 0.5) * 4, h - top - (2 * len) / 3, x + (rand() - 0.5) * 3, h - top - len);
+    g.bezierCurveTo(
+      x + (rand() - 0.5) * 4,
+      h - top - len / 3,
+      x + (rand() - 0.5) * 4,
+      h - top - (2 * len) / 3,
+      x + (rand() - 0.5) * 3,
+      h - top - len,
+    );
     g.stroke();
   }
   const texture = new THREE.CanvasTexture(canvas);
@@ -177,7 +184,14 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
-function iceMaterial(runs: THREE.Texture, length: number, back: boolean, deep: THREE.Color, pale: THREE.Color, streak: number): THREE.ShaderMaterial {
+function iceMaterial(
+  runs: THREE.Texture,
+  length: number,
+  back: boolean,
+  deep: THREE.Color,
+  pale: THREE.Color,
+  streak: number,
+): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
@@ -216,7 +230,10 @@ class IcicleMesh {
     // Built ROOT_TUCK longer, so the tip still sits where the simulation puts it.
     const length = def.length + ROOT_TUCK;
     this.geometry = spikeGeometry(length, rand);
-    this.materials = [iceMaterial(runs, length, true, deep, pale, streak), iceMaterial(runs, length, false, deep, pale, streak)];
+    this.materials = [
+      iceMaterial(runs, length, true, deep, pale, streak),
+      iceMaterial(runs, length, false, deep, pale, streak),
+    ];
     const inside = new THREE.Mesh(this.geometry, this.materials[0]);
     const outside = new THREE.Mesh(this.geometry, this.materials[1]);
     inside.renderOrder = 9;

@@ -19,7 +19,19 @@ const LEFT: ScarabNestDef = { kind: 'scarabs', x: -16, y: -9.2 };
 const RIGHT: ScarabNestDef = { kind: 'scarabs', x: 16, y: -9.2 };
 
 function paddleAt(x: number): Paddle {
-  return { x, px: x, y: PADDLE.y, width: PADDLE.width, vx: 0, stun: 0, shove: 0, tilt: 0, slide: 0, lean: 0, hitTime: -10 };
+  return {
+    x,
+    px: x,
+    y: PADDLE.y,
+    width: PADDLE.width,
+    vx: 0,
+    stun: 0,
+    shove: 0,
+    tilt: 0,
+    slide: 0,
+    lean: 0,
+    hitTime: -10,
+  };
 }
 
 function ball(x: number, y: number): Ball {
@@ -29,7 +41,18 @@ function ball(x: number, y: number): Ball {
 function setup(defs: ScarabNestDef[] = [LEFT], difficulty = 0) {
   const events = new EventBus<GameEvents>();
   const log: string[] = [];
-  for (const name of ['scarabWarn', 'scarabEmerge', 'scarabCling', 'scarabCrushed', 'scarabScared', 'scarabLeap', 'scarabLand', 'scarabBump', 'scarabSwatted'] as const) events.on(name, () => log.push(name));
+  for (const name of [
+    'scarabWarn',
+    'scarabEmerge',
+    'scarabCling',
+    'scarabCrushed',
+    'scarabScared',
+    'scarabLeap',
+    'scarabLand',
+    'scarabBump',
+    'scarabSwatted',
+  ] as const)
+    events.on(name, () => log.push(name));
   const sys = new ScarabSystem(new Random(5), events);
   sys.load(defs, difficulty, ARENA);
   return { sys, log };
@@ -95,7 +118,8 @@ describe('scarab nests', () => {
     // Clinging ones ride along with the paddle.
     paddle.x = -5;
     run(sys, paddle, SIM.step);
-    for (const s of sys.items) if (s.active && s.state === 'cling') expect(Math.abs(s.x - paddle.x)).toBeLessThanOrEqual(paddle.width / 2);
+    for (const s of sys.items)
+      if (s.active && s.state === 'cling') expect(Math.abs(s.x - paddle.x)).toBeLessThanOrEqual(paddle.width / 2);
   });
 
   it('never has more clinging than the cap', () => {
@@ -127,7 +151,15 @@ describe('scarab nests', () => {
   it('brought too close on the floor, springs up onto the paddle rather than being run into', () => {
     const { sys, log } = setup();
     const paddle = paddleAt(6);
-    const s = Object.assign(sys.items[0], { active: true, state: 'crawl', x: 0, y: paddle.y - PADDLE.halfH, rest: 99, leapAt: 0, speed: SCARAB.speed[0] });
+    const s = Object.assign(sys.items[0], {
+      active: true,
+      state: 'crawl',
+      x: 0,
+      y: paddle.y - PADDLE.halfH,
+      rest: 99,
+      leapAt: 0,
+      speed: SCARAB.speed[0],
+    });
     // The paddle sweeps in at it.
     let sprang = false;
     for (let t = 0; t < 2 && s.state !== 'cling'; t += SIM.step) {
@@ -135,7 +167,8 @@ describe('scarab nests', () => {
       paddle.x += paddle.vx * SIM.step;
       sys.update(SIM.step, paddle, [], true);
       if (s.state === 'hop') sprang = true;
-      if (s.state === 'crawl' || s.state === 'wait') expect(Math.abs(s.x - paddle.x)).toBeGreaterThanOrEqual(paddle.width / 2 + SCARAB.radius * 1.2 - 1e-6);
+      if (s.state === 'crawl' || s.state === 'wait')
+        expect(Math.abs(s.x - paddle.x)).toBeGreaterThanOrEqual(paddle.width / 2 + SCARAB.radius * 1.2 - 1e-6);
     }
     expect(sprang).toBe(true);
     expect(log).toContain('scarabLeap');
@@ -146,8 +179,17 @@ describe('scarab nests', () => {
     const { sys } = setup();
     const paddle = paddleAt(6);
     // A full paddle.
-    for (let i = 0; i < SCARAB.maxClinging; i++) Object.assign(sys.items[i], { active: true, state: 'cling', offset: -0.5 + i * 0.5, x: paddle.x, y: paddle.y });
-    const s = Object.assign(sys.items[SCARAB.maxClinging], { active: true, state: 'crawl', x: -4, y: paddle.y - PADDLE.halfH, rest: 100, leapAt: 2, speed: SCARAB.speed[0] });
+    for (let i = 0; i < SCARAB.maxClinging; i++)
+      Object.assign(sys.items[i], { active: true, state: 'cling', offset: -0.5 + i * 0.5, x: paddle.x, y: paddle.y });
+    const s = Object.assign(sys.items[SCARAB.maxClinging], {
+      active: true,
+      state: 'crawl',
+      x: -4,
+      y: paddle.y - PADDLE.halfH,
+      rest: 100,
+      leapAt: 2,
+      speed: SCARAB.speed[0],
+    });
     run(sys, paddle, 3);
     expect(s.state).toBe('wait');
     const states = new Set<string>();
@@ -166,7 +208,7 @@ describe('scarab nests', () => {
     const { sys } = setup([LEFT, RIGHT], 1);
     const paddle = paddleAt(0);
     let seed = 7;
-    const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     let target = 0;
     const last = new Map<Scarab, string>();
     for (let t = 0; t < 90; t += SIM.step) {
@@ -186,7 +228,14 @@ describe('scarab nests', () => {
       for (const { s, active, state } of before) {
         if (active && !s.active) expect(state).toBe('crushed');
         if (s.active && s.state === 'cling' && state !== 'cling' && active) expect(['hop', 'fly']).toContain(state);
-        if (s.active && (s.state === 'crawl' || s.state === 'wait' || s.state === 'flee' || s.state === 'crouch' || s.state === 'land')) {
+        if (
+          s.active &&
+          (s.state === 'crawl' ||
+            s.state === 'wait' ||
+            s.state === 'flee' ||
+            s.state === 'crouch' ||
+            s.state === 'land')
+        ) {
           expect(Math.abs(s.x - paddle.x) - paddle.width / 2 - SCARAB.radius * 1.2).toBeGreaterThanOrEqual(-1e-6);
         }
         last.set(s, s.state);
@@ -288,7 +337,13 @@ describe('scarab nests', () => {
     const half = paddle.width / 2;
     // Two riders, one well out on each end.
     const [left, right] = [-0.8, 0.8].map((offset, i) =>
-      Object.assign(sys.items[i], { active: true, state: 'cling', offset, x: offset * half, y: paddle.y + PADDLE.halfH }),
+      Object.assign(sys.items[i], {
+        active: true,
+        state: 'cling',
+        offset,
+        x: offset * half,
+        y: paddle.y + PADDLE.halfH,
+      }),
     );
     // A return off the bare middle touches neither.
     sys.crush(0);
@@ -314,7 +369,9 @@ describe('scarab nests', () => {
   it('a return between two close scarabs crushes the nearer one', () => {
     const { sys } = setup();
     const paddle = paddleAt(0);
-    const [a, b] = [0.2, 0.6].map((offset, i) => Object.assign(sys.items[i], { active: true, state: 'cling', offset, x: offset * 2.1, y: paddle.y }));
+    const [a, b] = [0.2, 0.6].map((offset, i) =>
+      Object.assign(sys.items[i], { active: true, state: 'cling', offset, x: offset * 2.1, y: paddle.y }),
+    );
     sys.crush(1.1);
     expect(b.state).toBe('crushed');
     expect(a.state).toBe('cling');
@@ -325,7 +382,9 @@ describe('scarab nests', () => {
     const ride = (offsets: number[], difficulty = 0) => {
       const { sys } = setup([LEFT], difficulty);
       const paddle = paddleAt(0);
-      offsets.forEach((offset, i) => Object.assign(sys.items[i], { active: true, state: 'cling', offset, x: offset * 2.1, y: paddle.y }));
+      offsets.forEach((offset, i) =>
+        Object.assign(sys.items[i], { active: true, state: 'cling', offset, x: offset * 2.1, y: paddle.y }),
+      );
       const leans: number[] = [];
       let flips = 0;
       for (let t = 0; t < 6; t += SIM.step) {
@@ -360,9 +419,22 @@ describe('scarab nests', () => {
     const { sys } = setup();
     const paddle = paddleAt(0);
     const floor = paddle.y - PADDLE.halfH;
-    for (let i = 0; i < SCARAB.maxClinging; i++) Object.assign(sys.items[i], { active: true, state: 'cling', offset: 0, lane: i, x: paddle.x, y: paddle.y });
+    for (let i = 0; i < SCARAB.maxClinging; i++)
+      Object.assign(sys.items[i], { active: true, state: 'cling', offset: 0, lane: i, x: paddle.x, y: paddle.y });
     // Three coming from the left, one from the right; resting, so none takes to the air yet.
-    const crawler = (i: number, x: number) => Object.assign(sys.items[i], { active: true, state: 'crawl', nest: 0, x, y: floor, facing: x < 0 ? 1 : -1, speed: 4, rest: 100, mode: 'hop', leapAt: 0 });
+    const crawler = (i: number, x: number) =>
+      Object.assign(sys.items[i], {
+        active: true,
+        state: 'crawl',
+        nest: 0,
+        x,
+        y: floor,
+        facing: x < 0 ? 1 : -1,
+        speed: 4,
+        rest: 100,
+        mode: 'hop',
+        leapAt: 0,
+      });
     const [nearLeft, midLeft, farLeft, right] = [crawler(2, -6), crawler(3, -9), crawler(4, -12), crawler(5, 8)];
     run(sys, paddle, 4);
     const gap = (s: Scarab) => Math.abs(s.x - paddle.x) - paddle.width / 2 - SCARAB.radius * 1.2;
@@ -403,7 +475,14 @@ describe('scarab nests', () => {
     const { sys } = setup();
     const paddle = paddleAt(0);
     paddle.width = PADDLE.expandedWidth;
-    const rider = Object.assign(sys.items[0], { active: true, state: 'cling', offset: 0.95, x: 0, y: paddle.y, pause: 5 });
+    const rider = Object.assign(sys.items[0], {
+      active: true,
+      state: 'cling',
+      offset: 0.95,
+      x: 0,
+      y: paddle.y,
+      pause: 5,
+    });
     run(sys, paddle, 0.3);
     expect(Math.abs(rider.offset)).toBeLessThanOrEqual(rideLimit(paddle) + 1e-6);
     Object.assign(rider, { offset: rideLimit(paddle), goal: rideLimit(paddle), pause: 5 });
@@ -416,7 +495,18 @@ describe('scarab nests', () => {
     const { sys } = setup();
     const paddle = paddleAt(0);
     const top = paddle.y + PADDLE.halfH;
-    const drop = (i: number, x: number) => Object.assign(sys.items[i], { active: true, state: 'hop', mode: 'hop', x, px: x, y: top + 0.5, py: top + 0.5, vx: 0, vy: -1 });
+    const drop = (i: number, x: number) =>
+      Object.assign(sys.items[i], {
+        active: true,
+        state: 'hop',
+        mode: 'hop',
+        x,
+        px: x,
+        y: top + 0.5,
+        py: top + 0.5,
+        vx: 0,
+        vy: -1,
+      });
     const a = drop(0, -0.5);
     run(sys, paddle, 0.3);
     const b = drop(1, 0.5);
@@ -478,8 +568,22 @@ describe('scarab nests', () => {
     const { sys } = setup();
     const paddle = paddleAt(2);
     const floor = paddle.y - PADDLE.halfH;
-    for (let i = 0; i < SCARAB.maxClinging; i++) Object.assign(sys.items[i], { active: true, state: 'cling', offset: 0, lane: i, x: paddle.x, y: paddle.y });
-    const [next, ...others] = [2, 3, 4].map((i) => Object.assign(sys.items[i], { active: true, state: 'crawl', nest: 0, x: -6 - (i - 2) * 3, y: floor, facing: 1, speed: 4, rest: 0, mode: 'hop', leapAt: 0 }));
+    for (let i = 0; i < SCARAB.maxClinging; i++)
+      Object.assign(sys.items[i], { active: true, state: 'cling', offset: 0, lane: i, x: paddle.x, y: paddle.y });
+    const [next, ...others] = [2, 3, 4].map((i) =>
+      Object.assign(sys.items[i], {
+        active: true,
+        state: 'crawl',
+        nest: 0,
+        x: -6 - (i - 2) * 3,
+        y: floor,
+        facing: 1,
+        speed: 4,
+        rest: 0,
+        mode: 'hop',
+        leapAt: 0,
+      }),
+    );
     run(sys, paddle, 4);
     expect(ScarabSystem.grounded(next)).toBe(true);
     expect(others.every((s) => s.state === 'away')).toBe(true);
@@ -497,7 +601,10 @@ describe('scarab nests', () => {
         xs.push(s.x);
         depths.push(s.depth);
       });
-      expect(Math.hypot(others[0].x - others[1].x, others[0].y - others[1].y) + Math.abs(others[0].depth - others[1].depth) * 10).toBeGreaterThan(SCARAB.radius);
+      expect(
+        Math.hypot(others[0].x - others[1].x, others[0].y - others[1].y) +
+          Math.abs(others[0].depth - others[1].depth) * 10,
+      ).toBeGreaterThan(SCARAB.radius);
     }
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(SCARAB.swirlRadius * 1.5);
     expect(Math.min(...depths)).toBeLessThan(SCARAB.swirlDepth[0] + 0.1);
@@ -519,10 +626,33 @@ describe('scarab nests', () => {
     const { sys, log } = setup();
     const paddle = paddleAt(0);
     const floor = paddle.y - PADDLE.halfH;
-    for (let i = 0; i < SCARAB.maxClinging; i++) Object.assign(sys.items[i], { active: true, state: 'cling', offset: 0, lane: i, x: paddle.x, y: paddle.y });
+    for (let i = 0; i < SCARAB.maxClinging; i++)
+      Object.assign(sys.items[i], { active: true, state: 'cling', offset: 0, lane: i, x: paddle.x, y: paddle.y });
     // One next in line by the paddle, so this one (further off) makes off into the air.
-    Object.assign(sys.items[3], { active: true, state: 'wait', nest: 0, x: -4, y: floor, facing: 1, speed: 4, rest: 100, mode: 'hop', leapAt: 0 });
-    const s = Object.assign(sys.items[2], { active: true, state: 'crawl', nest: 0, x: -9, y: floor, facing: 1, speed: 4, rest: 0, mode: 'hop', leapAt: 0 });
+    Object.assign(sys.items[3], {
+      active: true,
+      state: 'wait',
+      nest: 0,
+      x: -4,
+      y: floor,
+      facing: 1,
+      speed: 4,
+      rest: 100,
+      mode: 'hop',
+      leapAt: 0,
+    });
+    const s = Object.assign(sys.items[2], {
+      active: true,
+      state: 'crawl',
+      nest: 0,
+      x: -9,
+      y: floor,
+      facing: 1,
+      speed: 4,
+      rest: 0,
+      mode: 'hop',
+      leapAt: 0,
+    });
     let t = 0;
     for (; s.state !== 'away' && t < 3; t += SIM.step) sys.update(SIM.step, paddle, [], true);
     expect(s.state).toBe('away');
@@ -583,7 +713,17 @@ describe('scarab nests', () => {
       const { sys } = setup([LEFT], difficulty);
       const paddle = paddleAt(0);
       const top = paddle.y + PADDLE.halfH;
-      Object.assign(sys.items[0], { active: true, state: 'hop', mode: 'hop', x: -vx * 0.05, px: -vx * 0.05, y: top + 0.3, py: top + 0.3, vx, vy: -2 });
+      Object.assign(sys.items[0], {
+        active: true,
+        state: 'hop',
+        mode: 'hop',
+        x: -vx * 0.05,
+        px: -vx * 0.05,
+        y: top + 0.3,
+        py: top + 0.3,
+        vx,
+        vy: -2,
+      });
       run(sys, paddle, 0.2);
       expect(sys.items[0].state).toBe('cling');
       return paddle.shove;
@@ -624,14 +764,20 @@ describe('scarab entry paths', () => {
     kind: 'scarabs',
     x: LEFT.x,
     y: -8.95,
-    path: [{ x: -13.9, y: -8.95 }, { x: -13.2, y: -8.95 }, { x: -12.4, y: -9.8 }],
+    path: [
+      { x: -13.9, y: -8.95 },
+      { x: -13.2, y: -8.95 },
+      { x: -12.4, y: -9.8 },
+    ],
   };
   const setupPathed = () => setup([PATHED]);
 
   it('accepts a path, and rejects malformed ones', () => {
     expect(validateHazards([PATHED])[0]).toEqual(PATHED);
     expect(() => validateHazards([{ ...PATHED, path: [] }])).toThrow(/path must be/);
-    expect(() => validateHazards([{ ...PATHED, path: Array.from({ length: SCARAB_PATH_POINTS + 1 }, () => ({ x: -12, y: -9 })) }])).toThrow(/path must be/);
+    expect(() =>
+      validateHazards([{ ...PATHED, path: Array.from({ length: SCARAB_PATH_POINTS + 1 }, () => ({ x: -12, y: -9 })) }]),
+    ).toThrow(/path must be/);
     expect(() => validateHazards([{ ...PATHED, path: [{ x: -12 }] }])).toThrow(/path point 1 y/);
   });
 

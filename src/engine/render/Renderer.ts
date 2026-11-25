@@ -53,9 +53,16 @@ export class Renderer {
 
   constructor(canvas: HTMLCanvasElement) {
     try {
-      this.gl = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+      this.gl = new THREE.WebGLRenderer({
+        canvas,
+        antialias: false,
+        powerPreference: 'high-performance',
+        stencil: false,
+      });
     } catch (err) {
-      throw new Error('WebGL 2 is required to run Refrakt, but it could not be initialised on this device.', { cause: err });
+      throw new Error('WebGL 2 is required to run Refrakt, but it could not be initialised on this device.', {
+        cause: err,
+      });
     }
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
     this.gl.toneMappingExposure = TONE_EXPOSURE;

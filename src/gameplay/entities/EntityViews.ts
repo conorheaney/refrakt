@@ -20,7 +20,13 @@ function hdr(hex: number, gain: number): THREE.Color {
 
 function glowSprite(texture: THREE.Texture, color: THREE.Color, scale: number): THREE.Sprite {
   const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({ map: texture, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }),
+    new THREE.SpriteMaterial({
+      map: texture,
+      color,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      transparent: true,
+    }),
   );
   sprite.scale.setScalar(scale);
   return sprite;
@@ -73,7 +79,8 @@ class Trail {
       const dx = x - this.hx[last];
       const dy = y - this.hy[last];
       const d2 = dx * dx + dy * dy;
-      if (d2 > 9) this.size = 0; // teleported (respawn / split): start over
+      if (d2 > 9)
+        this.size = 0; // teleported (respawn / split): start over
       else if (d2 < 0.0004) return;
     }
     this.hx[this.head] = x;
@@ -287,7 +294,9 @@ export class BallsView {
       this.spectrum.offset.x = -this.refraktClock * 0.35; // the bands drift through the colours as it spins
       this.trailRefrakt.setHSL(this.refraktHue, 0.85, 0.62);
     }
-    (this.trailMaterial.uniforms.uColor.value as THREE.Color).copy(refrakt ? this.trailRefrakt : fire ? this.trailFire : this.trailWhite);
+    (this.trailMaterial.uniforms.uColor.value as THREE.Color).copy(
+      refrakt ? this.trailRefrakt : fire ? this.trailFire : this.trailWhite,
+    );
     this.emberAcc += simDt * 10;
     const embers = fire && !refrakt ? Math.floor(this.emberAcc) : 0;
     this.emberAcc -= Math.floor(this.emberAcc);
@@ -449,13 +458,22 @@ export class PaddleView {
       opacity: 0.94,
       envMapIntensity: 1.2,
     });
-    const top = new THREE.Mesh(createSlabGeometry(halfW - 0.42, 0.04, PADDLE_HALF_D - 0.36, 0.34, 0.03), this.topMaterial);
+    const top = new THREE.Mesh(
+      createSlabGeometry(halfW - 0.42, 0.04, PADDLE_HALF_D - 0.36, 0.34, 0.03),
+      this.topMaterial,
+    );
     top.position.y = halfH + 0.02;
 
     // The display band across the front face: dark glass that the light bar and the power countdowns sit in.
     const band = new THREE.Mesh(
       new RoundedBoxGeometry(PADDLE.width - BAND_INSET, BAND_H, 0.06, 3, 0.03),
-      new THREE.MeshPhysicalMaterial({ color: 0x0b0e13, roughness: 0.18, metalness: 0.4, clearcoat: 1, clearcoatRoughness: 0.08 }),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x0b0e13,
+        roughness: 0.18,
+        metalness: 0.4,
+        clearcoat: 1,
+        clearcoatRoughness: 0.08,
+      }),
     );
     band.position.set(0, BAND_Y, PADDLE_HALF_D);
     this.bar = new THREE.Mesh(new THREE.BoxGeometry(PADDLE.width * 0.36, 0.09, 0.05), this.barMaterial);
@@ -472,7 +490,13 @@ export class PaddleView {
     }
 
     const cannonGeo = new THREE.CylinderGeometry(0.1, 0.14, 0.55, 12);
-    const cannonMat = new THREE.MeshStandardMaterial({ color: 0xd0d6de, roughness: 0.2, metalness: 1, emissive: 0xff2f4f, emissiveIntensity: 0.8 });
+    const cannonMat = new THREE.MeshStandardMaterial({
+      color: 0xd0d6de,
+      roughness: 0.2,
+      metalness: 1,
+      emissive: 0xff2f4f,
+      emissiveIntensity: 0.8,
+    });
     this.cannonL = new THREE.Mesh(cannonGeo, cannonMat);
     this.cannonR = new THREE.Mesh(cannonGeo, cannonMat);
     this.cannonL.position.y = this.cannonR.position.y = halfH + 0.28;
@@ -530,9 +554,7 @@ export class PaddleView {
     this.accentMaterial.color.copy(this.color).multiplyScalar(0.55 + hit * 0.2);
     this.topMaterial.emissiveIntensity = 0.18 + hit * 0.15;
   }
-
 }
-
 
 // ---------------------------------------------------------------------- drops
 
@@ -564,7 +586,12 @@ export class DropsView {
         }),
       );
       this.iconMaterials.push(
-        new THREE.SpriteMaterial({ map: createIconTexture(kind as PowerUpKind, info.letter), transparent: true, depthTest: false, depthWrite: false }),
+        new THREE.SpriteMaterial({
+          map: createIconTexture(kind as PowerUpKind, info.letter),
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+        }),
       );
       this.haloColors.push(new THREE.Color(info.color).multiplyScalar(0.55));
     }
@@ -606,7 +633,9 @@ export class DropsView {
       this.tiles[i].rotation.y = Math.sin(world.time * 1.6 + i) * 0.35;
       this.icons[i].material = this.iconMaterials[drop.kind];
       // Steady halo with only a slow, faint breathe (was a ~1 Hz, +/-20% pulse).
-      (this.halos[i].material as THREE.SpriteMaterial).color.copy(this.haloColors[drop.kind]).multiplyScalar(0.6 + Math.sin(world.time * 2 + i) * 0.05);
+      (this.halos[i].material as THREE.SpriteMaterial).color
+        .copy(this.haloColors[drop.kind])
+        .multiplyScalar(0.6 + Math.sin(world.time * 2 + i) * 0.05);
     }
   }
 }
@@ -783,7 +812,8 @@ export class BossView {
     const hitT = Math.max(0, 1 - (t - boss.hitTime) / 0.35);
     const flash = hitT * hitT;
     const dying = this.dying > 0 ? 1 : 0;
-    const scale = boss.radius * easeOutCubic(this.appear) * (1 + flash * 0.03) * (this.dying > 0 ? 0.6 + this.dying * 0.4 : 1);
+    const scale =
+      boss.radius * easeOutCubic(this.appear) * (1 + flash * 0.03) * (this.dying > 0 ? 0.6 + this.dying * 0.4 : 1);
     this.group.position.set(this.lastX, this.lastY, 0);
     this.group.scale.setScalar(Math.max(0.001, scale));
 

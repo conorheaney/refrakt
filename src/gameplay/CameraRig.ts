@@ -191,7 +191,11 @@ export class CameraRig {
   private updateFlat(): void {
     const cam = this.orthographic;
     const p = FOREST_VIEW.pitch;
-    cam.position.set(FOREST_VIEW.centerX, FOREST_VIEW.centerY + Math.sin(p) * FOREST_VIEW.distance, Math.cos(p) * FOREST_VIEW.distance);
+    cam.position.set(
+      FOREST_VIEW.centerX,
+      FOREST_VIEW.centerY + Math.sin(p) * FOREST_VIEW.distance,
+      Math.cos(p) * FOREST_VIEW.distance,
+    );
     cam.rotation.set(-p, 0, 0);
     const shake = this.trauma * this.trauma * this.shakeScale;
     if (shake > 0.0001) {

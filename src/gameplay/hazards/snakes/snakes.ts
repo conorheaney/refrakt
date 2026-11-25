@@ -112,7 +112,18 @@ export class SnakeSystem implements HazardSystem {
       }
       this.place(h);
       if (live && !h.bit && (h.state === 'strike' || h.state === 'hold') && h.ext > 0.25) {
-        if (overlapCircleAabb(h.headX, h.headY, SNAKE.headRadius, paddle.x, paddle.y, paddle.width / 2, PADDLE.halfH, this.hit)) {
+        if (
+          overlapCircleAabb(
+            h.headX,
+            h.headY,
+            SNAKE.headRadius,
+            paddle.x,
+            paddle.y,
+            paddle.width / 2,
+            PADDLE.halfH,
+            this.hit,
+          )
+        ) {
           h.bit = true;
           // Pushed towards the centre, away from the snake's wall, stopping at the centre.
           paddle.shove = -Math.sign(paddle.x) * Math.min(BITE.distance, Math.abs(paddle.x));

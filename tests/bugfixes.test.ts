@@ -59,9 +59,20 @@ describe('code review 001 fixes', () => {
   });
 
   it('Q5: a ball that escapes a drawn ball area is lost instead of flying off forever', () => {
-    const campaign = classicCampaign({ space: {
-      ball: { radius: 0, drainEdge: 3, points: [{ x: -10, y: -5 }, { x: -10, y: 8 }, { x: 10, y: 8 }, { x: 10, y: -5 }] },
-    } });
+    const campaign = classicCampaign({
+      space: {
+        ball: {
+          radius: 0,
+          drainEdge: 3,
+          points: [
+            { x: -10, y: -5 },
+            { x: -10, y: 8 },
+            { x: 10, y: 8 },
+            { x: 10, y: -5 },
+          ],
+        },
+      },
+    });
     const world = new World(campaign);
     world.newGame(1);
     world.phase = 'live';
@@ -96,7 +107,15 @@ describe('code review 001 fixes', () => {
 
   it("P3: a scarab nest's routes are worked out once, not every step", () => {
     const sys = new ScarabSystem(new Random(1), new EventBus<GameEvents>());
-    const def = { kind: 'scarabs' as const, x: -10, y: -6, path: [{ x: -8, y: -4 }, { x: -6, y: -9 }] };
+    const def = {
+      kind: 'scarabs' as const,
+      x: -10,
+      y: -6,
+      path: [
+        { x: -8, y: -4 },
+        { x: -6, y: -9 },
+      ],
+    };
     sys.load([def], 0, { left: -14, right: 14, top: 10, bottom: -10 });
     const nest = sys.nests[0];
     expect(nest.route).toEqual(ScarabSystem.route(def));
@@ -113,7 +132,19 @@ describe('code review 001 fixes', () => {
   });
 
   it("S8: brick debris rests on the paddle lane's floor", () => {
-    const lane = classicCampaign({ space: { paddle: { radius: 0, points: [{ x: -14, y: -7 }, { x: 14, y: -7 }, { x: 14, y: -5 }, { x: -14, y: -5 }] } } });
+    const lane = classicCampaign({
+      space: {
+        paddle: {
+          radius: 0,
+          points: [
+            { x: -14, y: -7 },
+            { x: 14, y: -7 },
+            { x: 14, y: -5 },
+            { x: -14, y: -5 },
+          ],
+        },
+      },
+    });
     const world = new World(lane);
     world.newGame(1);
     // GameView passes this to DebrisSystem.update and uses it for the lost-ball burst.

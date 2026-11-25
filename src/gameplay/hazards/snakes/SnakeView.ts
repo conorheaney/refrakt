@@ -211,7 +211,12 @@ class SnakeMesh {
       this.head.add(f);
     }
 
-    this.eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xd9c22a, emissive: 0xffc81e, emissiveIntensity: 0.4, roughness: 0.15 });
+    this.eyeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd9c22a,
+      emissive: 0xffc81e,
+      emissiveIntensity: 0.4,
+      roughness: 0.15,
+    });
     const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x050505 });
     const eyeGeo = new THREE.SphereGeometry(0.085, 16, 12);
     const pupilGeo = new THREE.SphereGeometry(0.06, 12, 8);
@@ -328,7 +333,9 @@ class SnakeMesh {
     this.restY = rest.map((p) => p.y);
     this.restS = [0];
     for (let i = 1; i < this.restX.length; i++) {
-      this.restS.push(this.restS[i - 1] + Math.hypot(this.restX[i] - this.restX[i - 1], this.restY[i] - this.restY[i - 1]));
+      this.restS.push(
+        this.restS[i - 1] + Math.hypot(this.restX[i] - this.restX[i - 1], this.restY[i] - this.restY[i - 1]),
+      );
     }
   }
 

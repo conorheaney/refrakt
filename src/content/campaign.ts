@@ -34,7 +34,13 @@ export interface WorldExtras {
  * Builds a WorldEntry, parsing (and so validating) its levels. `firstLevel` only numbers the levels in
  * parse errors.
  */
-export function worldEntry(def: WorldDef, levels: readonly LevelDef[], areas: WorldAreas, extras: WorldExtras = {}, firstLevel = 0): WorldEntry {
+export function worldEntry(
+  def: WorldDef,
+  levels: readonly LevelDef[],
+  areas: WorldAreas,
+  extras: WorldExtras = {},
+  firstLevel = 0,
+): WorldEntry {
   if (levels.length !== STAGES_PER_WORLD) throw new Error(`A world must contain exactly ${STAGES_PER_WORLD} levels.`);
   if (!areas.ball || !areas.paddle) throw new Error(`${def.name}: draw a ball area and a paddle area before playing.`);
   return {
@@ -62,8 +68,12 @@ export class Campaign {
    * @param mainWorldCount How many leading worlds form the main campaign (the world files that take the Space
    *   and Forest slots, `replaces`); a run started there plays through all of them (see runEndLevel).
    */
-  constructor(readonly worlds: readonly WorldEntry[], readonly mainWorldCount = 0) {
-    if (worlds.length === 0) throw new Error('No playable worlds: add a finished world file with a ball area and a paddle area.');
+  constructor(
+    readonly worlds: readonly WorldEntry[],
+    readonly mainWorldCount = 0,
+  ) {
+    if (worlds.length === 0)
+      throw new Error('No playable worlds: add a finished world file with a ball area and a paddle area.');
     this.levels = worlds.flatMap((world) => world.levels);
   }
 
@@ -110,7 +120,9 @@ export class Campaign {
 
   /** Index one past a run's last level: the main campaign runs to its end, any other world for its ten levels. */
   runEndLevel(start: number): number {
-    return start < this.mainLevelCount ? this.mainLevelCount : (Math.floor(start / STAGES_PER_WORLD) + 1) * STAGES_PER_WORLD;
+    return start < this.mainLevelCount
+      ? this.mainLevelCount
+      : (Math.floor(start / STAGES_PER_WORLD) + 1) * STAGES_PER_WORLD;
   }
 
   /** This campaign with `entry` appended as a new world. */
@@ -120,8 +132,12 @@ export class Campaign {
 
   /** This campaign with world `index` replaced by `entry` (levels keep their position). */
   withWorldAt(index: number, entry: WorldEntry): Campaign {
-    if (!Number.isInteger(index) || index < 0 || index >= this.worlds.length) throw new Error(`No world slot ${index}.`);
-    return new Campaign(this.worlds.map((world, i) => (i === index ? entry : world)), this.mainWorldCount);
+    if (!Number.isInteger(index) || index < 0 || index >= this.worlds.length)
+      throw new Error(`No world slot ${index}.`);
+    return new Campaign(
+      this.worlds.map((world, i) => (i === index ? entry : world)),
+      this.mainWorldCount,
+    );
   }
 
   /** This campaign with world `index`'s areas and extras (hazards, background) replaced. */
@@ -140,4 +156,3 @@ export class Campaign {
     });
   }
 }
-

@@ -512,8 +512,10 @@ export class TombDustLayer {
     // Torches flicker on their own rhythms; a flare lifts one or both.
     const t = this.time;
     const calm = reducedMotion() ? 0.4 : 1;
-    const flickL = 0.62 + calm * (0.1 * Math.sin(t * 9.3) + 0.07 * Math.sin(t * 15.7 + 1.1) + 0.05 * Math.sin(t * 3.1 + 2));
-    const flickR = 0.62 + calm * (0.1 * Math.sin(t * 8.1 + 0.7) + 0.07 * Math.sin(t * 13.9 + 2.4) + 0.05 * Math.sin(t * 2.7 + 0.3));
+    const flickL =
+      0.62 + calm * (0.1 * Math.sin(t * 9.3) + 0.07 * Math.sin(t * 15.7 + 1.1) + 0.05 * Math.sin(t * 3.1 + 2));
+    const flickR =
+      0.62 + calm * (0.1 * Math.sin(t * 8.1 + 0.7) + 0.07 * Math.sin(t * 13.9 + 2.4) + 0.05 * Math.sin(t * 2.7 + 0.3));
     const left = this.flareSide <= 0 ? this.flare : 0;
     const right = this.flareSide >= 0 ? this.flare : 0;
     this.torches.set(flickL + left * FLARE.torch, flickR + right * FLARE.torch);
@@ -572,7 +574,6 @@ export class TombDustLayer {
     this.flare = this.flarePeak * envelope(this.flareAge, FLARE.rise, this.flareHold, FLARE.fall);
     if (this.flareAge > FLARE.rise + this.flareHold + FLARE.fall) this.flareAge = -1;
   }
-
 }
 
 /** Swell up over `rise`, hold for `hold`, die away over `fall` (0-1). */

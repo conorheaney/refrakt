@@ -28,7 +28,9 @@ it('has ten complete formations with increasing durability, all seven block type
       const y = GRID.topY - cell.row * GRID.cellH;
       for (const dx of [-GRID.halfW - BALL.radius, GRID.halfW + BALL.radius]) {
         for (const dy of [-GRID.halfH - BALL.radius, GRID.halfH + BALL.radius]) {
-          expect(pointInPolygon({ x: x + dx, y: y + dy }, contour), `${level.name}: ${cell.col},${cell.row}`).toBe(true);
+          expect(pointInPolygon({ x: x + dx, y: y + dy }, contour), `${level.name}: ${cell.col},${cell.row}`).toBe(
+            true,
+          );
         }
       }
     }
@@ -51,7 +53,8 @@ it('can clear every Frozen Sanctuary formation at its actual campaign speed', ()
         const ball = world.balls.items.filter((b) => b.active).sort((a, b) => a.y - b.y)[0];
         world.step(SIM.step, {
           targetX: (ball?.x ?? 0) + Math.sin(step * 0.01) * 1.2,
-          axis: 0, action: step % 60 === 0,
+          axis: 0,
+          action: step % 60 === 0,
         });
       }
       cleared = world.phase === 'cleared';

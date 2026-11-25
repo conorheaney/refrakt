@@ -13,8 +13,8 @@ it('keeps the sculpted Forge prototypes inside their collision footprint with se
     expect(bounds.min.x).toBeGreaterThanOrEqual(-GRID.halfW - 0.00001);
     expect(bounds.max.y).toBeLessThanOrEqual(GRID.halfH + 0.00001);
     expect(bounds.min.y).toBeGreaterThanOrEqual(-GRID.halfH - 0.00001);
-    expect(geometry.groups.map(group => group.materialIndex)).toEqual([0, 1]);
-    expect(geometry.groups.every(group => group.count > 0)).toBe(true);
+    expect(geometry.groups.map((group) => group.materialIndex)).toEqual([0, 1]);
+    expect(geometry.groups.every((group) => group.count > 0)).toBe(true);
     expect(geometry.getAttribute('uv').count).toBe(geometry.getAttribute('position').count);
     for (const name of ['position', 'normal', 'uv']) {
       expect(Array.from(geometry.getAttribute(name).array).every(Number.isFinite)).toBe(true);
@@ -35,7 +35,7 @@ it('keeps Forge collision dimensions while providing finite UVs on every face', 
   geometry.computeBoundingBox();
   expect(geometry.boundingBox!.max.x).toBeCloseTo(GRID.halfW);
   expect(geometry.boundingBox!.max.y).toBeCloseTo(GRID.halfH);
-  expect(geometry.groups.map(group => group.materialIndex)).toEqual([0, 1]);
+  expect(geometry.groups.map((group) => group.materialIndex)).toEqual([0, 1]);
   geometry.dispose();
 });
 
@@ -45,5 +45,7 @@ it('opts into Forge explicitly and preserves the style through editor validation
   data.world = { ...data.world, blockStyle: 'forge' };
   expect(validateWorld(data).world.blockStyle).toBe('forge');
   expect(withBackground(data.world, 'forest').blockStyle).toBe('forge');
-  expect(() => validateWorld({ ...data, world: { ...data.world, blockStyle: 'unknown' } })).toThrow('Unsupported block style');
+  expect(() => validateWorld({ ...data, world: { ...data.world, blockStyle: 'unknown' } })).toThrow(
+    'Unsupported block style',
+  );
 });

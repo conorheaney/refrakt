@@ -108,7 +108,12 @@ export class BallPhysics {
         // Held clear of the ball area's sides (a paddle lane may reach right up to them).
         const bounds = world.boundary.bounds;
         ball.x = clamp(paddle.x + ball.stuckOffset, bounds.left + BALL.radius, bounds.right - BALL.radius);
-        ball.y = paddle.y + PADDLE.halfH + BALL.radius + world.worldDef.serveLift + ball.stuckOffset * Math.tan(paddleSlope(paddle));
+        ball.y =
+          paddle.y +
+          PADDLE.halfH +
+          BALL.radius +
+          world.worldDef.serveLift +
+          ball.stuckOffset * Math.tan(paddleSlope(paddle));
         ball.stuckTime += dt;
         const autoLaunch =
           (world.demo && ball.stuckTime > 0.7) || (world.phase !== 'serve' && ball.stuckTime > BALL.magnetHoldTime);
@@ -126,8 +131,12 @@ export class BallPhysics {
       const lossY = Math.min(bounds.bottom, world.shieldY) - BALL.radius * 3;
       // A ball that got out through a wall despite depenetration would otherwise fly off for ever with the
       // level still live; count it as lost.
-      const escaped = ball.x < bounds.left - ESCAPE_MARGIN || ball.x > bounds.right + ESCAPE_MARGIN || ball.y > bounds.top + ESCAPE_MARGIN;
-      if (escaped) console.warn(`Ball escaped the ball area at (${ball.x.toFixed(2)}, ${ball.y.toFixed(2)}); counted as lost.`);
+      const escaped =
+        ball.x < bounds.left - ESCAPE_MARGIN ||
+        ball.x > bounds.right + ESCAPE_MARGIN ||
+        ball.y > bounds.top + ESCAPE_MARGIN;
+      if (escaped)
+        console.warn(`Ball escaped the ball area at (${ball.x.toFixed(2)}, ${ball.y.toFixed(2)}); counted as lost.`);
       if (ball.y < lossY || escaped) {
         world.balls.release(ball);
         world.events.emit('ballLost', { x: ball.x, remaining: world.balls.activeCount });
@@ -216,8 +225,12 @@ export class BallPhysics {
       let bestBrick: Brick | null = null;
       const shieldT = dy < 0 ? (world.shieldY + r - ball.y) / dy : -1;
       const shieldX = ball.x + dx * shieldT;
-      const shieldWillCatch = dy < 0 && world.shieldCharges > 0 && shieldT >= 0
-        && shieldX + r >= world.shieldLeft && shieldX - r <= world.shieldRight;
+      const shieldWillCatch =
+        dy < 0 &&
+        world.shieldCharges > 0 &&
+        shieldT >= 0 &&
+        shieldX + r >= world.shieldLeft &&
+        shieldX - r <= world.shieldRight;
 
       // Walls and drain. While the barrier will catch the ball, let it cross the drain to reach the barrier.
       const contact = boundary.sweep(ball.x, ball.y, dx, dy, r, hit, shieldWillCatch);
@@ -264,7 +277,18 @@ export class BallPhysics {
         const ldy = -dx * s + dy * c;
         if (
           ldy < 0 &&
-          sweepCircleAabb(rx * c + ry * s, -rx * s + ry * c, dx * c + dy * s, ldy, r, 0, 0, paddle.width / 2, PADDLE.halfH, hit) &&
+          sweepCircleAabb(
+            rx * c + ry * s,
+            -rx * s + ry * c,
+            dx * c + dy * s,
+            ldy,
+            r,
+            0,
+            0,
+            paddle.width / 2,
+            PADDLE.halfH,
+            hit,
+          ) &&
           hit.t < bestT
         ) {
           bestT = hit.t;

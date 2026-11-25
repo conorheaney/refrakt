@@ -1,6 +1,12 @@
 import type { AuthoredWorld } from '../../src/content/authoredWorlds';
 import { SCARAB_Z } from '../../src/gameplay/hazards/scarabs/ScarabView';
-import { MAX_HAZARDS, SCARAB_PATH_POINTS, validateHazards, type HazardDef, type ScarabNestDef } from '../../src/gameplay/hazards/hazards';
+import {
+  MAX_HAZARDS,
+  SCARAB_PATH_POINTS,
+  validateHazards,
+  type HazardDef,
+  type ScarabNestDef,
+} from '../../src/gameplay/hazards/hazards';
 import type { Point } from '../../src/gameplay/arena/playAreas';
 import { PathTool, type EditPath, type PathModel } from './PathTool';
 import type { EditorScene } from './Scene';
@@ -26,18 +32,29 @@ export class ScarabEditor {
   ) {
     this.tool = new PathTool(scene, {
       tool: 'scarabs',
-      groups: [{
-        kind: 'nest', noun: 'nest', closed: false, color: '#ffd84a', minPoints: 1, maxPoints: SCARAB_PATH_POINTS + 1, maxPaths: MAX_HAZARDS,
-        fixed: () => [0],
-        role: (path, i) => (i === 0 ? 'anchor' : i === path.points.length - 1 ? 'end' : ''),
-      }],
+      groups: [
+        {
+          kind: 'nest',
+          noun: 'nest',
+          closed: false,
+          color: '#ffd84a',
+          minPoints: 1,
+          maxPoints: SCARAB_PATH_POINTS + 1,
+          maxPaths: MAX_HAZARDS,
+          fixed: () => [0],
+          role: (path, i) => (i === 0 ? 'anchor' : i === path.points.length - 1 ? 'end' : ''),
+        },
+      ],
       depth: SCARAB_Z,
       layer: document.getElementById('scarab-layer')!,
       curve: document.getElementById('scarab-curve') as HTMLInputElement,
       read: () => ({ nest: this.read() }),
       write: (model, final, message) => {
         const hazards = this.hazards(model.nest);
-        if (final) { this.commit(hazards); status(message); } else this.preview(hazards ?? []);
+        if (final) {
+          this.commit(hazards);
+          status(message);
+        } else this.preview(hazards ?? []);
       },
       revert: () => this.preview(undefined),
       status,
@@ -49,13 +66,17 @@ export class ScarabEditor {
     button('scarab-clear-path').addEventListener('click', () => this.clearPath());
   }
 
-  refresh(): void { this.tool.refresh(); }
+  refresh(): void {
+    this.tool.refresh();
+  }
 
   private read(): EditPath[] {
-    return (this.getData().hazards ?? []).filter((h): h is ScarabNestDef => h.kind === 'scarabs').map((h) => ({
-      points: [{ x: h.x, y: h.y }, ...(h.path ?? []).map((p) => ({ x: p.x, y: p.y }))],
-      radius: h.radius ?? 0,
-    }));
+    return (this.getData().hazards ?? [])
+      .filter((h): h is ScarabNestDef => h.kind === 'scarabs')
+      .map((h) => ({
+        points: [{ x: h.x, y: h.y }, ...(h.path ?? []).map((p) => ({ x: p.x, y: p.y }))],
+        radius: h.radius ?? 0,
+      }));
   }
 
   /** The world's hazards with these nests in place of its old ones (snakes and icicles untouched). */
@@ -66,7 +87,9 @@ export class ScarabEditor {
       // Never exactly on the centre line (its side sets which way the swarm sets off).
       const x = Math.abs(entry.x) < 0.05 ? (entry.x < 0 ? -0.05 : 0.05) : round(entry.x);
       return {
-        kind: 'scarabs', x, y: round(entry.y),
+        kind: 'scarabs',
+        x,
+        y: round(entry.y),
         ...(path.length ? { path: path.map(pt) } : {}),
         ...(path.length && n.radius ? { radius: round(n.radius) } : {}),
       };

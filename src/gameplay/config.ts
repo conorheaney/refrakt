@@ -65,7 +65,8 @@ const FOREST_PADDLE_BOTTOM_PX = 841;
  * y = 10.4) to the paddle's drawn bottom is the 19.65 units down to the paddle's centre, foreshortened by
  * the pitch, plus the paddle's drawn drop.
  */
-const FOREST_PX_PER_UNIT = (FOREST_PADDLE_BOTTOM_PX - FOREST_CEILING_PX) / ((10.4 + 9.25) * Math.cos(FOREST_PITCH) + FOREST_PADDLE_DRAWN_DROP);
+const FOREST_PX_PER_UNIT =
+  (FOREST_PADDLE_BOTTOM_PX - FOREST_CEILING_PX) / ((10.4 + 9.25) * Math.cos(FOREST_PITCH) + FOREST_PADDLE_DRAWN_DROP);
 
 /**
  * The forest background painting (src/themes/scenery/forest/background.webp, 1672 x 941 px): a woodland with a

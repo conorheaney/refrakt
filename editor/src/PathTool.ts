@@ -3,7 +3,10 @@ import { distance, nearestOnSegment, simplifyStroke, type Point } from '../../sr
 import type { EditorScene } from './Scene';
 
 const ns = 'http://www.w3.org/2000/svg';
-export function svg<K extends keyof SVGElementTagNameMap>(tag: K, attributes: Record<string, string>): SVGElementTagNameMap[K] {
+export function svg<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+  attributes: Record<string, string>,
+): SVGElementTagNameMap[K] {
   const node = document.createElementNS(ns, tag);
   Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
   return node;
@@ -42,7 +45,10 @@ export interface PathGroup {
 }
 
 export type PathModel = Record<string, EditPath[]>;
-export interface Selection { kind: string; index: number }
+export interface Selection {
+  kind: string;
+  index: number;
+}
 
 /** What a tool supplies: its data as paths, how to save them, and anything it draws or handles itself. */
 export interface PathHost {
@@ -83,7 +89,8 @@ export interface PathHost {
 type Part = 'point' | 'line' | 'body';
 
 /** How every path is edited, shown in each tool's panel. */
-const PATH_HELP = 'Drawing: click points (or drag to trace); click the first point (outline) or last point (line), or press Enter, to finish; Backspace undoes a point; Esc cancels. Editing: click a path to select it, empty space to deselect · drag a point to move it, the line or shape to move it all · Shift-click adds a point · double-click the line inserts one · right-click or Delete removes a point · Delete removes the selected path · arrow keys nudge (Shift: further) · Curve rounds the corners.';
+const PATH_HELP =
+  'Drawing: click points (or drag to trace); click the first point (outline) or last point (line), or press Enter, to finish; Backspace undoes a point; Esc cancels. Editing: click a path to select it, empty space to deselect · drag a point to move it, the line or shape to move it all · Shift-click adds a point · double-click the line inserts one · right-click or Delete removes a point · Delete removes the selected path · arrow keys nudge (Shift: further) · Curve rounds the corners.';
 
 /** Pointer movement (px) under which a press counts as a click. */
 const CLICK_SLOP = 4;
@@ -107,18 +114,33 @@ export class PathTool {
   private hover: Point | null = null;
   /** The change in progress (live preview); null when idle. */
   private working: PathModel | null = null;
-  private drag: { sel: Selection; part: Part; point: number; whole: boolean; from: Point; screen: Point; moved: boolean } | null = null;
+  private drag: {
+    sel: Selection;
+    part: Part;
+    point: number;
+    whole: boolean;
+    from: Point;
+    screen: Point;
+    moved: boolean;
+  } | null = null;
   private press: { at: Point; screen: Point; moved: boolean; shift: boolean } | null = null;
   private readonly root = document.getElementById('areas') as unknown as SVGSVGElement;
 
-  constructor(private readonly scene: EditorScene, private readonly host: PathHost) {
-    document.querySelectorAll('.path-help').forEach((node) => { node.textContent = PATH_HELP; });
+  constructor(
+    private readonly scene: EditorScene,
+    private readonly host: PathHost,
+  ) {
+    document.querySelectorAll('.path-help').forEach((node) => {
+      node.textContent = PATH_HELP;
+    });
     this.root.addEventListener('pointerdown', (event) => this.down(event));
     this.root.addEventListener('pointermove', (event) => this.move(event));
     this.root.addEventListener('pointerup', (event) => this.up(event));
     this.root.addEventListener('pointercancel', () => this.cancelDrag());
     this.root.addEventListener('dblclick', (event) => this.insert(event));
-    this.root.addEventListener('contextmenu', (event) => { if (this.active) event.preventDefault(); });
+    this.root.addEventListener('contextmenu', (event) => {
+      if (this.active) event.preventDefault();
+    });
     window.addEventListener('keydown', (event) => this.key(event));
     const curve = host.curve;
     if (curve) {
@@ -130,8 +152,12 @@ export class PathTool {
     }
   }
 
-  get active(): boolean { return document.body.dataset.tool === this.host.tool; }
-  get isDrawing(): boolean { return this.drawing !== null; }
+  get active(): boolean {
+    return document.body.dataset.tool === this.host.tool;
+  }
+  get isDrawing(): boolean {
+    return this.drawing !== null;
+  }
 
   private group(kind: string): PathGroup {
     return this.host.groups.find((g) => g.kind === kind)!;
@@ -173,22 +199,34 @@ export class PathTool {
 
   /** Shows a change in progress in the scene (the saved world while it is momentarily invalid). */
   private show(model: PathModel): void {
-    try { this.host.write(model, false, ''); } catch { this.host.revert(); }
+    try {
+      this.host.write(model, false, '');
+    } catch {
+      this.host.revert();
+    }
   }
 
   // ---------------------------------------------------------------- commands
 
   /** Starts drawing a new path of this kind (or, called again, stops). */
   draw(kind: string): void {
-    if (this.drawing?.kind === kind) { this.stopDrawing(); return; }
+    if (this.drawing?.kind === kind) {
+      this.stopDrawing();
+      return;
+    }
     const group = this.group(kind);
     const model = this.model();
-    if (!this.host.replaces && (model[kind]?.length ?? 0) >= group.maxPaths) { this.host.status(`At most ${group.maxPaths} ${group.noun}s.`, true); return; }
+    if (!this.host.replaces && (model[kind]?.length ?? 0) >= group.maxPaths) {
+      this.host.status(`At most ${group.maxPaths} ${group.noun}s.`, true);
+      return;
+    }
     this.drawing = { kind, points: [], stroke: [] };
     this.selection = null;
-    this.host.status(group.closed
-      ? `Click round the ${group.noun}'s outline (or drag to trace it), then click its first point or press Enter to close it. Backspace removes the last point; Esc cancels.`
-      : `Click the ${group.noun}'s points in order (or drag to trace), then click the last point again or press Enter to finish. Backspace removes the last point; Esc cancels.`);
+    this.host.status(
+      group.closed
+        ? `Click round the ${group.noun}'s outline (or drag to trace it), then click its first point or press Enter to close it. Backspace removes the last point; Esc cancels.`
+        : `Click the ${group.noun}'s points in order (or drag to trace), then click the last point again or press Enter to finish. Backspace removes the last point; Esc cancels.`,
+    );
     this.refresh();
   }
 
@@ -204,14 +242,22 @@ export class PathTool {
     const group = this.group(drawing.kind);
     const points = [...drawing.points];
     if (group.closed && points.length > 3 && distance(points[0], points[points.length - 1]) < 0.15) points.pop();
-    if (points.length < group.minPoints) { this.host.status(`A ${group.noun} needs at least ${group.minPoints} points.`, true); return; }
+    if (points.length < group.minPoints) {
+      this.host.status(`A ${group.noun} needs at least ${group.minPoints} points.`, true);
+      return;
+    }
     const model = this.model();
     const path = this.host.create?.(drawing.kind, points, model) ?? { points, radius: 0 };
     const list = this.host.replaces ? [path] : [...(model[drawing.kind] ?? []), path];
     model[drawing.kind] = list;
     this.drawing = null;
     this.hover = null;
-    if (this.apply(model, `${group.noun[0].toUpperCase()}${group.noun.slice(1)} added. Drag its points to adjust it; the Curve slider rounds its corners.`)) {
+    if (
+      this.apply(
+        model,
+        `${group.noun[0].toUpperCase()}${group.noun.slice(1)} added. Drag its points to adjust it; the Curve slider rounds its corners.`,
+      )
+    ) {
       this.selection = { kind: group.kind, index: list.length - 1 };
     }
     this.refresh();
@@ -224,7 +270,10 @@ export class PathTool {
     const model = this.model();
     model[sel.kind].splice(sel.index, 1);
     this.selection = null;
-    this.apply(model, `${this.group(sel.kind).noun[0].toUpperCase()}${this.group(sel.kind).noun.slice(1)} deleted. Undo is available.`);
+    this.apply(
+      model,
+      `${this.group(sel.kind).noun[0].toUpperCase()}${this.group(sel.kind).noun.slice(1)} deleted. Undo is available.`,
+    );
   }
 
   private setRadius(radius: number, final: boolean): void {
@@ -235,7 +284,11 @@ export class PathTool {
     if (!path) return;
     path.radius = radius;
     if (final) this.apply(model, radius ? 'Corners rounded.' : 'Corners sharp.');
-    else { this.working = model; this.show(model); this.refresh(); }
+    else {
+      this.working = model;
+      this.show(model);
+      this.refresh();
+    }
   }
 
   /** Adds a point to the selected path: after the end of a line (or before its start), or into an outline's nearest edge. */
@@ -245,7 +298,10 @@ export class PathTool {
     const group = this.group(sel.kind);
     const model = this.model();
     const path = model[sel.kind][sel.index];
-    if (path.points.length >= group.maxPoints) { this.host.status(`A ${group.noun} can have at most ${group.maxPoints} points.`, true); return; }
+    if (path.points.length >= group.maxPoints) {
+      this.host.status(`A ${group.noun} can have at most ${group.maxPoints} points.`, true);
+      return;
+    }
     if (group.closed) path.points.splice(this.nearestEdge(path.points, this.project(at), true).at, 0, at);
     else if (group.extend === 'start') path.points.unshift(at);
     else path.points.push(at);
@@ -256,8 +312,14 @@ export class PathTool {
     const group = this.group(sel.kind);
     const model = this.model();
     const path = model[sel.kind][sel.index];
-    if (group.fixed?.(path).includes(point)) { this.host.status(`That point belongs to the ${group.noun}: move it instead.`, true); return; }
-    if (path.points.length <= group.minPoints) { this.host.status(`A ${group.noun} needs at least ${group.minPoints} points.`, true); return; }
+    if (group.fixed?.(path).includes(point)) {
+      this.host.status(`That point belongs to the ${group.noun}: move it instead.`, true);
+      return;
+    }
+    if (path.points.length <= group.minPoints) {
+      this.host.status(`A ${group.noun} needs at least ${group.minPoints} points.`, true);
+      return;
+    }
     path.points.splice(point, 1);
     this.apply(model, 'Point removed.');
   }
@@ -293,7 +355,8 @@ export class PathTool {
     return this.host.clamp ? this.host.clamp(p) : p;
   }
 
-  project = (p: Point): Point => (this.host.depth === undefined ? this.scene.project(p) : this.scene.project(p, this.host.depth));
+  project = (p: Point): Point =>
+    this.host.depth === undefined ? this.scene.project(p) : this.scene.project(p, this.host.depth);
 
   private down(event: PointerEvent): void {
     if (!this.active || event.button === 1) return;
@@ -301,13 +364,24 @@ export class PathTool {
     // The tool's own handles (e.g. icicles) are not ours.
     if (target.closest('[data-extra]')) return;
     if (this.drawing) {
-      if (event.button === 2) { event.preventDefault(); this.drawing.points.pop(); this.refresh(); return; }
+      if (event.button === 2) {
+        event.preventDefault();
+        this.drawing.points.pop();
+        this.refresh();
+        return;
+      }
       if (event.button !== 0) return;
       event.preventDefault();
       const group = this.group(this.drawing.kind);
       const pts = this.drawing.points;
       const screen = this.local(event);
-      if (pts.length >= Math.max(2, group.minPoints) && distance(this.project(group.closed ? pts[0] : pts[pts.length - 1]), screen) <= CLOSE_REACH) { this.finishDrawing(); return; }
+      if (
+        pts.length >= Math.max(2, group.minPoints) &&
+        distance(this.project(group.closed ? pts[0] : pts[pts.length - 1]), screen) <= CLOSE_REACH
+      ) {
+        this.finishDrawing();
+        return;
+      }
       this.root.setPointerCapture(event.pointerId);
       this.drawing.stroke = [this.world(event, pts)];
       return;
@@ -325,12 +399,24 @@ export class PathTool {
     const point = Number(target.getAttribute('data-point') ?? -1);
     event.preventDefault();
     this.selection = sel;
-    if (event.button === 2) { if (part === 'point') this.removePoint(sel, point); this.refresh(); return; }
+    if (event.button === 2) {
+      if (part === 'point') this.removePoint(sel, point);
+      this.refresh();
+      return;
+    }
     if (event.button !== 0) return;
     this.root.setPointerCapture(event.pointerId);
     const path = this.selected(this.model());
     const anchor = part === 'point' && (this.group(kind).role?.(path!, point) ?? '').includes('anchor');
-    this.drag = { sel, part, point, whole: part !== 'point' || (anchor && event.shiftKey), from: this.world(event), screen: this.local(event), moved: false };
+    this.drag = {
+      sel,
+      part,
+      point,
+      whole: part !== 'point' || (anchor && event.shiftKey),
+      from: this.world(event),
+      screen: this.local(event),
+      moved: false,
+    };
     this.refresh();
   }
 
@@ -351,14 +437,20 @@ export class PathTool {
     const drag = this.drag;
     if (!drag) return;
     if (!drag.moved && distance(this.local(event), drag.screen) <= CLICK_SLOP) return;
-    if (!drag.moved) { drag.moved = true; this.working = this.model(); }
+    if (!drag.moved) {
+      drag.moved = true;
+      this.working = this.model();
+    }
     const path = this.working![drag.sel.kind][drag.sel.index];
     const others = drag.whole ? [] : path.points.filter((_, i) => i !== drag.point);
     const p = this.world(event, others);
     if (drag.whole) {
       const dx = p.x - drag.from.x;
       const dy = p.y - drag.from.y;
-      for (const q of path.points) { q.x += dx; q.y += dy; }
+      for (const q of path.points) {
+        q.x += dx;
+        q.y += dy;
+      }
       drag.from = p;
     } else path.points[drag.point] = p;
     this.show(this.working!);
@@ -373,7 +465,9 @@ export class PathTool {
       if (drawing.stroke.length) {
         // A click adds one point; a drag adds the traced line, simplified.
         const traced = drawing.stroke.length > 2 ? simplifyStroke(drawing.stroke, 0.12) : drawing.stroke.slice(0, 1);
-        for (const p of traced) if (!drawing.points.length || distance(drawing.points[drawing.points.length - 1], p) > 0.08) drawing.points.push(p);
+        for (const p of traced)
+          if (!drawing.points.length || distance(drawing.points[drawing.points.length - 1], p) > 0.08)
+            drawing.points.push(p);
         const max = this.group(drawing.kind).maxPoints;
         if (drawing.points.length > max) drawing.points = simplifyStroke(drawing.points, 0.3).slice(0, max);
         drawing.stroke = [];
@@ -386,20 +480,35 @@ export class PathTool {
       this.press = null;
       if (press.moved) return;
       if (press.shift && this.selection) this.addPoint(press.at);
-      else { this.selection = null; this.refresh(); }
+      else {
+        this.selection = null;
+        this.refresh();
+      }
       return;
     }
     const drag = this.drag;
     if (!drag) return;
     this.drag = null;
-    if (!drag.moved || !this.working) { this.working = null; this.refresh(); return; }
-    this.apply(this.working, drag.whole ? `${this.group(drag.sel.kind).noun[0].toUpperCase()}${this.group(drag.sel.kind).noun.slice(1)} moved.` : 'Point moved.');
+    if (!drag.moved || !this.working) {
+      this.working = null;
+      this.refresh();
+      return;
+    }
+    this.apply(
+      this.working,
+      drag.whole
+        ? `${this.group(drag.sel.kind).noun[0].toUpperCase()}${this.group(drag.sel.kind).noun.slice(1)} moved.`
+        : 'Point moved.',
+    );
   }
 
   private cancelDrag(): void {
     this.drag = null;
     this.press = null;
-    if (this.working) { this.working = null; this.host.revert(); }
+    if (this.working) {
+      this.working = null;
+      this.host.revert();
+    }
     this.refresh();
   }
 
@@ -415,7 +524,11 @@ export class PathTool {
     const model = this.model();
     const path = model[kind][sel.index];
     this.selection = sel;
-    if (path.points.length >= group.maxPoints) { this.host.status(`A ${group.noun} can have at most ${group.maxPoints} points.`, true); this.refresh(); return; }
+    if (path.points.length >= group.maxPoints) {
+      this.host.status(`A ${group.noun} can have at most ${group.maxPoints} points.`, true);
+      this.refresh();
+      return;
+    }
     const edge = this.nearestEdge(path.points, this.local(event), group.closed);
     path.points.splice(edge.at, 0, this.world(event));
     this.apply(model, 'Point inserted.');
@@ -424,18 +537,34 @@ export class PathTool {
   private key(event: KeyboardEvent): void {
     if (!this.active) return;
     const target = event.target;
-    if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement || document.querySelector('dialog[open]')) return;
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLSelectElement ||
+      target instanceof HTMLTextAreaElement ||
+      document.querySelector('dialog[open]')
+    )
+      return;
     if (event.key === 'Escape') {
       if (this.drawing) this.stopDrawing();
       else if (this.selection) this.select(null);
       return;
     }
     if (this.drawing) {
-      if (event.key === 'Enter') { event.preventDefault(); this.finishDrawing(); }
-      else if (event.key === 'Backspace' || event.key === 'Delete') { event.preventDefault(); this.drawing.points.pop(); this.refresh(); }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        this.finishDrawing();
+      } else if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        this.drawing.points.pop();
+        this.refresh();
+      }
       return;
     }
-    if ((event.key === 'Delete' || event.key === 'Backspace') && this.selection && !(target instanceof SVGElement && target.dataset.part === 'point')) {
+    if (
+      (event.key === 'Delete' || event.key === 'Backspace') &&
+      this.selection &&
+      !(target instanceof SVGElement && target.dataset.part === 'point')
+    ) {
       event.preventDefault();
       this.removeSelected();
     }
@@ -450,7 +579,12 @@ export class PathTool {
       return;
     }
     const step = event.shiftKey ? 0.5 : 0.1;
-    const delta: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
+    const delta: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, step],
+      ArrowDown: [0, -step],
+    };
     const d = delta[event.key];
     if (!d) return;
     event.preventDefault();
@@ -459,7 +593,12 @@ export class PathTool {
     q.x += d[0];
     q.y += d[1];
     this.selection = sel;
-    if (this.apply(model, 'Point moved.')) (this.host.layer.querySelector(`[data-group="${sel.kind}"][data-index="${sel.index}"][data-point="${point}"]`) as SVGElement | null)?.focus();
+    if (this.apply(model, 'Point moved.'))
+      (
+        this.host.layer.querySelector(
+          `[data-group="${sel.kind}"][data-index="${sel.index}"][data-point="${point}"]`,
+        ) as SVGElement | null
+      )?.focus();
   }
 
   // ---------------------------------------------------------------- drawing
@@ -467,7 +606,10 @@ export class PathTool {
   refresh(): void {
     const layer = this.host.layer;
     layer.replaceChildren();
-    if (!this.active) { this.host.changed?.(this.host.read(), null); return; }
+    if (!this.active) {
+      this.host.changed?.(this.host.read(), null);
+      return;
+    }
     const model = this.model();
     if (this.selection && !model[this.selection.kind]?.[this.selection.index]) this.selection = null;
     const sel = this.selection;
@@ -479,11 +621,20 @@ export class PathTool {
       const editable = true;
       (model[group.kind] ?? []).forEach((path, index) => {
         const chosen = sel?.kind === group.kind && sel.index === index;
-        const g = svg('g', { class: `path ${group.closed ? 'closed' : 'open'}${chosen ? ' selected' : ''}`, style: `color: ${group.color}` });
+        const g = svg('g', {
+          class: `path ${group.closed ? 'closed' : 'open'}${chosen ? ' selected' : ''}`,
+          style: `color: ${group.color}`,
+        });
         layer.append(g);
-        const attrs = (part: Part, point = -1): Record<string, string> => (editable
-          ? { 'data-group': group.kind, 'data-index': String(index), 'data-part': part, ...(point >= 0 ? { 'data-point': String(point) } : {}) }
-          : {});
+        const attrs = (part: Part, point = -1): Record<string, string> =>
+          editable
+            ? {
+                'data-group': group.kind,
+                'data-index': String(index),
+                'data-part': part,
+                ...(point >= 0 ? { 'data-point': String(point) } : {}),
+              }
+            : {};
         const curve = roundedPath(path.points, group.closed, path.radius).map(this.project);
         const d = curve.map((q, i) => `${i ? 'L' : 'M'}${q.x},${q.y}`).join(' ') + (group.closed ? ' Z' : '');
         if (group.closed) g.append(svg('path', { d, class: 'path-fill', ...attrs('body') }));
@@ -492,15 +643,25 @@ export class PathTool {
         if (editable) g.append(svg('path', { d, class: 'path-hit', ...attrs('line') }));
         if (!chosen) {
           // Unselected: just its anchors, to grab it by.
-          path.points.forEach((q, i) => { if ((group.role?.(path, i) ?? '').includes('anchor')) this.handle(g, this.project(q), group, path, { kind: group.kind, index }, i, editable); });
+          path.points.forEach((q, i) => {
+            if ((group.role?.(path, i) ?? '').includes('anchor'))
+              this.handle(g, this.project(q), group, path, { kind: group.kind, index }, i, editable);
+          });
           return;
         }
         if (path.radius > 0) {
           // Curved: the straight lines between its points, which the curve is drawn from.
           const control = path.points.map(this.project);
-          g.append(svg('path', { d: control.map((q, i) => `${i ? 'L' : 'M'}${q.x},${q.y}`).join(' ') + (group.closed ? ' Z' : ''), class: 'path-control' }));
+          g.append(
+            svg('path', {
+              d: control.map((q, i) => `${i ? 'L' : 'M'}${q.x},${q.y}`).join(' ') + (group.closed ? ' Z' : ''),
+              class: 'path-control',
+            }),
+          );
         }
-        path.points.forEach((q, i) => this.handle(g, this.project(q), group, path, { kind: group.kind, index }, i, editable));
+        path.points.forEach((q, i) =>
+          this.handle(g, this.project(q), group, path, { kind: group.kind, index }, i, editable),
+        );
       });
     }
 
@@ -511,10 +672,31 @@ export class PathTool {
       layer.append(g);
       const pts = [...drawing.points, ...drawing.stroke].map(this.project);
       const tail = this.hover ? [this.project(this.hover)] : [];
-      if (pts.length) g.append(svg('polyline', { points: [...pts, ...tail].map((q) => `${q.x},${q.y}`).join(' '), class: 'path-draft' }));
-      if (group.closed && tail.length && pts.length >= 2) g.append(svg('line', { x1: String(tail[0].x), y1: String(tail[0].y), x2: String(pts[0].x), y2: String(pts[0].y), class: 'path-draft closing' }));
+      if (pts.length)
+        g.append(
+          svg('polyline', { points: [...pts, ...tail].map((q) => `${q.x},${q.y}`).join(' '), class: 'path-draft' }),
+        );
+      if (group.closed && tail.length && pts.length >= 2)
+        g.append(
+          svg('line', {
+            x1: String(tail[0].x),
+            y1: String(tail[0].y),
+            x2: String(pts[0].x),
+            y2: String(pts[0].y),
+            class: 'path-draft closing',
+          }),
+        );
       const finishAt = group.closed ? 0 : drawing.points.length - 1;
-      drawing.points.map(this.project).forEach((q, i) => g.append(svg('circle', { cx: String(q.x), cy: String(q.y), r: String(i === finishAt ? 7 : 4), class: `path-draft-point${i === finishAt && drawing.points.length >= Math.max(2, group.minPoints) ? ' finish' : ''}` })));
+      drawing.points.map(this.project).forEach((q, i) =>
+        g.append(
+          svg('circle', {
+            cx: String(q.x),
+            cy: String(q.y),
+            r: String(i === finishAt ? 7 : 4),
+            class: `path-draft-point${i === finishAt && drawing.points.length >= Math.max(2, group.minPoints) ? ' finish' : ''}`,
+          }),
+        ),
+      );
     }
 
     this.host.over?.(model, sel, this.project);
@@ -530,7 +712,15 @@ export class PathTool {
     this.host.changed?.(model, sel);
   }
 
-  private handle(g: Element, p: Point, group: PathGroup, path: EditPath, sel: Selection, i: number, editable: boolean): void {
+  private handle(
+    g: Element,
+    p: Point,
+    group: PathGroup,
+    path: EditPath,
+    sel: Selection,
+    i: number,
+    editable: boolean,
+  ): void {
     const role = group.role?.(path, i) ?? '';
     const size = role.includes('anchor') ? 8 : group.closed ? 5 : 6;
     const node = group.closed
@@ -540,7 +730,12 @@ export class PathTool {
     if (editable) {
       const fixed = group.fixed?.(path).includes(i);
       const attrs: Record<string, string> = {
-        'data-group': group.kind, 'data-index': String(sel.index), 'data-part': 'point', 'data-point': String(i), tabindex: '0', role: 'button',
+        'data-group': group.kind,
+        'data-index': String(sel.index),
+        'data-part': 'point',
+        'data-point': String(i),
+        tabindex: '0',
+        role: 'button',
         'aria-label': `${group.noun[0].toUpperCase()}${group.noun.slice(1)} ${sel.index + 1} point ${i + 1}. Drag or use arrow keys${fixed ? '' : '; Delete or right-click removes it'}.`,
       };
       Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
@@ -548,7 +743,11 @@ export class PathTool {
       node.addEventListener('focus', () => {
         if (this.selection?.kind === sel.kind && this.selection.index === sel.index) return;
         this.select(sel);
-        (this.host.layer.querySelector(`[data-group="${sel.kind}"][data-index="${sel.index}"][data-point="${i}"]`) as SVGElement | null)?.focus();
+        (
+          this.host.layer.querySelector(
+            `[data-group="${sel.kind}"][data-index="${sel.index}"][data-point="${i}"]`,
+          ) as SVGElement | null
+        )?.focus();
       });
     }
     g.append(node);

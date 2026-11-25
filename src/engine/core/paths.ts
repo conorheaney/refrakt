@@ -18,7 +18,10 @@ export const MAX_PATH_RADIUS = 3;
 /** Curve samples per rounded corner, by default. */
 export const CORNER_STEPS = 12;
 
-const mix = (a: PathPoint, b: PathPoint, t: number): PathPoint => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+const mix = (a: PathPoint, b: PathPoint, t: number): PathPoint => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+});
 const gap = (a: PathPoint, b: PathPoint): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** How far a corner at `p` (between `prev` and `next`) is cut back for a rounding of `radius`. */
@@ -42,17 +45,28 @@ export function roundedCorners(points: readonly PathPoint[], closed: boolean, ra
  * The path as drawn and used: its points with each corner rounded off by `radius` (`steps` samples a corner).
  * A closed path's last point joins back to its first (not repeated).
  */
-export function roundedPath(points: readonly PathPoint[], closed: boolean, radius: number, steps = CORNER_STEPS): PathPoint[] {
+export function roundedPath(
+  points: readonly PathPoint[],
+  closed: boolean,
+  radius: number,
+  steps = CORNER_STEPS,
+): PathPoint[] {
   const n = points.length;
   if (radius <= 0 || n < 3) return points.map((p) => ({ x: p.x, y: p.y }));
   const out: PathPoint[] = [];
   for (let i = 0; i < n; i++) {
     const p = points[i];
-    if (!closed && (i === 0 || i === n - 1)) { out.push({ x: p.x, y: p.y }); continue; }
+    if (!closed && (i === 0 || i === n - 1)) {
+      out.push({ x: p.x, y: p.y });
+      continue;
+    }
     const prev = points[(i + n - 1) % n];
     const next = points[(i + 1) % n];
     const trim = cornerTrim(prev, p, next, radius);
-    if (trim <= 1e-6) { out.push({ x: p.x, y: p.y }); continue; }
+    if (trim <= 1e-6) {
+      out.push({ x: p.x, y: p.y });
+      continue;
+    }
     const entry = mix(p, prev, trim / (gap(p, prev) || 1));
     const exit = mix(p, next, trim / (gap(p, next) || 1));
     for (let s = 0; s <= steps; s++) {

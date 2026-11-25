@@ -11,10 +11,12 @@ import phase from './textures/phase.jpg';
 export const FORGE_TEXTURE_URLS = [normal, tough, armored, steel, explosive, prism, phase] as const;
 
 export async function loadForgeTextures(): Promise<readonly THREE.Texture[]> {
-  return Promise.all(FORGE_TEXTURE_URLS.map(async url => {
-    const texture = await new THREE.TextureLoader().loadAsync(url);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.anisotropy = 4;
-    return texture;
-  }));
+  return Promise.all(
+    FORGE_TEXTURE_URLS.map(async (url) => {
+      const texture = await new THREE.TextureLoader().loadAsync(url);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 4;
+      return texture;
+    }),
+  );
 }

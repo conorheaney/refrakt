@@ -14,7 +14,19 @@ import { CLASSIC, classicCampaign } from './support/worlds';
 const LEFT: HazardDef = { kind: 'snake', x: -14, y: -7.4, reach: 7 };
 
 function paddleAt(x: number): Paddle {
-  return { x, px: x, y: PADDLE.y, width: PADDLE.width, vx: 0, stun: 0, shove: 0, tilt: 0, slide: 0, lean: 0, hitTime: -10 };
+  return {
+    x,
+    px: x,
+    y: PADDLE.y,
+    width: PADDLE.width,
+    vx: 0,
+    stun: 0,
+    shove: 0,
+    tilt: 0,
+    slide: 0,
+    lean: 0,
+    hitTime: -10,
+  };
 }
 
 /** A system with one snake that has just begun its warning, aimed at a paddle at `aimX`. */

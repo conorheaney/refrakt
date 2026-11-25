@@ -116,7 +116,16 @@ export class ParticleSystem {
   }
 
   /** Omnidirectional burst, flattened towards the play plane. */
-  burst(x: number, y: number, color: THREE.Color, count: number, speed: number, size: number, life: number, gain = 1): void {
+  burst(
+    x: number,
+    y: number,
+    color: THREE.Color,
+    count: number,
+    speed: number,
+    size: number,
+    life: number,
+    gain = 1,
+  ): void {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * TAU;
       const s = speed * (0.25 + Math.random() * 0.75);

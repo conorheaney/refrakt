@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { BALL, BOSS_SUMMON, DROP, FIELD, FOREST_ART, FOREST_FIELD, GRID, PADDLE, PLAYER, POWER_WARN, SHIELD_CHARGES, SHIELD_PICKUP, SIM } from '../src/gameplay/config';
+import {
+  BALL,
+  BOSS_SUMMON,
+  DROP,
+  FIELD,
+  FOREST_ART,
+  FOREST_FIELD,
+  GRID,
+  PADDLE,
+  PLAYER,
+  POWER_WARN,
+  SHIELD_CHARGES,
+  SHIELD_PICKUP,
+  SIM,
+} from '../src/gameplay/config';
 import { STAGES_PER_WORLD, speedSteps } from '../src/content/worlds';
 import { Pool } from '../src/engine/core/Pool';
 import { Random } from '../src/engine/core/Random';
@@ -38,8 +52,12 @@ describe('paddle level initialization', () => {
       world.phase = 'live';
       const ball = world.balls.items.find((item) => item.active)!;
       Object.assign(ball, {
-        stuck: false, x: world.paddle.x, px: world.paddle.x,
-        y: world.paddle.y + PADDLE.halfH + BALL.radius + 0.01, dx: 0, dy: -1,
+        stuck: false,
+        x: world.paddle.x,
+        px: world.paddle.x,
+        y: world.paddle.y + PADDLE.halfH + BALL.radius + 0.01,
+        dx: 0,
+        dy: -1,
       });
       world.step(SIM.step, { targetX: 0, axis: 0, action: false });
       expect(world.paddle.hitTime).toBeGreaterThanOrEqual(60);
@@ -90,10 +108,29 @@ describe('timed power warnings', () => {
 
 describe('custom-lane barrier', () => {
   it('spans an offset paddle area and only saves balls within that span', () => {
-    const campaign = classicCampaign({ space: {
-      paddle: { radius: 0, points: [{ x: -3, y: -7 }, { x: 9, y: -7 }, { x: 9, y: -5 }, { x: -3, y: -5 }] },
-      ball: { radius: 0, drainEdge: 3, points: [{ x: -14, y: -5 }, { x: -14, y: 10 }, { x: 14, y: 10 }, { x: 14, y: -5 }] },
-    } });
+    const campaign = classicCampaign({
+      space: {
+        paddle: {
+          radius: 0,
+          points: [
+            { x: -3, y: -7 },
+            { x: 9, y: -7 },
+            { x: 9, y: -5 },
+            { x: -3, y: -5 },
+          ],
+        },
+        ball: {
+          radius: 0,
+          drainEdge: 3,
+          points: [
+            { x: -14, y: -5 },
+            { x: -14, y: 10 },
+            { x: 14, y: 10 },
+            { x: 14, y: -5 },
+          ],
+        },
+      },
+    });
     for (const x of [7, -8]) {
       const world = new World(campaign);
       world.newGame(1);
@@ -101,7 +138,7 @@ describe('custom-lane barrier', () => {
       expect(world.shieldRight).toBeCloseTo(9);
       world.shieldCharges = 2;
       world.phase = 'live';
-      const ball = world.balls.items.find(item => item.active)!;
+      const ball = world.balls.items.find((item) => item.active)!;
       Object.assign(ball, { stuck: false, x, px: x, y: -4.8, dx: 0, dy: -1 });
       for (let step = 0; step < 60 && ball.active && ball.dy < 0; step++) {
         world.step(SIM.step, { targetX: 0, axis: 0, action: false });
@@ -124,7 +161,9 @@ describe('custom-lane barrier', () => {
   });
   for (const data of [frozenShieldWorld, tombShieldWorld, spaceShieldWorld]) {
     it(`saves at the visible shield below ${data.world.name}'s drain, including the last charge`, () => {
-      const campaign = classicCampaign({ space: { ball: data.playAreas.ball as BallArea, paddle: data.playAreas.paddle as PolygonArea } });
+      const campaign = classicCampaign({
+        space: { ball: data.playAreas.ball as BallArea, paddle: data.playAreas.paddle as PolygonArea },
+      });
       for (const charges of [0, 1, 2]) {
         const world = new World(campaign);
         world.newGame(1);
@@ -132,9 +171,18 @@ describe('custom-lane barrier', () => {
         world.phase = 'live';
         const ball = world.balls.items.find((item) => item.active)!;
         const drainY = data.playAreas.ball.points[data.playAreas.ball.drainEdge].y;
-        Object.assign(ball, { stuck: false, x: 8, px: 8, y: Math.max(drainY, world.shieldY + BALL.radius) + 0.2, dx: 0, dy: -1 });
+        Object.assign(ball, {
+          stuck: false,
+          x: 8,
+          px: 8,
+          y: Math.max(drainY, world.shieldY + BALL.radius) + 0.2,
+          dx: 0,
+          dy: -1,
+        });
         let hitY: number | undefined;
-        world.events.on('shieldHit', () => { hitY = ball.y; });
+        world.events.on('shieldHit', () => {
+          hitY = ball.y;
+        });
         for (let step = 0; step < 60 && ball.active && ball.dy < 0; step++) {
           world.step(SIM.step, { targetX: 0, axis: 0, action: false });
         }
@@ -155,9 +203,19 @@ describe('custom-lane barrier', () => {
     });
   }
   it('saves a ball at the paddle bottom and restores the default height on leaving the lane', () => {
-    const campaign = classicCampaign({ space: {
-      paddle: { radius: 0, points: [{ x: -14, y: -7 }, { x: 14, y: -7 }, { x: 14, y: -5 }, { x: -14, y: -5 }] },
-    } });
+    const campaign = classicCampaign({
+      space: {
+        paddle: {
+          radius: 0,
+          points: [
+            { x: -14, y: -7 },
+            { x: 14, y: -7 },
+            { x: 14, y: -5 },
+            { x: -14, y: -5 },
+          ],
+        },
+      },
+    });
     const world = new World(campaign);
     world.newGame(1);
     expect(world.shieldY).toBeCloseTo(world.paddle.y - PADDLE.halfH);
@@ -360,7 +418,7 @@ describe('World', () => {
     }
   });
 
-  it('bounces off the arch frame\'s rounded top corners', () => {
+  it("bounces off the arch frame's rounded top corners", () => {
     const r = BALL.radius;
     const field = FIELD;
     const cases = [-1, 1].flatMap((side) => [0.3, 0.6, 0.9, 1.2].map((angle) => ({ side, angle })));
@@ -396,7 +454,8 @@ describe('World', () => {
           if (!ball.active || ball.stuck) continue;
           for (const brick of world.bricks) {
             if (!brick.alive || !brick.solid) continue;
-            const inside = Math.abs(ball.x - brick.x) < world.grid.halfW && Math.abs(ball.y - brick.y) < world.grid.halfH;
+            const inside =
+              Math.abs(ball.x - brick.x) < world.grid.halfW && Math.abs(ball.y - brick.y) < world.grid.halfH;
             expect(inside).toBe(false);
           }
         }
@@ -458,7 +517,12 @@ describe('World', () => {
 
   describe('power-up loadout', () => {
     /** Plays `level` with the autopilot and returns the kind of every power-up released, in order. */
-    function dropsFor(seed: number, level: number, loadout: readonly PowerUpKind[] | null, seconds = 90): { kinds: PowerUpKind[]; perLevel: number[] } {
+    function dropsFor(
+      seed: number,
+      level: number,
+      loadout: readonly PowerUpKind[] | null,
+      seconds = 90,
+    ): { kinds: PowerUpKind[]; perLevel: number[] } {
       const world = new World(CLASSIC);
       world.setLoadout(loadout);
       world.newGame(seed, level);
@@ -545,11 +609,18 @@ describe('World', () => {
       const target = at(col);
       const hp = targetKind === BrickKind.Armored ? 3 : 1;
       Object.assign(target, { alive: true, solid: true, kind: targetKind, hp, maxHp: hp, fuse: 0 });
-      for (const c of [col - 1, col + 1]) Object.assign(at(c), { alive: true, solid: true, kind: BrickKind.Tough, hp: 2, maxHp: 2, fuse: 0 });
+      for (const c of [col - 1, col + 1])
+        Object.assign(at(c), { alive: true, solid: true, kind: BrickKind.Tough, hp: 2, maxHp: 2, fuse: 0 });
       // A far-off brick keeps the level from clearing.
       Object.assign(world.bricks[0], { alive: true, solid: true, kind: BrickKind.Normal, hp: 1, maxHp: 1, fuse: 0 });
       const ball = world.balls.items.find((b) => b.active)!;
-      Object.assign(ball, { x: target.x, y: target.y - world.grid.halfH - BALL.radius - 0.3, dx: 0, dy: 1, stuck: false });
+      Object.assign(ball, {
+        x: target.x,
+        y: target.y - world.grid.halfH - BALL.radius - 0.3,
+        dx: 0,
+        dy: 1,
+        stuck: false,
+      });
       ball.px = ball.x;
       ball.py = ball.y;
       if (refrakt) world.refraktTime = 9;

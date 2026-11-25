@@ -18,7 +18,10 @@ export function iconSvg(kind: PowerUpKind): string {
   switch (kind) {
     case PowerUpKind.Fire: // rocket
       return wrap(
-        lin('b', '#fff6c9', '#ffb21f', 1, 1) + lin('f', '#ff8a2b', '#d9361a') + lin('w', '#9fe3ff', '#2a7de0') + lin('x', '#fff3a0', '#ff7a1a'),
+        lin('b', '#fff6c9', '#ffb21f', 1, 1) +
+          lin('f', '#ff8a2b', '#d9361a') +
+          lin('w', '#9fe3ff', '#2a7de0') +
+          lin('x', '#fff3a0', '#ff7a1a'),
         `<g transform="rotate(45 32 32)">
           <path d="M26 47 L32 60 L38 47 Z" fill="url(#${id}x)"/>
           <path d="M22 38 L14 48 L24 46 Z M42 38 L50 48 L40 46 Z" fill="url(#${id}f)"/>

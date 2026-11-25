@@ -9,7 +9,9 @@ const button = (id: string): HTMLButtonElement => document.getElementById(id) as
 const input = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement;
 
 /** A snake as a path: from its tail along its body to its head at the den (the last point), and its strike reach. */
-interface SnakePath extends EditPath { reach: number }
+interface SnakePath extends EditPath {
+  reach: number;
+}
 
 const MAX_BODY = 32;
 const round = (n: number): number => Math.round(n * 100) / 100;
@@ -35,25 +37,38 @@ export class SnakeEditor {
   ) {
     this.tool = new PathTool(scene, {
       tool: 'snakes',
-      groups: [{
-        kind: 'snake', noun: 'snake', closed: false, color: '#9be36d', minPoints: 2, maxPoints: MAX_BODY + 1, maxPaths: MAX_HAZARDS, extend: 'start',
-        fixed: (path) => [path.points.length - 1],
-        role: (path, i) => (i === path.points.length - 1 ? 'anchor' : i === 0 ? 'end' : ''),
-      }],
+      groups: [
+        {
+          kind: 'snake',
+          noun: 'snake',
+          closed: false,
+          color: '#9be36d',
+          minPoints: 2,
+          maxPoints: MAX_BODY + 1,
+          maxPaths: MAX_HAZARDS,
+          extend: 'start',
+          fixed: (path) => [path.points.length - 1],
+          role: (path, i) => (i === path.points.length - 1 ? 'anchor' : i === 0 ? 'end' : ''),
+        },
+      ],
       depth: SNAKE_DEPTH,
       layer: this.layer,
       curve: input('snake-curve'),
       read: () => ({ snake: this.read() }),
       write: (model, final, message) => {
         const hazards = this.hazards(model.snake as SnakePath[]);
-        if (final) { this.commit(hazards); status(message); } else this.preview(hazards ?? []);
+        if (final) {
+          this.commit(hazards);
+          status(message);
+        } else this.preview(hazards ?? []);
       },
       revert: () => this.preview(undefined),
       status,
       clamp: (p) => ({ x: Math.max(-39, Math.min(39, p.x)), y: Math.max(-19, Math.min(19, p.y)) }),
       // Drawn head first, then back along the body to the tail; kept tail first.
       create: (_kind, points) => ({ points: [...points].reverse(), radius: 0, reach: 7 }) as SnakePath,
-      under: (model, sel, project) => this.drawReach((this.pending ?? model).snake as SnakePath[], sel?.index ?? -1, project),
+      under: (model, sel, project) =>
+        this.drawReach((this.pending ?? model).snake as SnakePath[], sel?.index ?? -1, project),
       changed: (model, sel) => this.panel((this.pending ?? model).snake as SnakePath[], sel?.index ?? -1),
     });
     button('snake-add').addEventListener('click', () => this.tool.draw('snake'));
@@ -72,14 +87,18 @@ export class SnakeEditor {
     });
   }
 
-  refresh(): void { this.tool.refresh(); }
+  refresh(): void {
+    this.tool.refresh();
+  }
 
   private read(): SnakePath[] {
-    return (this.getData().hazards ?? []).filter((h): h is SnakeDef => h.kind === 'snake').map((h) => ({
-      points: [...(h.body ?? this.defaultBody(h.x, h.y)).map((p) => ({ x: p.x, y: p.y })), { x: h.x, y: h.y }],
-      radius: h.radius ?? 0,
-      reach: h.reach,
-    }));
+    return (this.getData().hazards ?? [])
+      .filter((h): h is SnakeDef => h.kind === 'snake')
+      .map((h) => ({
+        points: [...(h.body ?? this.defaultBody(h.x, h.y)).map((p) => ({ x: p.x, y: p.y })), { x: h.x, y: h.y }],
+        radius: h.radius ?? 0,
+        reach: h.reach,
+      }));
   }
 
   /** A straight body running out past the wall behind the den (for snakes saved without one). */
@@ -93,7 +112,10 @@ export class SnakeEditor {
     const defs = snakes.map((s): SnakeDef => {
       const den = s.points[s.points.length - 1];
       return {
-        kind: 'snake', x: round(den.x), y: round(den.y), reach: s.reach,
+        kind: 'snake',
+        x: round(den.x),
+        y: round(den.y),
+        reach: s.reach,
         body: s.points.slice(0, -1).map((p) => ({ x: round(p.x), y: round(p.y) })),
         ...(s.radius ? { radius: round(s.radius) } : {}),
       };
@@ -112,7 +134,9 @@ export class SnakeEditor {
         const q = project({ x: den.x + Math.cos(a) * snake.reach, y: den.y + Math.sin(a) * snake.reach });
         ring.push(`${k ? 'L' : 'M'}${q.x},${q.y}`);
       }
-      this.layer.append(svg('path', { d: ring.join(' '), class: `snake-reach${s === selected ? ' selected' : ''}`, 'data-extra': '' }));
+      this.layer.append(
+        svg('path', { d: ring.join(' '), class: `snake-reach${s === selected ? ' selected' : ''}`, 'data-extra': '' }),
+      );
     });
   }
 
@@ -123,14 +147,17 @@ export class SnakeEditor {
     const current = snakes[selected];
     button('snake-delete').disabled = !current;
     input('snake-reach').disabled = !current;
-    button('snake-add').disabled = (this.getData().hazards ?? []).filter((h) => h.kind !== 'snake').length + snakes.length >= MAX_HAZARDS;
+    button('snake-add').disabled =
+      (this.getData().hazards ?? []).filter((h) => h.kind !== 'snake').length + snakes.length >= MAX_HAZARDS;
     if (current) {
       if (document.activeElement !== input('snake-reach')) input('snake-reach').value = String(current.reach);
       document.getElementById('snake-reach-value')!.textContent = current.reach.toFixed(1);
     }
     const head = current?.points[current.points.length - 1];
-    document.getElementById('snake-summary')!.textContent = !snakes.length ? 'No snakes in this world yet.'
-      : head ? `${snakes.length} snake${snakes.length === 1 ? '' : 's'} · selected: snake ${selected + 1}, head at (${head.x.toFixed(1)}, ${head.y.toFixed(1)})`
-      : `${snakes.length} snake${snakes.length === 1 ? '' : 's'} · nothing selected.`;
+    document.getElementById('snake-summary')!.textContent = !snakes.length
+      ? 'No snakes in this world yet.'
+      : head
+        ? `${snakes.length} snake${snakes.length === 1 ? '' : 's'} · selected: snake ${selected + 1}, head at (${head.x.toFixed(1)}, ${head.y.toFixed(1)})`
+        : `${snakes.length} snake${snakes.length === 1 ? '' : 's'} · nothing selected.`;
   }
 }

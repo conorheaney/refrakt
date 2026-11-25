@@ -12,7 +12,11 @@ function render(track: MusicTrackId, seconds = 8): { tones: ToneOptions[]; noise
   const tones: ToneOptions[] = [];
   const noises: NoiseOptions[] = [];
   const context = { state: 'running', currentTime: 0 };
-  const audio = { context, tone: (o: ToneOptions) => tones.push(o), noise: (o: NoiseOptions) => noises.push(o) } as unknown as AudioEngine;
+  const audio = {
+    context,
+    tone: (o: ToneOptions) => tones.push(o),
+    noise: (o: NoiseOptions) => noises.push(o),
+  } as unknown as AudioEngine;
   const music = new Music(audio);
   music.track = track;
   music.mode = 'game';
@@ -43,14 +47,18 @@ it('plays distinct, well-formed forest, jungle, crystal and desert tracks with a
   }
   // Each track has its own sound, not a re-skin of another.
   const signature = (r: typeof space) => JSON.stringify(r.tones.slice(0, 40).map((o) => [o.type, Math.round(o.freq)]));
-  expect(new Set([signature(space), signature(forest), signature(jungle), signature(crystal), signature(desert)]).size).toBe(5);
+  expect(
+    new Set([signature(space), signature(forest), signature(jungle), signature(crystal), signature(desert)]).size,
+  ).toBe(5);
   // Crystal keeps time with ice chimes: a ringing bell on every beat at 132 BPM.
   const chimes = crystal.tones.filter((o) => o.type === 'sine' && o.dur === 0.6);
   expect(chimes.length).toBeGreaterThan(8);
   for (let i = 1; i < chimes.length; i++) expect(chimes[i].when! - chimes[i - 1].when!).toBeCloseTo(60 / 132, 2);
   // Forest stays soft (sine/triangle only); jungle carries a sawtooth brass lead.
   expect(forest.tones.every((o) => o.type === undefined || o.type === 'sine' || o.type === 'triangle')).toBe(true);
-  expect(jungle.tones.some((o) => o.type === 'sawtooth' && o.bus === 'music' && (o.attack ?? 0) > 0.03 && o.dur < 2)).toBe(true);
+  expect(
+    jungle.tones.some((o) => o.type === 'sawtooth' && o.bus === 'music' && (o.attack ?? 0) > 0.03 && o.dur < 2),
+  ).toBe(true);
 });
 
 it('stores the chosen track in a world and keeps it through validation and scene changes', () => {

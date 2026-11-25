@@ -22,7 +22,8 @@ async function boot(): Promise<void> {
   const canvas = document.getElementById('game');
   const uiRoot = document.getElementById('ui');
   try {
-    if (!(canvas instanceof HTMLCanvasElement) || !uiRoot) throw new Error('Page is missing the game canvas or UI root.');
+    if (!(canvas instanceof HTMLCanvasElement) || !uiRoot)
+      throw new Error('Page is missing the game canvas or UI root.');
     let campaign: Campaign;
     if (new URLSearchParams(location.search).has('editorPreview')) {
       // The editor's test play: just the world being edited.
@@ -44,14 +45,18 @@ async function boot(): Promise<void> {
     // Pre-rendered artwork is fetched up front so no world ever pops in half-drawn.
     const assets = await loadForestAssets();
     const backgrounds = new Map<number, THREE.Texture>();
-    await Promise.all(campaign.worlds.map(async ({ background: url }, index) => {
-      if (!url) return;
-      try {
-        const texture = await new THREE.TextureLoader().loadAsync(url);
-        texture.colorSpace = THREE.SRGBColorSpace;
-        backgrounds.set(index, texture);
-      } catch (error) { console.warn('An uploaded background could not load; using built-in scenery.', error); }
-    }));
+    await Promise.all(
+      campaign.worlds.map(async ({ background: url }, index) => {
+        if (!url) return;
+        try {
+          const texture = await new THREE.TextureLoader().loadAsync(url);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          backgrounds.set(index, texture);
+        } catch (error) {
+          console.warn('An uploaded background could not load; using built-in scenery.', error);
+        }
+      }),
+    );
     new Game(canvas, uiRoot, campaign, assets, backgrounds).start();
   } catch (err) {
     console.error(err);

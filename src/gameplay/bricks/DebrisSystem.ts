@@ -58,7 +58,18 @@ export class DebrisSystem {
    * @param halfW,halfH area the shards start from (the brick face)
    * @param pushX,pushY bias direction, e.g. the ball's travel direction
    */
-  spawn(x: number, y: number, color: THREE.Color, count: number, speed: number, halfW = 0.9, halfH = 0.5, pushX = 0, pushY = 0, size = 1): void {
+  spawn(
+    x: number,
+    y: number,
+    color: THREE.Color,
+    count: number,
+    speed: number,
+    halfW = 0.9,
+    halfH = 0.5,
+    pushX = 0,
+    pushY = 0,
+    size = 1,
+  ): void {
     for (let n = 0; n < count; n++) {
       // When full, recycle a random live slot instead of dropping the effect.
       const i = this.count < this.capacity ? this.count++ : Math.floor(Math.random() * this.capacity);

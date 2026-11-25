@@ -70,8 +70,12 @@ test('rejects stale simultaneous saves, external edits, malformed data and unsaf
   const { root, store, world } = await setup();
   const first = await store.save(newRequest(world));
   const current = (await store.list()).worlds[0];
-  const changed = structuredClone(world); changed.levels[0].name = 'NEW REVISION';
-  const simultaneous = await Promise.allSettled([store.save({ ...current, world: changed }), store.save({ ...current, world })]);
+  const changed = structuredClone(world);
+  changed.levels[0].name = 'NEW REVISION';
+  const simultaneous = await Promise.allSettled([
+    store.save({ ...current, world: changed }),
+    store.save({ ...current, world }),
+  ]);
   assert.equal(simultaneous.filter((r) => r.status === 'fulfilled').length, 1);
   assert.equal(simultaneous.filter((r) => r.status === 'rejected').length, 1);
   const target = path.join(root, 'public/worlds', first.filename);
@@ -98,12 +102,24 @@ test('backup creation failure stops the save before the world or manifest change
 test('HTTP API persists real world data and refuses cross-origin saves; backups cannot be fetched', async () => {
   const { store, world } = await setup();
   const middleware = worldFileMiddleware(store);
-  const server = httpServer((req, res) => { void middleware(req, res, () => { res.writeHead(404); res.end(); }); });
+  const server = httpServer((req, res) => {
+    void middleware(req, res, () => {
+      res.writeHead(404);
+      res.end();
+    });
+  });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${server.address().port}`;
   try {
-    const options = { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(newRequest(world)) };
-    const denied = await fetch(`${origin}/__world-files`, { ...options, headers: { ...options.headers, Origin: 'https://other.example' } });
+    const options = {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRequest(world)),
+    };
+    const denied = await fetch(`${origin}/__world-files`, {
+      ...options,
+      headers: { ...options.headers, Origin: 'https://other.example' },
+    });
     assert.equal(denied.status, 403);
     const response = await fetch(`${origin}/__world-files`, options);
     assert.equal(response.status, 200);
@@ -111,7 +127,10 @@ test('HTTP API persists real world data and refuses cross-origin saves; backups 
     assert.equal((await (await fetch(`${origin}/__world-files`)).json()).worlds.length, 1);
     assert.deepEqual(await (await fetch(`${origin}/worlds/${saved.filename}`)).json(), world);
     assert.equal((await fetch(`${origin}/${saved.backup}`)).status, 404);
-  } finally { server.closeAllConnections(); await new Promise((resolve) => server.close(resolve)); }
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('Vite dev and preview expose the project-world library without modifying it', async () => {
@@ -121,7 +140,9 @@ test('Vite dev and preview expose the project-world library without modifying it
     const port = dev.httpServer.address().port;
     const result = await (await fetch(`http://127.0.0.1:${port}/__world-files`)).json();
     assert.ok(result.worlds.some((entry) => entry.world.world.name === 'Frozen Sanctuary'));
-  } finally { await dev.close(); }
+  } finally {
+    await dev.close();
+  }
   const built = await preview({ preview: { host: '127.0.0.1', port: 0 } });
   try {
     const port = built.httpServer.address().port;
@@ -129,5 +150,7 @@ test('Vite dev and preview expose the project-world library without modifying it
     assert.equal(response.status, 200);
     const result = await response.json();
     assert.ok(result.worlds.some((entry) => entry.world.world.name === 'The Verdant Hollow'));
-  } finally { await built.close(); }
+  } finally {
+    await built.close();
+  }
 });

@@ -114,11 +114,13 @@ export class AudioDirector {
     this.snow = new SnowAmbience(audio);
     this.tomb = new TombAmbience(audio);
     events.on('ballLaunched', ({ x }) => {
-      if (this.gate('launch', 0.05)) audio.tone({ freq: 320, endFreq: 720, dur: 0.14, vol: 0.2, type: 'triangle', pan: panOf(x) });
+      if (this.gate('launch', 0.05))
+        audio.tone({ freq: 320, endFreq: 720, dur: 0.14, vol: 0.2, type: 'triangle', pan: panOf(x) });
     });
 
     events.on('ballWall', ({ x }) => {
-      if (this.gate('wall', 0.03)) audio.tone({ freq: 260, endFreq: 200, dur: 0.07, vol: 0.12, type: 'triangle', pan: panOf(x) });
+      if (this.gate('wall', 0.03))
+        audio.tone({ freq: 260, endFreq: 200, dur: 0.07, vol: 0.12, type: 'triangle', pan: panOf(x) });
     });
 
     events.on('ballPaddle', ({ x, caught }) => {
@@ -170,7 +172,18 @@ export class AudioDirector {
       REFRAKT_CHORD.forEach((f, i) => {
         const spread = i % 2 === 0 ? -0.45 : 0.45;
         for (const detune of [0.996, 1.004]) {
-          audio.swell({ source: 'sawtooth', freq: f * detune, filter: 320, endFilter: 7000, q: 1.4, vol: 0.026, attack: 0.3, hold: 0.45, release: 2.4, pan: detune < 1 ? spread : spread * 0.5 });
+          audio.swell({
+            source: 'sawtooth',
+            freq: f * detune,
+            filter: 320,
+            endFilter: 7000,
+            q: 1.4,
+            vol: 0.026,
+            attack: 0.3,
+            hold: 0.45,
+            release: 2.4,
+            pan: detune < 1 ? spread : spread * 0.5,
+          });
         }
       });
       for (let i = 0; i < 16; i++) {
@@ -205,7 +218,7 @@ export class AudioDirector {
       for (let i = 0; i < 8; i++) {
         const k = 7 - i;
         const freq = 880 * Math.pow(2, (MAJOR_PENTATONIC[k % 5] + 12 * Math.floor(k / 5)) / 12);
-        audio.tone({ freq, dur: 0.45, vol: 0.045 * (1 - i / 10), when: t + i * 0.07, pan: 0.5 - (i / 7) });
+        audio.tone({ freq, dur: 0.45, vol: 0.045 * (1 - i / 10), when: t + i * 0.07, pan: 0.5 - i / 7 });
       }
     });
 
@@ -219,7 +232,15 @@ export class AudioDirector {
     events.on('powerUpCollected', ({ x }) => {
       const t = audio.context?.currentTime ?? 0;
       [0, 4, 7, 12].forEach((s, i) =>
-        audio.tone({ freq: 440 * Math.pow(2, s / 12), dur: 0.12, vol: 0.14, type: 'square', filter: 3200, when: t + i * 0.055, pan: panOf(x) }),
+        audio.tone({
+          freq: 440 * Math.pow(2, s / 12),
+          dur: 0.12,
+          vol: 0.14,
+          type: 'square',
+          filter: 3200,
+          when: t + i * 0.055,
+          pan: panOf(x),
+        }),
       );
     });
 
@@ -236,8 +257,25 @@ export class AudioDirector {
     events.on('powerUpExpired', ({ x }) => {
       const t = audio.context?.currentTime ?? 0;
       audio.tone({ freq: 1100, endFreq: 180, dur: 0.38, vol: 0.09, type: 'triangle', pan: panOf(x), when: t });
-      audio.tone({ freq: 550, endFreq: 90, dur: 0.45, vol: 0.05, type: 'sawtooth', filter: 1400, pan: panOf(x), when: t + 0.02 });
-      audio.noise({ dur: 0.25, vol: 0.035, filterType: 'bandpass', filter: 3000, endFilter: 600, pan: panOf(x), when: t });
+      audio.tone({
+        freq: 550,
+        endFreq: 90,
+        dur: 0.45,
+        vol: 0.05,
+        type: 'sawtooth',
+        filter: 1400,
+        pan: panOf(x),
+        when: t + 0.02,
+      });
+      audio.noise({
+        dur: 0.25,
+        vol: 0.035,
+        filterType: 'bandpass',
+        filter: 3000,
+        endFilter: 600,
+        pan: panOf(x),
+        when: t,
+      });
     });
 
     events.on('shieldHit', ({ x, charges }) => {
@@ -246,12 +284,22 @@ export class AudioDirector {
       // The pulse: a bright rising ping, then the spent strand powering down (lower and longer on the last one).
       audio.tone({ freq: 500, endFreq: 1100, dur: 0.2, vol: 0.2, type: 'triangle', pan, when: t });
       const from = charges > 0 ? 620 : 420;
-      audio.tone({ freq: from, endFreq: from * 0.22, dur: 0.8, vol: 0.1, type: 'sawtooth', filter: 1800, pan, when: t + 0.16 });
+      audio.tone({
+        freq: from,
+        endFreq: from * 0.22,
+        dur: 0.8,
+        vol: 0.1,
+        type: 'sawtooth',
+        filter: 1800,
+        pan,
+        when: t + 0.16,
+      });
       audio.noise({ dur: 0.7, vol: 0.06, filterType: 'bandpass', filter: 2600, endFilter: 500, pan, when: t + 0.16 });
     });
 
     events.on('laserFired', ({ x }) => {
-      if (this.gate('laser', 0.05)) audio.tone({ freq: 1500, endFreq: 280, dur: 0.09, vol: 0.08, type: 'sawtooth', filter: 4000, pan: panOf(x) });
+      if (this.gate('laser', 0.05))
+        audio.tone({ freq: 1500, endFreq: 280, dur: 0.09, vol: 0.08, type: 'sawtooth', filter: 4000, pan: panOf(x) });
     });
 
     events.on('lifeLost', () => {
@@ -269,7 +317,14 @@ export class AudioDirector {
     events.on('levelCleared', () => {
       const t = audio.context?.currentTime ?? 0;
       [0, 4, 7, 12, 16, 19, 24].forEach((s, i) =>
-        audio.tone({ freq: 330 * Math.pow(2, s / 12), dur: 0.3, vol: 0.16, type: 'square', filter: 3500, when: t + i * 0.085 }),
+        audio.tone({
+          freq: 330 * Math.pow(2, s / 12),
+          dur: 0.3,
+          vol: 0.16,
+          type: 'square',
+          filter: 3500,
+          when: t + i * 0.085,
+        }),
       );
     });
 
@@ -285,13 +340,21 @@ export class AudioDirector {
     });
 
     events.on('bossFired', ({ x }) => {
-      if (this.gate('bossFire', 0.05)) audio.tone({ freq: 700, endFreq: 180, dur: 0.2, vol: 0.14, type: 'sawtooth', filter: 2400, pan: panOf(x) });
+      if (this.gate('bossFire', 0.05))
+        audio.tone({ freq: 700, endFreq: 180, dur: 0.2, vol: 0.14, type: 'sawtooth', filter: 2400, pan: panOf(x) });
     });
 
     events.on('bossDefeated', () => {
       const t = audio.context?.currentTime ?? 0;
       for (let i = 0; i < 7; i++) {
-        audio.noise({ dur: 0.4, vol: 0.4, filter: 1600, endFilter: 150, when: t + i * 0.18, pan: Math.sin(i * 2.4) * 0.6 });
+        audio.noise({
+          dur: 0.4,
+          vol: 0.4,
+          filter: 1600,
+          endFilter: 150,
+          when: t + i * 0.18,
+          pan: Math.sin(i * 2.4) * 0.6,
+        });
         audio.tone({ freq: 140 - i * 8, endFreq: 30, dur: 0.4, vol: 0.4, when: t + i * 0.18 });
       }
       audio.noise({ dur: 1.6, vol: 0.6, filter: 2600, endFilter: 80, when: t + 1.3 });
@@ -337,12 +400,20 @@ export class AudioDirector {
       const t = audio.context!.currentTime;
       // Ice cracking: a few dry ticks, then a bright glint.
       for (let i = 0; i < 4; i++) {
-        audio.noise({ dur: 0.025, vol: 0.09 - i * 0.015, filterType: 'bandpass', filter: 2600 + Math.random() * 1800, pan, when: t + i * (0.05 + Math.random() * 0.05) });
+        audio.noise({
+          dur: 0.025,
+          vol: 0.09 - i * 0.015,
+          filterType: 'bandpass',
+          filter: 2600 + Math.random() * 1800,
+          pan,
+          when: t + i * (0.05 + Math.random() * 0.05),
+        });
       }
       audio.tone({ freq: 3136, dur: 0.35, vol: 0.035, attack: 0.002, pan, when: t + 0.22 });
     });
     events.on('icicleFall', ({ x }) => {
-      if (this.gate('icicleFall', 0.1)) audio.tone({ freq: 2200, endFreq: 700, dur: 0.6, vol: 0.04, attack: 0.05, pan: panOf(x) });
+      if (this.gate('icicleFall', 0.1))
+        audio.tone({ freq: 2200, endFreq: 700, dur: 0.6, vol: 0.04, attack: 0.05, pan: panOf(x) });
     });
     events.on('icicleKnocked', ({ x }) => {
       if (!this.gate('icicleKnocked', 0.08)) return;
@@ -359,7 +430,14 @@ export class AudioDirector {
       audio.tone({ freq: base * 5.4, dur: 0.3, vol: 0.018, attack: 0.002, pan, when: t + 0.01 });
       // Chips and grains of ice skittering after it.
       for (let i = 0; i < 6; i++) {
-        audio.noise({ dur: 0.018, vol: 0.07 - i * 0.008, filterType: 'bandpass', filter: 4500 + Math.random() * 3500, pan, when: t + 0.05 + i * (0.03 + Math.random() * 0.05) });
+        audio.noise({
+          dur: 0.018,
+          vol: 0.07 - i * 0.008,
+          filterType: 'bandpass',
+          filter: 4500 + Math.random() * 3500,
+          pan,
+          when: t + 0.05 + i * (0.03 + Math.random() * 0.05),
+        });
       }
       // A soft rush of air as it drops.
       audio.noise({ dur: 0.5, vol: 0.05, filterType: 'bandpass', filter: 1800, endFilter: 600, pan, when: t + 0.06 });
@@ -372,7 +450,14 @@ export class AudioDirector {
       // Glassy pieces tinkling as they scatter, high in A minor pentatonic.
       const notes = [1760, 2093, 2349, 2637, 3136];
       for (let i = 0; i < 4; i++) {
-        audio.tone({ freq: notes[Math.floor(Math.random() * notes.length)], dur: 0.18, vol: 0.035, attack: 0.002, pan, when: t + 0.02 + i * (0.03 + Math.random() * 0.04) });
+        audio.tone({
+          freq: notes[Math.floor(Math.random() * notes.length)],
+          dur: 0.18,
+          vol: 0.035,
+          attack: 0.002,
+          pan,
+          when: t + 0.02 + i * (0.03 + Math.random() * 0.04),
+        });
       }
     });
     events.on('paddleStruck', ({ x }) => {
@@ -387,7 +472,14 @@ export class AudioDirector {
     const skitter = (pan: number, count: number, vol: number, gap: number): void => {
       const t = audio.context!.currentTime;
       for (let i = 0; i < count; i++) {
-        audio.noise({ dur: 0.012, vol: vol * (0.6 + Math.random() * 0.4), filterType: 'bandpass', filter: 3200 + Math.random() * 2600, pan, when: t + i * gap * (0.6 + Math.random() * 0.8) });
+        audio.noise({
+          dur: 0.012,
+          vol: vol * (0.6 + Math.random() * 0.4),
+          filterType: 'bandpass',
+          filter: 3200 + Math.random() * 2600,
+          pan,
+          when: t + i * gap * (0.6 + Math.random() * 0.8),
+        });
       }
     };
     // A storm coming in the tomb: the stone gate grinding open.
@@ -434,8 +526,28 @@ export class AudioDirector {
       audio.noise({ dur: 0.02, vol: 0.12, filterType: 'bandpass', filter: 3800, pan });
       const t = audio.context!.currentTime + 0.12;
       const dur = time + 0.35;
-      audio.tone({ freq: 118, endFreq: 132, dur, vol: 0.035, type: 'sawtooth', attack: 0.08, filter: 900, pan, when: t });
-      audio.tone({ freq: 123, endFreq: 128, dur, vol: 0.03, type: 'sawtooth', attack: 0.1, filter: 1300, pan, when: t });
+      audio.tone({
+        freq: 118,
+        endFreq: 132,
+        dur,
+        vol: 0.035,
+        type: 'sawtooth',
+        attack: 0.08,
+        filter: 900,
+        pan,
+        when: t,
+      });
+      audio.tone({
+        freq: 123,
+        endFreq: 128,
+        dur,
+        vol: 0.03,
+        type: 'sawtooth',
+        attack: 0.1,
+        filter: 1300,
+        pan,
+        when: t,
+      });
       audio.noise({ dur, vol: 0.025, filterType: 'bandpass', filter: 260, pan, when: t });
     });
     events.on('scarabLand', ({ x, fly }) => {
@@ -455,7 +567,16 @@ export class AudioDirector {
       const f = 125 + Math.random() * 45;
       const to = f * (0.85 + Math.random() * 0.35);
       audio.tone({ freq: f, endFreq: to, dur, vol: 0.03 * near, type: 'sawtooth', attack: 0.04, filter: 1100, pan });
-      audio.tone({ freq: f * 1.04, endFreq: to * 1.03, dur, vol: 0.025 * near, type: 'sawtooth', attack: 0.05, filter: 1500, pan });
+      audio.tone({
+        freq: f * 1.04,
+        endFreq: to * 1.03,
+        dur,
+        vol: 0.025 * near,
+        type: 'sawtooth',
+        attack: 0.05,
+        filter: 1500,
+        pan,
+      });
     });
     events.on('scarabSwatted', ({ x }) => {
       if (!this.gate('scarabSwatted', 0.05)) return;
@@ -464,7 +585,8 @@ export class AudioDirector {
       audio.tone({ freq: 240, endFreq: 90, dur: 0.35, vol: 0.05, type: 'sawtooth', filter: 900, pan });
     });
     events.on('scarabBump', ({ x }) => {
-      if (this.gate('scarabBump', 0.05)) audio.noise({ dur: 0.025, vol: 0.1, filterType: 'bandpass', filter: 3000, pan: panOf(x) });
+      if (this.gate('scarabBump', 0.05))
+        audio.noise({ dur: 0.025, vol: 0.1, filterType: 'bandpass', filter: 3000, pan: panOf(x) });
     });
     events.on('scarabScared', ({ x }) => {
       if (!this.gate('scarabScared', 0.1)) return;
@@ -504,15 +626,52 @@ export class AudioDirector {
     const pan = (Math.random() - 0.5) * 0.4;
     const rate = 0.86 + Math.random() * 0.06;
     const played = audio.sample('thunderClose', { vol: 1.5 * strength, pan, when: t, rate, bus: 'ambience' });
-    audio.sample(Math.random() < 0.5 ? 'thunderDistant1' : 'thunderDistant2', { vol: 1.1 * strength, pan: -pan, when: t + 0.5, rate: rate * 0.95, bus: 'ambience' });
+    audio.sample(Math.random() < 0.5 ? 'thunderDistant1' : 'thunderDistant2', {
+      vol: 1.1 * strength,
+      pan: -pan,
+      when: t + 0.5,
+      rate: rate * 0.95,
+      bus: 'ambience',
+    });
     // The long rolling tail, under the recordings or the synthesised fallback alike. Its top reaches
     // about 300 Hz so small speakers and headphones still carry it, not only a subwoofer.
-    audio.swell({ source: 'noise', filter: 320, endFilter: 60, vol: 0.5 * strength, attack: 0.8, hold: 2.5, release: 5, pan: -pan, when: t + 0.3, bus: 'ambience' });
-    audio.swell({ source: 'noise', filter: 220, endFilter: 50, vol: 0.4 * strength, attack: 1.5, hold: 2, release: 6, tremolo: { rate: 2.3, depth: 0.5 }, pan, when: t + 1.2, bus: 'ambience' });
+    audio.swell({
+      source: 'noise',
+      filter: 320,
+      endFilter: 60,
+      vol: 0.5 * strength,
+      attack: 0.8,
+      hold: 2.5,
+      release: 5,
+      pan: -pan,
+      when: t + 0.3,
+      bus: 'ambience',
+    });
+    audio.swell({
+      source: 'noise',
+      filter: 220,
+      endFilter: 50,
+      vol: 0.4 * strength,
+      attack: 1.5,
+      hold: 2,
+      release: 6,
+      tremolo: { rate: 2.3, depth: 0.5 },
+      pan,
+      when: t + 1.2,
+      bus: 'ambience',
+    });
     if (played) return;
     audio.noise({ dur: 0.6, vol: 0.34 * strength, filter: 2600, endFilter: 300, pan, when: t, bus: 'ambience' });
     audio.noise({ dur: 4.5, vol: 0.85 * strength, filter: 240, endFilter: 70, pan, when: t + 0.05, bus: 'ambience' });
-    audio.noise({ dur: 3.8, vol: 0.6 * strength, filter: 170, endFilter: 55, pan: -pan, when: t + 0.4, bus: 'ambience' });
+    audio.noise({
+      dur: 3.8,
+      vol: 0.6 * strength,
+      filter: 170,
+      endFilter: 55,
+      pan: -pan,
+      when: t + 0.4,
+      bus: 'ambience',
+    });
     audio.noise({ dur: 3.2, vol: 0.4 * strength, filter: 130, endFilter: 45, pan, when: t + 1, bus: 'ambience' });
   }
 

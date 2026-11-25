@@ -1,4 +1,11 @@
-import { authoredEntry, isPlayable, playProblems, validateWorld, type AuthoredWorld, type LibraryResult } from './authoredWorlds';
+import {
+  authoredEntry,
+  isPlayable,
+  playProblems,
+  validateWorld,
+  type AuthoredWorld,
+  type LibraryResult,
+} from './authoredWorlds';
 import { Campaign, type WorldEntry } from './campaign';
 import { STAGES_PER_WORLD } from './worlds';
 
@@ -13,23 +20,34 @@ export async function loadFileWorlds(base: URL, request: typeof fetch = fetch): 
   }
   try {
     const files = await json(new URL('index.json', base));
-    if (!Array.isArray(files) || !files.every((file) => typeof file === 'string' && /^[\w-]+\.json$/.test(file) && file !== 'index.json')) {
+    if (
+      !Array.isArray(files) ||
+      !files.every((file) => typeof file === 'string' && /^[\w-]+\.json$/.test(file) && file !== 'index.json')
+    ) {
       throw new Error('World index must be an array of JSON filenames.');
     }
-    const results = await Promise.all(files.map(async (file) => {
-      try {
-        const world = validateWorld(await json(new URL(file, base)));
-        if (!isPlayable(world)) throw new Error(`Not ready to play: ${playProblems(world)}.`);
-        return { file, world };
-      } catch (error) { return { file, error }; }
-    }));
+    const results = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const world = validateWorld(await json(new URL(file, base)));
+          if (!isPlayable(world)) throw new Error(`Not ready to play: ${playProblems(world)}.`);
+          return { file, world };
+        } catch (error) {
+          return { file, error };
+        }
+      }),
+    );
     for (const result of results) {
       if (!result.world) warnings.push(`${result.file}: ${String(result.error)}`);
-      else if (worlds.some((world) => world.key === result.world.key)) warnings.push(`${result.file}: duplicate world key.`);
-      else if (result.world.replaces && worlds.some((world) => world.replaces === result.world.replaces)) warnings.push(`${result.file}: duplicate campaign replacement.`);
+      else if (worlds.some((world) => world.key === result.world.key))
+        warnings.push(`${result.file}: duplicate world key.`);
+      else if (result.world.replaces && worlds.some((world) => world.replaces === result.world.replaces))
+        warnings.push(`${result.file}: duplicate campaign replacement.`);
       else worlds.push(result.world);
     }
-  } catch (error) { warnings.push(`World files unavailable: ${String(error)}`); }
+  } catch (error) {
+    warnings.push(`World files unavailable: ${String(error)}`);
+  }
   return { worlds, warnings };
 }
 
@@ -45,7 +63,10 @@ export function buildCampaign(files: readonly AuthoredWorld[], saved: readonly A
     .map((slot) => playableFiles.find((world) => world.replaces === slot))
     .filter((world): world is AuthoredWorld => world !== undefined);
   const fileKeys = new Set(files.map((world) => world.key));
-  const playableSaves = saved.filter((world) => !fileKeys.has(world.key)).map((value) => validateWorld(value)).filter(isPlayable);
+  const playableSaves = saved
+    .filter((world) => !fileKeys.has(world.key))
+    .map((value) => validateWorld(value))
+    .filter(isPlayable);
   const ordered = [...main, ...playableFiles.filter((world) => !main.includes(world)), ...playableSaves];
   const entries: WorldEntry[] = [];
   for (const world of ordered) entries.push(authoredEntry(world, entries.length * STAGES_PER_WORLD));

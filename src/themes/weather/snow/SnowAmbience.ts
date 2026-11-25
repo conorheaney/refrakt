@@ -86,12 +86,42 @@ export class SnowAmbience {
   private creak(t: number): void {
     const pan = (Math.random() - 0.5) * 1.4;
     const start = 55 + Math.random() * 25;
-    this.audio.tone({ freq: start, endFreq: start * 0.72, dur: 2.4, vol: 0.09, attack: 0.5, type: 'sawtooth', filter: 240, pan, when: t, bus: 'ambience' });
-    this.audio.tone({ freq: start * 1.5, endFreq: start * 1.15, dur: 1.8, vol: 0.035, attack: 0.4, type: 'sawtooth', filter: 400, pan, when: t + 0.15, bus: 'ambience' });
+    this.audio.tone({
+      freq: start,
+      endFreq: start * 0.72,
+      dur: 2.4,
+      vol: 0.09,
+      attack: 0.5,
+      type: 'sawtooth',
+      filter: 240,
+      pan,
+      when: t,
+      bus: 'ambience',
+    });
+    this.audio.tone({
+      freq: start * 1.5,
+      endFreq: start * 1.15,
+      dur: 1.8,
+      vol: 0.035,
+      attack: 0.4,
+      type: 'sawtooth',
+      filter: 400,
+      pan,
+      when: t + 0.15,
+      bus: 'ambience',
+    });
     const cracks = 4 + Math.floor(Math.random() * 6);
     let at = t + 0.3 + Math.random() * 0.4;
     for (let i = 0; i < cracks; i++) {
-      this.audio.noise({ dur: 0.025 + Math.random() * 0.04, vol: 0.05 + Math.random() * 0.07, filterType: 'bandpass', filter: 1400 + Math.random() * 2400, pan: pan + (Math.random() - 0.5) * 0.3, when: at, bus: 'ambience' });
+      this.audio.noise({
+        dur: 0.025 + Math.random() * 0.04,
+        vol: 0.05 + Math.random() * 0.07,
+        filterType: 'bandpass',
+        filter: 1400 + Math.random() * 2400,
+        pan: pan + (Math.random() - 0.5) * 0.3,
+        when: at,
+        bus: 'ambience',
+      });
       at += 0.03 + Math.random() * 0.16;
     }
   }

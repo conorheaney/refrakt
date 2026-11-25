@@ -11,7 +11,10 @@ export interface ForestAssets {
 
 export async function loadForestAssets(): Promise<ForestAssets> {
   try {
-    const [background, forge] = await Promise.all([new THREE.TextureLoader().loadAsync(backgroundUrl), loadForgeTextures()]);
+    const [background, forge] = await Promise.all([
+      new THREE.TextureLoader().loadAsync(backgroundUrl),
+      loadForgeTextures(),
+    ]);
     background.colorSpace = THREE.SRGBColorSpace;
     // Drawn straight on at close to 1:1, so it needs no mipmaps.
     background.generateMipmaps = false;

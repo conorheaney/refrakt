@@ -5,7 +5,13 @@ import type { WorldId } from '../../content/worlds';
 import type { ForestAssets } from './forest/assets';
 import { ForestEnvironment } from './forest/ForestEnvironment';
 import { FLOOR_SHADER } from '../../engine/render/shaders';
-import { createGasGiantTexture, createMoonTexture, createOceanPlanetTexture, createPlanetRingTexture, createStarfieldTexture } from './space/spaceTextures';
+import {
+  createGasGiantTexture,
+  createMoonTexture,
+  createOceanPlanetTexture,
+  createPlanetRingTexture,
+  createStarfieldTexture,
+} from './space/spaceTextures';
 
 const FLOOR_Y = FIELD.floorY;
 /** Wall-torch light per unit of flicker (Environment.setTorches): kept low so bricks keep their colours. */
@@ -15,7 +21,13 @@ const TORCH_LIGHT = 90;
  * Builds a smooth sculptural band: a rounded-rectangle cross-section swept
  * along a curve, with the band's broad side kept facing `facing`.
  */
-function sweptBand(curve: THREE.Curve<THREE.Vector3>, width: number, thickness: number, segments: number, facing: THREE.Vector3): THREE.BufferGeometry {
+function sweptBand(
+  curve: THREE.Curve<THREE.Vector3>,
+  width: number,
+  thickness: number,
+  segments: number,
+  facing: THREE.Vector3,
+): THREE.BufferGeometry {
   const profile: [number, number][] = [];
   const corner = Math.min(width, thickness) * 0.45;
   const hw = width / 2 - corner;
@@ -108,15 +120,27 @@ function archCurve(offset: number): THREE.CatmullRomCurve3 {
 /** A small emissive "studio" used to bake the reflection environment: warm left, cool right, softbox above. */
 function createStudioEnvScene(): THREE.Scene {
   const scene = new THREE.Scene();
-  const room = new THREE.Mesh(new THREE.BoxGeometry(80, 40, 80), new THREE.MeshBasicMaterial({ color: 0x23272e, side: THREE.BackSide }));
+  const room = new THREE.Mesh(
+    new THREE.BoxGeometry(80, 40, 80),
+    new THREE.MeshBasicMaterial({ color: 0x23272e, side: THREE.BackSide }),
+  );
   room.position.y = 8;
   scene.add(room);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshBasicMaterial({ color: 0x4a4d52 }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -10;
   scene.add(floor);
-  const panel = (w: number, h: number, color: THREE.Color, pos: [number, number, number], rot: [number, number, number]): void => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+  const panel = (
+    w: number,
+    h: number,
+    color: THREE.Color,
+    pos: [number, number, number],
+    rot: [number, number, number],
+  ): void => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }),
+    );
     m.position.set(...pos);
     m.rotation.set(...rot);
     scene.add(m);
@@ -174,7 +198,11 @@ export class Environment {
   private readonly floaters: THREE.Mesh[] = [];
   private readonly floaterBaseY: number[] = [];
 
-  constructor(private readonly scene: THREE.Scene, renderer: THREE.WebGLRenderer, assets: ForestAssets) {
+  constructor(
+    private readonly scene: THREE.Scene,
+    renderer: THREE.WebGLRenderer,
+    assets: ForestAssets,
+  ) {
     const pmrem = new THREE.PMREMGenerator(renderer);
     const envScene = createStudioEnvScene();
     scene.environment = pmrem.fromScene(envScene, 0.035).texture;
@@ -239,13 +267,21 @@ export class Environment {
   private createSculptures(scene: THREE.Object3D): void {
     const z = new THREE.Vector3(0, 0, 1);
     // Hull metal: brushed blue-grey, soft highlights.
-    const hull = new THREE.MeshStandardMaterial({ color: 0x7d8899, roughness: 0.5, metalness: 0.55, envMapIntensity: 0.6 });
+    const hull = new THREE.MeshStandardMaterial({
+      color: 0x7d8899,
+      roughness: 0.5,
+      metalness: 0.55,
+      envMapIntensity: 0.6,
+    });
 
     // The viewport rim around the arena, standing in the play plane. Its inner surface IS the physical
     // boundary (see World.moveBall): sides at +/-FIELD.halfWidth, top at FIELD.top, rounded corners of
     // FIELD.cornerRadius. The band's centreline is offset outward by half its thickness.
     const archMaterial = hull;
-    const arch = new THREE.Mesh(sweptBand(archCurve(ARCH_THICKNESS / 2), ARCH_DEPTH, ARCH_THICKNESS, 260, z), archMaterial);
+    const arch = new THREE.Mesh(
+      sweptBand(archCurve(ARCH_THICKNESS / 2), ARCH_DEPTH, ARCH_THICKNESS, 260, z),
+      archMaterial,
+    );
     arch.position.z = ARCH_Z;
     // A broad hull strut sweeping from the top-left corner down to the deck behind it.
     const sweep = new THREE.CatmullRomCurve3([
@@ -294,7 +330,14 @@ export class Environment {
     ocean.rotation.z = -0.2;
     const atmosphere = new THREE.Mesh(
       new THREE.SphereGeometry(3.1, 48, 24),
-      new THREE.MeshBasicMaterial({ color: 0x4f8cff, transparent: true, opacity: 0.06, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+      new THREE.MeshBasicMaterial({
+        color: 0x4f8cff,
+        transparent: true,
+        opacity: 0.06,
+        side: THREE.BackSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
     );
     atmosphere.position.copy(ocean.position);
 

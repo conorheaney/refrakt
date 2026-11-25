@@ -5,7 +5,15 @@ import type { HazardSystem } from './hazards/hazards';
 import { SnakeSystem } from './hazards/snakes/snakes';
 import { IcicleSystem } from './hazards/icicles/icicles';
 import { ScarabSystem } from './hazards/scarabs/scarabs';
-import { areaContour, clampToSpans, findPaddleLane, paddleIntervals, type BallArea, type Interval, type Point } from './arena/playAreas';
+import {
+  areaContour,
+  clampToSpans,
+  findPaddleLane,
+  paddleIntervals,
+  type BallArea,
+  type Interval,
+  type Point,
+} from './arena/playAreas';
 import { EventBus } from '../engine/core/EventBus';
 import { clamp } from '../engine/core/math';
 import { Pool } from '../engine/core/Pool';
@@ -44,7 +52,19 @@ export interface StepInput {
  */
 export class World implements WorldContext {
   readonly events = new EventBus<GameEvents>();
-  readonly paddle: Paddle = { x: 0, px: 0, y: PADDLE.y, width: PADDLE.width, vx: 0, stun: 0, shove: 0, tilt: 0, slide: 0, lean: 0, hitTime: -10 };
+  readonly paddle: Paddle = {
+    x: 0,
+    px: 0,
+    y: PADDLE.y,
+    width: PADDLE.width,
+    vx: 0,
+    stun: 0,
+    shove: 0,
+    tilt: 0,
+    slide: 0,
+    lean: 0,
+    hitTime: -10,
+  };
   readonly balls = new Pool<Ball>(BALL.capacity, () => ({
     active: false,
     x: 0,
@@ -233,7 +253,7 @@ export class World implements WorldContext {
     const lane = findPaddleLane(areas.paddle, this.worldDefValue.paddleExpandedWidth, PADDLE.halfH);
     this.paddle.y = lane.y;
     // Keep movement in one connected lane, never teleport across holes in a concave polygon.
-    this.paddleSpan = lane.spans.reduce((best, span) => span[1] - span[0] > best[1] - best[0] ? span : best);
+    this.paddleSpan = lane.spans.reduce((best, span) => (span[1] - span[0] > best[1] - best[0] ? span : best));
     this.spansWidth = Number.NaN;
     this.paddle.x = this.paddle.px = clampToSpans(this.paddle.x, this.currentPaddleSpans());
     this.clearTransient();
@@ -298,12 +318,15 @@ export class World implements WorldContext {
   private updatePaddle(dt: number, input: StepInput): void {
     const p = this.paddle;
     p.px = p.x;
-    const targetWidth = this.powerUps.grants('widePaddle') ? this.worldDefValue.paddleExpandedWidth : this.worldDefValue.paddleWidth;
+    const targetWidth = this.powerUps.grants('widePaddle')
+      ? this.worldDefValue.paddleExpandedWidth
+      : this.worldDefValue.paddleWidth;
     p.width += (targetWidth - p.width) * Math.min(1, dt * 10);
 
     const stunned = p.stun > 0;
     if (stunned) p.stun -= dt;
-    if (p.tilt !== 0) p.tilt = p.tilt > 0 ? Math.max(0, p.tilt - dt / ICICLE.tiltTime) : Math.min(0, p.tilt + dt / ICICLE.tiltTime);
+    if (p.tilt !== 0)
+      p.tilt = p.tilt > 0 ? Math.max(0, p.tilt - dt / ICICLE.tiltTime) : Math.min(0, p.tilt + dt / ICICLE.tiltTime);
     // An icicle's shove, once the wobble has had a moment to start: quick at first, easing off. While it plays
     // out the pointer doesn't pull the paddle back (Game shifts its pointer target by the push instead); the
     // keyboard can still steer against it.
@@ -339,7 +362,9 @@ export class World implements WorldContext {
     if (this.paddle.width !== this.spansWidth) {
       this.spansWidth = this.paddle.width;
       const centre = (this.paddleSpan[0] + this.paddleSpan[1]) / 2;
-      this.spans = paddleIntervals(this.paddleContour, this.paddle.y, this.paddle.width, PADDLE.halfH).filter(([a, b]) => a <= centre && b >= centre);
+      this.spans = paddleIntervals(this.paddleContour, this.paddle.y, this.paddle.width, PADDLE.halfH).filter(
+        ([a, b]) => a <= centre && b >= centre,
+      );
     }
     return this.spans;
   }

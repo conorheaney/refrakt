@@ -11,7 +11,13 @@ import { POWERUPS, type PowerUpFlag } from './powerUps';
 export class PowerUpSystem {
   /** Remaining seconds for each timed power-up, indexed by PowerUpKind. */
   readonly effectTime = new Float32Array(POWERUP_KIND_COUNT);
-  readonly drops = new Pool<Drop>(DROP.capacity, () => ({ active: false, kind: PowerUpKind.Expand, x: 0, y: 0, py: 0 }));
+  readonly drops = new Pool<Drop>(DROP.capacity, () => ({
+    active: false,
+    kind: PowerUpKind.Expand,
+    x: 0,
+    y: 0,
+    py: 0,
+  }));
   readonly lasers = new Pool<Laser>(LASER.capacity, () => ({ active: false, x: 0, y: 0, py: 0 }));
   /** Power-up kinds allowed to drop (1 = allowed), indexed by PowerUpKind; see setLoadout. */
   private readonly allowedKinds = new Uint8Array(POWERUP_KIND_COUNT).fill(1);
@@ -154,10 +160,7 @@ export class PowerUpSystem {
       if (!drop.active) continue;
       drop.py = drop.y;
       drop.y -= DROP.speed * dt;
-      if (
-        Math.abs(drop.x - p.x) < p.width / 2 + DROP.halfW &&
-        Math.abs(drop.y - p.y) < PADDLE.halfH + DROP.halfH
-      ) {
+      if (Math.abs(drop.x - p.x) < p.width / 2 + DROP.halfW && Math.abs(drop.y - p.y) < PADDLE.halfH + DROP.halfH) {
         this.drops.release(drop);
         this.collect(drop.kind, drop.x, drop.y);
       } else if (drop.y < this.world.lowerLimit) {

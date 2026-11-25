@@ -46,7 +46,11 @@ function makeNoise(seed: number, period: number): (x: number, y: number, octaves
 }
 
 /** Fills an equirectangular planet texture from a per-pixel colour function (u, v in 0..1). */
-function planetTexture(width: number, height: number, shade: (u: number, v: number, out: number[]) => void): THREE.CanvasTexture {
+function planetTexture(
+  width: number,
+  height: number,
+  shade: (u: number, v: number, out: number[]) => void,
+): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -136,7 +140,12 @@ export function createGasGiantTexture(): THREE.CanvasTexture {
     const t = (v + warp) * 9 + Math.sin(v * 40) * 0.15;
     const i = Math.floor(t);
     const f = t - i;
-    mix3(bands[((i % bands.length) + bands.length) % bands.length], bands[(((i + 1) % bands.length) + bands.length) % bands.length], f * f * (3 - 2 * f), out);
+    mix3(
+      bands[((i % bands.length) + bands.length) % bands.length],
+      bands[(((i + 1) % bands.length) + bands.length) % bands.length],
+      f * f * (3 - 2 * f),
+      out,
+    );
     const grain = 0.88 + noise(u * 64, v * 32, 3) * 0.24;
     out[0] *= grain;
     out[1] *= grain;
@@ -171,7 +180,11 @@ export function createOceanPlanetTexture(): THREE.CanvasTexture {
 export function createMoonTexture(seed = 17): THREE.CanvasTexture {
   const noise = makeNoise(seed, 16);
   const rnd = mulberry(seed * 7 + 1);
-  const craters = Array.from({ length: 70 }, () => ({ u: rnd(), v: 0.15 + rnd() * 0.7, r: 0.008 + rnd() * rnd() * 0.06 }));
+  const craters = Array.from({ length: 70 }, () => ({
+    u: rnd(),
+    v: 0.15 + rnd() * 0.7,
+    r: 0.008 + rnd() * rnd() * 0.06,
+  }));
   return planetTexture(1024, 512, (u, v, out) => {
     let g = 150 + (noise(u * 16, v * 8, 6) - 0.5) * 90;
     for (const c of craters) {

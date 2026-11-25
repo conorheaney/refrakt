@@ -113,15 +113,22 @@ export function icicleAreaSlots(area: IcicleAreaDef): { at: number; length: numb
 }
 
 /** The point `at` (0-1) of the way along a line of points, by distance. */
-export function pointAlong(points: readonly { readonly x: number; readonly y: number }[], at: number): { x: number; y: number } {
+export function pointAlong(
+  points: readonly { readonly x: number; readonly y: number }[],
+  at: number,
+): { x: number; y: number } {
   const lengths: number[] = [0];
-  for (let i = 1; i < points.length; i++) lengths.push(lengths[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+  for (let i = 1; i < points.length; i++)
+    lengths.push(lengths[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
   const d = Math.min(1, Math.max(0, at)) * lengths[lengths.length - 1];
   let i = 1;
   while (i < points.length - 1 && lengths[i] < d) i++;
   const span = lengths[i] - lengths[i - 1];
   const t = span > 0 ? (d - lengths[i - 1]) / span : 0;
-  return { x: points[i - 1].x + (points[i].x - points[i - 1].x) * t, y: points[i - 1].y + (points[i].y - points[i - 1].y) * t };
+  return {
+    x: points[i - 1].x + (points[i].x - points[i - 1].x) * t,
+    y: points[i - 1].y + (points[i].y - points[i - 1].y) * t,
+  };
 }
 
 /** The icicles an area grows (see IcicleAreaDef). */
@@ -169,9 +176,11 @@ export const MAX_HAZARDS = 12;
 
 /** Rejects malformed hazard lists from world files and editor saves. */
 export function validateHazards(value: unknown): HazardDef[] {
-  if (!Array.isArray(value) || value.length > MAX_HAZARDS) throw new Error(`Hazards must be a list of at most ${MAX_HAZARDS}.`);
+  if (!Array.isArray(value) || value.length > MAX_HAZARDS)
+    throw new Error(`Hazards must be a list of at most ${MAX_HAZARDS}.`);
   return value.map((item: unknown, i) => {
-    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error(`Hazard ${i + 1}: expected an object.`);
+    if (!item || typeof item !== 'object' || Array.isArray(item))
+      throw new Error(`Hazard ${i + 1}: expected an object.`);
     const h = item as Record<string, unknown>;
     if (h.kind === 'icicle') return validateIcicle(h, i);
     if (h.kind === 'icicles') return validateIcicleArea(h, i);
@@ -180,11 +189,18 @@ export function validateHazards(value: unknown): HazardDef[] {
     const limits: Record<string, [number, number]> = { x: [-25, 25], y: [-12, 12], reach: [1, 16] };
     for (const [key, [min, max]] of Object.entries(limits)) {
       const n = h[key];
-      if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max) throw new Error(`Hazard ${i + 1}: invalid ${key}.`);
+      if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max)
+        throw new Error(`Hazard ${i + 1}: invalid ${key}.`);
     }
     if (h.x === 0) throw new Error(`Hazard ${i + 1}: a snake's den must be left or right of centre.`);
     if (h.radius !== undefined && !okRadius(h.radius)) throw new Error(`Hazard ${i + 1}: ${RADIUS_RULE}`);
-    const def: SnakeDef = { kind: 'snake', x: h.x as number, y: h.y as number, reach: h.reach as number, ...(h.radius ? { radius: h.radius as number } : {}) };
+    const def: SnakeDef = {
+      kind: 'snake',
+      x: h.x as number,
+      y: h.y as number,
+      reach: h.reach as number,
+      ...(h.radius ? { radius: h.radius as number } : {}),
+    };
     if (h.body === undefined) return def;
     const ok = (p: unknown): p is { x: number; y: number } => {
       if (!p || typeof p !== 'object') return false;
@@ -200,17 +216,24 @@ export function validateHazards(value: unknown): HazardDef[] {
 
 function validateScarabNest(h: Record<string, unknown>, i: number): ScarabNestDef {
   const num = (v: unknown, min: number, max: number, what: string): number => {
-    if (typeof v !== 'number' || !Number.isFinite(v) || v < min || v > max) throw new Error(`Hazard ${i + 1}: invalid ${what}.`);
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < min || v > max)
+      throw new Error(`Hazard ${i + 1}: invalid ${what}.`);
     return v;
   };
   const x = num(h.x, -25, 25, 'x');
   const y = num(h.y, -12, 12, 'y');
   if (x === 0) throw new Error(`Hazard ${i + 1}: a scarab nest must be left or right of centre.`);
-  const def: { kind: 'scarabs'; x: number; y: number; path?: ScarabPoint[]; radius?: number } = { kind: 'scarabs', x, y };
+  const def: { kind: 'scarabs'; x: number; y: number; path?: ScarabPoint[]; radius?: number } = {
+    kind: 'scarabs',
+    x,
+    y,
+  };
   if (h.path !== undefined) {
-    if (!Array.isArray(h.path) || h.path.length < 1 || h.path.length > SCARAB_PATH_POINTS) throw new Error(`Hazard ${i + 1}: a scarab path must be 1-${SCARAB_PATH_POINTS} points.`);
+    if (!Array.isArray(h.path) || h.path.length < 1 || h.path.length > SCARAB_PATH_POINTS)
+      throw new Error(`Hazard ${i + 1}: a scarab path must be 1-${SCARAB_PATH_POINTS} points.`);
     def.path = h.path.map((p: unknown, k) => {
-      if (!p || typeof p !== 'object' || Array.isArray(p)) throw new Error(`Hazard ${i + 1}: path point ${k + 1} needs x and y.`);
+      if (!p || typeof p !== 'object' || Array.isArray(p))
+        throw new Error(`Hazard ${i + 1}: path point ${k + 1} needs x and y.`);
       const q = p as Record<string, unknown>;
       return { x: num(q.x, -25, 25, `path point ${k + 1} x`), y: num(q.y, -12, 14, `path point ${k + 1} y`) };
     });
@@ -226,7 +249,8 @@ function validateIcicle(h: Record<string, unknown>, i: number): IcicleDef {
   const limits: Record<string, [number, number]> = { x: [-25, 25], y: [-12, 14], length: [0.4, 3] };
   for (const [key, [min, max]] of Object.entries(limits)) {
     const n = h[key];
-    if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max) throw new Error(`Hazard ${i + 1}: invalid ${key}.`);
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max)
+      throw new Error(`Hazard ${i + 1}: invalid ${key}.`);
   }
   return { kind: 'icicle', x: h.x as number, y: h.y as number, length: h.length as number };
 }
@@ -236,23 +260,50 @@ function validateIcicleArea(h: Record<string, unknown>, i: number): IcicleAreaDe
   const ok = (p: unknown): p is { x: number; y: number } => {
     if (!p || typeof p !== 'object') return false;
     const { x, y } = p as Record<string, unknown>;
-    return typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) <= 25 && y >= -12 && y <= 14;
+    return (
+      typeof x === 'number' &&
+      typeof y === 'number' &&
+      Number.isFinite(x) &&
+      Number.isFinite(y) &&
+      Math.abs(x) <= 25 &&
+      y >= -12 &&
+      y <= 14
+    );
   };
   if (!Array.isArray(h.points) || h.points.length < minPoints || h.points.length > maxPoints || !h.points.every(ok)) {
     throw new Error(`Hazard ${i + 1}: an icicle area needs ${minPoints}-${maxPoints} points within the arena.`);
   }
   const count = h.count;
-  if (typeof count !== 'number' || !Number.isInteger(count) || count < ICICLE_AREA_LIMITS.count[0] || count > ICICLE_AREA_LIMITS.count[1]) {
-    throw new Error(`Hazard ${i + 1}: an icicle area holds ${ICICLE_AREA_LIMITS.count[0]}-${ICICLE_AREA_LIMITS.count[1]} icicles.`);
+  if (
+    typeof count !== 'number' ||
+    !Number.isInteger(count) ||
+    count < ICICLE_AREA_LIMITS.count[0] ||
+    count > ICICLE_AREA_LIMITS.count[1]
+  ) {
+    throw new Error(
+      `Hazard ${i + 1}: an icicle area holds ${ICICLE_AREA_LIMITS.count[0]}-${ICICLE_AREA_LIMITS.count[1]} icicles.`,
+    );
   }
   for (const key of ['minLength', 'maxLength']) {
     const n = h[key];
-    if (typeof n !== 'number' || !Number.isFinite(n) || n < ICICLE_AREA_LIMITS.length[0] || n > ICICLE_AREA_LIMITS.length[1]) throw new Error(`Hazard ${i + 1}: invalid ${key}.`);
+    if (
+      typeof n !== 'number' ||
+      !Number.isFinite(n) ||
+      n < ICICLE_AREA_LIMITS.length[0] ||
+      n > ICICLE_AREA_LIMITS.length[1]
+    )
+      throw new Error(`Hazard ${i + 1}: invalid ${key}.`);
   }
-  if (typeof h.seed !== 'number' || !Number.isInteger(h.seed) || h.seed < 0 || h.seed > 1e9) throw new Error(`Hazard ${i + 1}: invalid seed.`);
+  if (typeof h.seed !== 'number' || !Number.isInteger(h.seed) || h.seed < 0 || h.seed > 1e9)
+    throw new Error(`Hazard ${i + 1}: invalid seed.`);
   if (h.radius !== undefined && !okRadius(h.radius)) throw new Error(`Hazard ${i + 1}: ${RADIUS_RULE}`);
   const positions = h.positions;
-  if (positions !== undefined && (!Array.isArray(positions) || positions.length !== count || !positions.every((p) => typeof p === 'number' && Number.isFinite(p) && p >= 0 && p <= 1))) {
+  if (
+    positions !== undefined &&
+    (!Array.isArray(positions) ||
+      positions.length !== count ||
+      !positions.every((p) => typeof p === 'number' && Number.isFinite(p) && p >= 0 && p <= 1))
+  ) {
     throw new Error(`Hazard ${i + 1}: icicle positions must be one number from 0 to 1 per icicle.`);
   }
   return {

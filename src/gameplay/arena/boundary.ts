@@ -73,27 +73,45 @@ export class PolygonBoundary {
     this.minY = new Float64Array(n);
     this.maxY = new Float64Array(n);
     this.drain = new Uint8Array(n);
-    let left = Infinity, right = -Infinity, top = -Infinity, bottom = Infinity;
-    let area2 = 0, cx = 0, cy = 0;
+    let left = Infinity,
+      right = -Infinity,
+      top = -Infinity,
+      bottom = Infinity;
+    let area2 = 0,
+      cx = 0,
+      cy = 0;
     for (let i = 0; i < n; i++) {
       const { a, b, drain } = segments[i];
-      this.ax[i] = a.x; this.ay[i] = a.y; this.bx[i] = b.x; this.by[i] = b.y;
-      const ex = b.x - a.x, ey = b.y - a.y;
+      this.ax[i] = a.x;
+      this.ay[i] = a.y;
+      this.bx[i] = b.x;
+      this.by[i] = b.y;
+      const ex = b.x - a.x,
+        ey = b.y - a.y;
       const l = Math.hypot(ex, ey) || 1e-9;
       this.len[i] = l;
       this.nx[i] = (-ey / l) * orientation;
       this.ny[i] = (ex / l) * orientation;
-      this.minX[i] = Math.min(a.x, b.x); this.maxX[i] = Math.max(a.x, b.x);
-      this.minY[i] = Math.min(a.y, b.y); this.maxY[i] = Math.max(a.y, b.y);
+      this.minX[i] = Math.min(a.x, b.x);
+      this.maxX[i] = Math.max(a.x, b.x);
+      this.minY[i] = Math.min(a.y, b.y);
+      this.maxY[i] = Math.max(a.y, b.y);
       this.drain[i] = drain ? 1 : 0;
       if (drain) {
         this.hasDrain = true;
-        this.drainX = a.x; this.drainY = a.y; this.drainNx = this.nx[i]; this.drainNy = this.ny[i];
+        this.drainX = a.x;
+        this.drainY = a.y;
+        this.drainNx = this.nx[i];
+        this.drainNy = this.ny[i];
       }
-      left = Math.min(left, a.x); right = Math.max(right, a.x);
-      top = Math.max(top, a.y); bottom = Math.min(bottom, a.y);
+      left = Math.min(left, a.x);
+      right = Math.max(right, a.x);
+      top = Math.max(top, a.y);
+      bottom = Math.min(bottom, a.y);
       const cross = a.x * b.y - b.x * a.y;
-      area2 += cross; cx += (a.x + b.x) * cross; cy += (a.y + b.y) * cross;
+      area2 += cross;
+      cx += (a.x + b.x) * cross;
+      cy += (a.y + b.y) * cross;
     }
     this.bounds = { left, right, top, bottom };
     this.centreX = area2 ? cx / (3 * area2) : (left + right) / 2;
@@ -110,7 +128,8 @@ export class PolygonBoundary {
     let found = Contact.None;
     const reach = r + Math.abs(dx) + Math.abs(dy) + 1e-6;
     for (let i = 0; i < this.count; i++) {
-      if (x + reach < this.minX[i] || x - reach > this.maxX[i] || y + reach < this.minY[i] || y - reach > this.maxY[i]) continue;
+      if (x + reach < this.minX[i] || x - reach > this.maxX[i] || y + reach < this.minY[i] || y - reach > this.maxY[i])
+        continue;
       const drain = this.drain[i] === 1;
       if (drain && passDrain) continue;
       const nx = this.nx[i];
@@ -180,9 +199,11 @@ export class PolygonBoundary {
   contains(x: number, y: number): boolean {
     let inside = false;
     for (let i = 0; i < this.count; i++) {
-      const ay = this.ay[i], by = this.by[i];
-      if ((ay > y) !== (by > y)) {
-        const ax = this.ax[i], bx = this.bx[i];
+      const ay = this.ay[i],
+        by = this.by[i];
+      if (ay > y !== by > y) {
+        const ax = this.ax[i],
+          bx = this.bx[i];
         if (x < ((bx - ax) * (y - ay)) / (by - ay) + ax) inside = !inside;
       }
     }
@@ -196,17 +217,28 @@ export class PolygonBoundary {
    */
   private nearestWall(x: number, y: number, range: number, out: SweepHit): number {
     let best = Infinity;
-    let bx = 0, by = 0, bi = -1;
+    let bx = 0,
+      by = 0,
+      bi = -1;
     for (let i = 0; i < this.count; i++) {
       if (this.drain[i]) continue;
-      if (x + range < this.minX[i] || x - range > this.maxX[i] || y + range < this.minY[i] || y - range > this.maxY[i]) continue;
-      const ax = this.ax[i], ay = this.ay[i];
-      const ex = this.bx[i] - ax, ey = this.by[i] - ay;
+      if (x + range < this.minX[i] || x - range > this.maxX[i] || y + range < this.minY[i] || y - range > this.maxY[i])
+        continue;
+      const ax = this.ax[i],
+        ay = this.ay[i];
+      const ex = this.bx[i] - ax,
+        ey = this.by[i] - ay;
       const l2 = ex * ex + ey * ey || 1e-18;
       const u = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / l2));
-      const px = ax + ex * u, py = ay + ey * u;
+      const px = ax + ex * u,
+        py = ay + ey * u;
       const d = Math.hypot(x - px, y - py);
-      if (d < best) { best = d; bx = px; by = py; bi = i; }
+      if (d < best) {
+        best = d;
+        bx = px;
+        by = py;
+        bi = i;
+      }
     }
     if (bi < 0) return Infinity;
     if (best > 1e-9) {

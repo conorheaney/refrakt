@@ -207,7 +207,9 @@ export class UI {
   ) {
     root.innerHTML = TEMPLATE;
     root.querySelectorAll<HTMLElement>('[data-ref]').forEach((el) => this.refs.set(el.dataset.ref ?? '', el));
-    root.querySelectorAll<HTMLElement>('[data-screen]').forEach((el) => this.screens.set(el.dataset.screen as ScreenId, el));
+    root
+      .querySelectorAll<HTMLElement>('[data-screen]')
+      .forEach((el) => this.screens.set(el.dataset.screen as ScreenId, el));
 
     const popupLayer = this.ref('popups');
     for (let i = 0; i < POPUP_COUNT; i++) {
@@ -325,10 +327,20 @@ export class UI {
         target = index >= 0 && index < last ? this.pickCards[index + 1] : index === last ? start : this.pickCards[0];
         break;
       case 'ArrowUp':
-        target = index >= LOADOUT_COLUMNS ? this.pickCards[index - LOADOUT_COLUMNS] : index >= 0 ? null : this.pickCards[last - (LOADOUT_COLUMNS - 1)];
+        target =
+          index >= LOADOUT_COLUMNS
+            ? this.pickCards[index - LOADOUT_COLUMNS]
+            : index >= 0
+              ? null
+              : this.pickCards[last - (LOADOUT_COLUMNS - 1)];
         break;
       case 'ArrowDown':
-        target = index >= 0 && index + LOADOUT_COLUMNS <= last ? this.pickCards[index + LOADOUT_COLUMNS] : index >= 0 ? start : this.pickCards[0];
+        target =
+          index >= 0 && index + LOADOUT_COLUMNS <= last
+            ? this.pickCards[index + LOADOUT_COLUMNS]
+            : index >= 0
+              ? start
+              : this.pickCards[0];
         break;
       case 'Enter':
       case 'Space':

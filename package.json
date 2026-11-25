@@ -10,13 +10,16 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && node --test tools/world-store.check.mjs",
-    "test:world-files": "node --test tools/world-store.check.mjs"
+    "test:world-files": "node --test tools/world-store.check.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "three": "^0.187.0"
   },
   "devDependencies": {
     "@types/three": "^0.187.0",
+    "prettier": "3.10.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"

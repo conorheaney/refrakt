@@ -27,7 +27,12 @@ class TriangleSoup {
     c.set(r[0], r[1], r[2]);
     n.subVectors(b, a).cross(mid.subVectors(c, a));
     if (n.lengthSq() < 1e-12) return;
-    mid.copy(a).add(b).add(c).multiplyScalar(1 / 3).sub(this.centre);
+    mid
+      .copy(a)
+      .add(b)
+      .add(c)
+      .multiplyScalar(1 / 3)
+      .sub(this.centre);
     if (n.dot(mid) < 0) this.positions.push(...p, ...r, ...q);
     else this.positions.push(...p, ...q, ...r);
   }
@@ -79,7 +84,12 @@ export interface BrickShape {
  * low four-sided pyramid on the front face (the X-shaped crease).
  * Material groups: 0 = front facets, 1 = bevel ring + body.
  */
-export function createBrickGeometry(halfW: number, halfH: number, depth: number, flatFace = false): { geometry: THREE.BufferGeometry; shape: BrickShape } {
+export function createBrickGeometry(
+  halfW: number,
+  halfH: number,
+  depth: number,
+  flatFace = false,
+): { geometry: THREE.BufferGeometry; shape: BrickShape } {
   const back = -depth / 2;
   const front = depth / 2 - 0.2;
   const bevelTop = depth / 2 - 0.06;
@@ -129,8 +139,12 @@ export function createBrickGeometry(halfW: number, halfH: number, depth: number,
     const normals = geometry.getAttribute('normal');
     const uv = new Float32Array(positions.count * 2);
     for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
-      const nx = Math.abs(normals.getX(i)), ny = Math.abs(normals.getY(i)), nz = Math.abs(normals.getZ(i));
+      const x = positions.getX(i),
+        y = positions.getY(i),
+        z = positions.getZ(i);
+      const nx = Math.abs(normals.getX(i)),
+        ny = Math.abs(normals.getY(i)),
+        nz = Math.abs(normals.getZ(i));
       uv[i * 2] = nx > nz && nx > ny ? z / depth + 0.5 : x / (halfW * 2) + 0.5;
       uv[i * 2 + 1] = ny > nz && ny > nx ? z / depth + 0.5 : y / (halfH * 2) + 0.5;
     }
@@ -165,7 +179,13 @@ export function createShardGeometry(): THREE.BufferGeometry {
  * Paddle body: a long, low slab with chamfered plan-view corners and
  * chamfered top edges, centred on the origin. Width is along X, depth along Z.
  */
-export function createSlabGeometry(halfW: number, halfH: number, halfD: number, plan: number, edge: number): THREE.BufferGeometry {
+export function createSlabGeometry(
+  halfW: number,
+  halfH: number,
+  halfD: number,
+  plan: number,
+  edge: number,
+): THREE.BufferGeometry {
   const soup = new TriangleSoup(new THREE.Vector3(0, 0, 0));
   soup.group(0);
   // Plan-view octagons (in XZ) at three heights: bottom, shoulder (full size), top (inset by `edge`).

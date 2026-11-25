@@ -11,7 +11,10 @@ export class BrickField {
   /** Breakable bricks the level started with. */
   total = 0;
 
-  constructor(private readonly world: WorldContext, grid: GridDef) {
+  constructor(
+    private readonly world: WorldContext,
+    grid: GridDef,
+  ) {
     const bricks: Brick[] = [];
     for (let row = 0; row < GRID.rows; row++) {
       for (let col = 0; col < GRID.cols; col++) {

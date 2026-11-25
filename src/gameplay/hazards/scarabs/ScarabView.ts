@@ -6,7 +6,16 @@ import type { Paddle } from '../../types';
 import type { World } from '../../World';
 import { paddleRoll } from '../../entities/EntityViews';
 import type { ParticleSystem } from '../../../engine/render/ParticleSystem';
-import { buildScarabParts, buildWingGeometry, createScarabMaterials, ELYTRON_HINGE, WING_ROOT, type ScarabMaterialKey, type ScarabMaterials, type ScarabPart } from './scarabModel';
+import {
+  buildScarabParts,
+  buildWingGeometry,
+  createScarabMaterials,
+  ELYTRON_HINGE,
+  WING_ROOT,
+  type ScarabMaterialKey,
+  type ScarabMaterials,
+  type ScarabPart,
+} from './scarabModel';
 
 /** Playfield depth the scarabs crawl at: in front of the bricks' plane, on the paddle's front half. */
 export const SCARAB_Z = 0.55;
@@ -230,7 +239,6 @@ class ScarabMesh {
     this.shadow.visible = false;
   }
 
-
   resetPose(): void {
     this.body.rotation.set(0, 0, 0);
     this.body.position.set(0, 0, 0);
@@ -296,14 +304,21 @@ export class ScarabView {
         const z = lerp(Z, FAR_Z, s.depth);
         mesh.vz = simDt > 0 ? (z - mesh.z) / simDt : 0;
         mesh.z = z;
-      }
-      else mesh.z += (lane - mesh.z) * Math.min(1, simDt * LANE_RATE);
+      } else mesh.z += (lane - mesh.z) * Math.min(1, simDt * LANE_RATE);
       this.place(mesh, s, world.paddle, alpha, time, simDt, particles);
     }
     for (let i = 0; i < this.peekers.length; i++) this.peek(this.peekers[i], sys.nests[i], time, simDt, particles);
   }
 
-  private place(mesh: ScarabMesh, s: Scarab, paddle: Paddle, alpha: number, time: number, simDt: number, particles: ParticleSystem): void {
+  private place(
+    mesh: ScarabMesh,
+    s: Scarab,
+    paddle: Paddle,
+    alpha: number,
+    time: number,
+    simDt: number,
+    particles: ParticleSystem,
+  ): void {
     const x = lerp(s.px, s.x, alpha);
     let y = lerp(s.py, s.y, alpha);
     const floor = paddle.y - PADDLE.halfH;
@@ -364,7 +379,21 @@ export class ScarabView {
         while (mesh.kick >= 1) {
           mesh.kick -= 1;
           const side = Math.random() < 0.5 ? -1 : 1;
-          particles.emit(kx + (Math.random() - 0.5) * LENGTH * 0.4, y + 0.04, Z + side * LENGTH * 0.25, -s.facing * (0.4 + Math.random() * 1.1), 0.5 + Math.random() * 1.1, side * 0.3, sand.r, sand.g, sand.b, 0.045 + Math.random() * 0.05, 0.3 + Math.random() * 0.3, 2, 5);
+          particles.emit(
+            kx + (Math.random() - 0.5) * LENGTH * 0.4,
+            y + 0.04,
+            Z + side * LENGTH * 0.25,
+            -s.facing * (0.4 + Math.random() * 1.1),
+            0.5 + Math.random() * 1.1,
+            side * 0.3,
+            sand.r,
+            sand.g,
+            sand.b,
+            0.045 + Math.random() * 0.05,
+            0.3 + Math.random() * 0.3,
+            2,
+            5,
+          );
         }
         break;
       }
@@ -484,7 +513,21 @@ export class ScarabView {
     while (this.sandTime >= 1) {
       this.sandTime -= 1;
       const h = at + 0.6 + Math.random() * 1.6;
-      particles.emit(foot.x + facing * (0.05 + Math.random() * 0.12), h, Z, facing * 0.15, -0.6 - Math.random() * 1.2, 0, sand.r, sand.g, sand.b, 0.05 + Math.random() * 0.05, 0.5 + Math.random() * 0.4, 1, 3);
+      particles.emit(
+        foot.x + facing * (0.05 + Math.random() * 0.12),
+        h,
+        Z,
+        facing * 0.15,
+        -0.6 - Math.random() * 1.2,
+        0,
+        sand.r,
+        sand.g,
+        sand.b,
+        0.05 + Math.random() * 0.05,
+        0.5 + Math.random() * 0.4,
+        1,
+        3,
+      );
     }
   }
 

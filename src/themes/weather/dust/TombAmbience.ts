@@ -68,7 +68,17 @@ export class TombAmbience {
       const pan = s * 0.75;
       // The flame catching: a soft, low whoomp of air.
       this.audio.noise({ dur: 0.9, vol: 0.16 * strength, filter: 700, endFilter: 160, pan, when: t, bus: 'ambience' });
-      this.audio.tone({ freq: 90, endFreq: 60, dur: 0.7, vol: 0.05 * strength, attack: 0.08, filter: 300, pan, when: t, bus: 'ambience' });
+      this.audio.tone({
+        freq: 90,
+        endFreq: 60,
+        dur: 0.7,
+        vol: 0.05 * strength,
+        attack: 0.08,
+        filter: 300,
+        pan,
+        when: t,
+        bus: 'ambience',
+      });
     }
   }
 
@@ -87,20 +97,91 @@ export class TombAmbience {
     const s = strength;
     const bus = 'ambience' as const;
     // The groan: builds from the first warning, through the shake, and dies away after it.
-    this.audio.swell({ source: 'noise', filter: 420, endFilter: 160, q: 1.1, vol: 0.75 * s, attack: lead + rise, hold, release: fall + 1.2, tremolo: { rate: 6, depth: 0.45 }, when: t, bus });
+    this.audio.swell({
+      source: 'noise',
+      filter: 420,
+      endFilter: 160,
+      q: 1.1,
+      vol: 0.75 * s,
+      attack: lead + rise,
+      hold,
+      release: fall + 1.2,
+      tremolo: { rate: 6, depth: 0.45 },
+      when: t,
+      bus,
+    });
     // Stone grinding on stone: a rough, judder in the mid range, only while it shakes.
-    this.audio.swell({ source: 'noise', filterType: 'bandpass', filter: 650, endFilter: 380, q: 1.4, vol: 0.5 * s, attack: rise, hold, release: fall, tremolo: { rate: 13, depth: 0.7 }, pan: -0.3, when: shake, bus });
+    this.audio.swell({
+      source: 'noise',
+      filterType: 'bandpass',
+      filter: 650,
+      endFilter: 380,
+      q: 1.4,
+      vol: 0.5 * s,
+      attack: rise,
+      hold,
+      release: fall,
+      tremolo: { rate: 13, depth: 0.7 },
+      pan: -0.3,
+      when: shake,
+      bus,
+    });
     // A low creak whose harmonics carry on small speakers, and the deep weight under everything.
-    this.audio.swell({ source: 'sawtooth', freq: 68, endFreq: 52, filter: 380, q: 2, vol: 0.12 * s, attack: lead + rise, hold, release: fall, tremolo: { rate: 8.5, depth: 0.6 }, pan: 0.3, when: t, bus });
-    this.audio.swell({ source: 'sine', freq: 44, endFreq: 33, filter: 200, vol: 0.3 * s, attack: lead + rise, hold, release: fall + 0.6, when: t, bus });
+    this.audio.swell({
+      source: 'sawtooth',
+      freq: 68,
+      endFreq: 52,
+      filter: 380,
+      q: 2,
+      vol: 0.12 * s,
+      attack: lead + rise,
+      hold,
+      release: fall,
+      tremolo: { rate: 8.5, depth: 0.6 },
+      pan: 0.3,
+      when: t,
+      bus,
+    });
+    this.audio.swell({
+      source: 'sine',
+      freq: 44,
+      endFreq: 33,
+      filter: 200,
+      vol: 0.3 * s,
+      attack: lead + rise,
+      hold,
+      release: fall + 0.6,
+      when: t,
+      bus,
+    });
     // Grit pouring from the lintel as the dust falls, trailing off after.
-    this.audio.swell({ source: 'noise', filterType: 'bandpass', filter: 2800, endFilter: 1600, q: 0.8, vol: 0.16 * s, attack: rise + 0.3, hold, release: fall + 1, when: shake, bus });
+    this.audio.swell({
+      source: 'noise',
+      filterType: 'bandpass',
+      filter: 2800,
+      endFilter: 1600,
+      q: 0.8,
+      vol: 0.16 * s,
+      attack: rise + 0.3,
+      hold,
+      release: fall + 1,
+      when: shake,
+      bus,
+    });
     // Small stones dropping all the way through and for a moment after.
     const until = shake + rise + hold + fall + 1.2;
     let at = shake + 0.2 + Math.random() * 0.2;
     while (at < until) {
       const pan = (Math.random() - 0.5) * 1.6;
-      this.audio.noise({ dur: 0.04 + Math.random() * 0.06, vol: (0.1 + Math.random() * 0.15) * s, filterType: 'bandpass', filter: 600 + Math.random() * 1600, pan, when: at, bus });
+      this.audio.noise({
+        dur: 0.04 + Math.random() * 0.06,
+        vol: (0.1 + Math.random() * 0.15) * s,
+        filterType: 'bandpass',
+        filter: 600 + Math.random() * 1600,
+        pan,
+        when: at,
+        bus,
+      });
       at += 0.08 + Math.random() * 0.3;
     }
   }
@@ -125,19 +206,94 @@ export class TombAmbience {
     const end = t + duration;
     const hold = Math.max(0.2, duration - 1.1);
     // The grind: low, rough and juddering (an uneven tremolo: two rates beating).
-    this.audio.swell({ source: 'noise', filterType: 'bandpass', filter: 260, endFilter: 150, q: 1.6, vol: 0.9, attack: 0.5, hold, release: 0.6, tremolo: { rate: 7, depth: 0.75 }, when: t });
-    this.audio.swell({ source: 'noise', filterType: 'bandpass', filter: 190, endFilter: 120, q: 2.2, vol: 0.55, attack: 0.7, hold, release: 0.5, tremolo: { rate: 4.3, depth: 0.6 }, pan: -0.25, when: t });
+    this.audio.swell({
+      source: 'noise',
+      filterType: 'bandpass',
+      filter: 260,
+      endFilter: 150,
+      q: 1.6,
+      vol: 0.9,
+      attack: 0.5,
+      hold,
+      release: 0.6,
+      tremolo: { rate: 7, depth: 0.75 },
+      when: t,
+    });
+    this.audio.swell({
+      source: 'noise',
+      filterType: 'bandpass',
+      filter: 190,
+      endFilter: 120,
+      q: 2.2,
+      vol: 0.55,
+      attack: 0.7,
+      hold,
+      release: 0.5,
+      tremolo: { rate: 4.3, depth: 0.6 },
+      pan: -0.25,
+      when: t,
+    });
     // The scrape: stone edges rasping, harsher, panned the other way.
-    this.audio.swell({ source: 'noise', filterType: 'bandpass', filter: 1300, endFilter: 800, q: 2.5, vol: 0.3, attack: 0.3, hold, release: 0.4, tremolo: { rate: 17, depth: 0.85 }, pan: 0.3, when: t });
+    this.audio.swell({
+      source: 'noise',
+      filterType: 'bandpass',
+      filter: 1300,
+      endFilter: 800,
+      q: 2.5,
+      vol: 0.3,
+      attack: 0.3,
+      hold,
+      release: 0.4,
+      tremolo: { rate: 17, depth: 0.85 },
+      pan: 0.3,
+      when: t,
+    });
     // The weight: sub-bass rumble, and a creaking groan whose harmonics carry on small speakers.
-    this.audio.swell({ source: 'sine', freq: 38, endFreq: 30, filter: 160, vol: 0.55, attack: 0.6, hold, release: 0.9, when: t });
-    this.audio.swell({ source: 'sawtooth', freq: 58, endFreq: 44, filter: 320, q: 2.5, vol: 0.16, attack: 0.8, hold, release: 0.6, tremolo: { rate: 5.5, depth: 0.5 }, when: t });
+    this.audio.swell({
+      source: 'sine',
+      freq: 38,
+      endFreq: 30,
+      filter: 160,
+      vol: 0.55,
+      attack: 0.6,
+      hold,
+      release: 0.9,
+      when: t,
+    });
+    this.audio.swell({
+      source: 'sawtooth',
+      freq: 58,
+      endFreq: 44,
+      filter: 320,
+      q: 2.5,
+      vol: 0.16,
+      attack: 0.8,
+      hold,
+      release: 0.6,
+      tremolo: { rate: 5.5, depth: 0.5 },
+      when: t,
+    });
     // It catches and slips: short loud grinds every so often, and grit pattering down throughout.
     for (let at = t + 0.35 + Math.random() * 0.3; at < end - 0.4; at += 0.35 + Math.random() * 0.55) {
-      this.audio.noise({ dur: 0.12 + Math.random() * 0.18, vol: 0.35 + Math.random() * 0.2, filterType: 'bandpass', filter: 320 + Math.random() * 300, endFilter: 160, pan: (Math.random() - 0.5) * 0.8, when: at });
+      this.audio.noise({
+        dur: 0.12 + Math.random() * 0.18,
+        vol: 0.35 + Math.random() * 0.2,
+        filterType: 'bandpass',
+        filter: 320 + Math.random() * 300,
+        endFilter: 160,
+        pan: (Math.random() - 0.5) * 0.8,
+        when: at,
+      });
     }
     for (let at = t + 0.2; at < end + 0.6; at += 0.06 + Math.random() * 0.2) {
-      this.audio.noise({ dur: 0.03 + Math.random() * 0.05, vol: 0.06 + Math.random() * 0.08, filterType: 'bandpass', filter: 900 + Math.random() * 2200, pan: (Math.random() - 0.5) * 1.6, when: at });
+      this.audio.noise({
+        dur: 0.03 + Math.random() * 0.05,
+        vol: 0.06 + Math.random() * 0.08,
+        filterType: 'bandpass',
+        filter: 900 + Math.random() * 2200,
+        pan: (Math.random() - 0.5) * 1.6,
+        when: at,
+      });
     }
     // The slab thuds home as the dust blows in.
     this.audio.tone({ freq: 72, endFreq: 34, dur: 0.9, vol: 0.6, when: end - 0.1 });

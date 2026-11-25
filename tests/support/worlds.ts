@@ -51,13 +51,36 @@ export const FOREST_AREAS: WorldAreas = {
  * template arenas, drawn as polygons like any world. Level 0 is a plain rounded-rectangle arena; levels 10-19
  * are the tree arch. Bosses sit on levels 4, 9, 14 and 19.
  */
-export function classicCampaign(parts: { space?: Partial<WorldAreas> & WorldExtras; forest?: Partial<WorldAreas> & WorldExtras } = {}): Campaign {
-  const world = (def: typeof SPACE, levels: readonly LevelDef[], areas: WorldAreas, extra: (Partial<WorldAreas> & WorldExtras) | undefined, first: number) =>
-    worldEntry(def, levels, { ball: extra?.ball ?? areas.ball, paddle: extra?.paddle ?? areas.paddle }, { hazards: extra?.hazards, background: extra?.background }, first);
-  return new Campaign([
-    world(SPACE, CLASSIC_LEVELS.slice(0, STAGES_PER_WORLD), SPACE_AREAS, parts.space, 0),
-    world(FOREST, CLASSIC_LEVELS.slice(STAGES_PER_WORLD, 2 * STAGES_PER_WORLD), FOREST_AREAS, parts.forest, STAGES_PER_WORLD),
-  ], 2);
+export function classicCampaign(
+  parts: { space?: Partial<WorldAreas> & WorldExtras; forest?: Partial<WorldAreas> & WorldExtras } = {},
+): Campaign {
+  const world = (
+    def: typeof SPACE,
+    levels: readonly LevelDef[],
+    areas: WorldAreas,
+    extra: (Partial<WorldAreas> & WorldExtras) | undefined,
+    first: number,
+  ) =>
+    worldEntry(
+      def,
+      levels,
+      { ball: extra?.ball ?? areas.ball, paddle: extra?.paddle ?? areas.paddle },
+      { hazards: extra?.hazards, background: extra?.background },
+      first,
+    );
+  return new Campaign(
+    [
+      world(SPACE, CLASSIC_LEVELS.slice(0, STAGES_PER_WORLD), SPACE_AREAS, parts.space, 0),
+      world(
+        FOREST,
+        CLASSIC_LEVELS.slice(STAGES_PER_WORLD, 2 * STAGES_PER_WORLD),
+        FOREST_AREAS,
+        parts.forest,
+        STAGES_PER_WORLD,
+      ),
+    ],
+    2,
+  );
 }
 
 /** The classic test campaign with default arenas. */

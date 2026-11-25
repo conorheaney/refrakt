@@ -46,7 +46,8 @@ export interface Nest {
  * recovering on the floor after a miss. cling: riding the paddle. crushed: squashed by the ball. away: flown off
  * into the scene while the paddle is full, drifting about out there until called back for a free place.
  */
-export type ScarabState = 'emerge' | 'crawl' | 'wait' | 'flee' | 'crouch' | 'hop' | 'fly' | 'land' | 'cling' | 'crushed' | 'away';
+export type ScarabState =
+  'emerge' | 'crawl' | 'wait' | 'flee' | 'crouch' | 'hop' | 'fly' | 'land' | 'cling' | 'crushed' | 'away';
 
 /** How a scarab goes for the paddle: a quick hop from close by, or a buzzing flight from further off. */
 export type LeapMode = 'hop' | 'fly';
@@ -151,8 +152,39 @@ export class ScarabSystem implements HazardSystem {
   ) {
     for (let i = 0; i < SCARAB.maxActive; i++) {
       this.items.push({
-        active: false, state: 'crawl', nest: 0, x: 0, y: 0, px: 0, py: 0, facing: 1, timer: 0, mode: 'hop', leapAt: 0, rest: 0,
-        vx: 0, vy: 0, sx: 0, sy: 0, tx: 0, arc: 0, aim: 0, flown: 0, flight: 0, speed: 0, offset: 0, lane: 0, goal: 0, pause: 0, bx: 0, by: 0, depth: 0, back: false, heading: 0, age: 0, seed: i * 0.618,
+        active: false,
+        state: 'crawl',
+        nest: 0,
+        x: 0,
+        y: 0,
+        px: 0,
+        py: 0,
+        facing: 1,
+        timer: 0,
+        mode: 'hop',
+        leapAt: 0,
+        rest: 0,
+        vx: 0,
+        vy: 0,
+        sx: 0,
+        sy: 0,
+        tx: 0,
+        arc: 0,
+        aim: 0,
+        flown: 0,
+        flight: 0,
+        speed: 0,
+        offset: 0,
+        lane: 0,
+        goal: 0,
+        pause: 0,
+        bx: 0,
+        by: 0,
+        depth: 0,
+        back: false,
+        heading: 0,
+        age: 0,
+        seed: i * 0.618,
       });
     }
   }
@@ -164,7 +196,17 @@ export class ScarabSystem implements HazardSystem {
     this.nests.length = 0;
     for (const def of defs ?? []) {
       if (def.kind !== 'scarabs') continue;
-      this.nests.push({ def, route: ScarabSystem.route(def), walkIn: [], walkInFloor: Number.NaN, facing: def.x < 0 ? 1 : -1, state: 'idle', timer: 0, duration: 0, pending: 0 });
+      this.nests.push({
+        def,
+        route: ScarabSystem.route(def),
+        walkIn: [],
+        walkInFloor: Number.NaN,
+        facing: def.x < 0 ? 1 : -1,
+        state: 'idle',
+        timer: 0,
+        duration: 0,
+        pending: 0,
+      });
     }
     this.openLeft = -Infinity;
     this.openRight = Infinity;
@@ -260,7 +302,8 @@ export class ScarabSystem implements HazardSystem {
     if (left + right > 0) {
       // The first lurch goes towards the end it climbed on at.
       if (this.teeter === 0) this.teeterDir = this.riderWeight(paddle) < 0 ? -1 : 1;
-      if (live) this.teeter += dt * Math.PI * 2 * (this.scaled(SCARAB.teeterHz) + SCARAB.teeterHzPerRider * (left + right - 1));
+      if (live)
+        this.teeter += dt * Math.PI * 2 * (this.scaled(SCARAB.teeterHz) + SCARAB.teeterHzPerRider * (left + right - 1));
     } else this.teeter = 0;
     // The paddle settles towards the lean its riders' weight gives it.
     paddle.lean += (this.leanGoalFor(paddle) - paddle.lean) * Math.min(1, dt * SCARAB.leanRate);
@@ -359,8 +402,14 @@ export class ScarabSystem implements HazardSystem {
       if (!s.active || !(ScarabSystem.grounded(s) || s.state === 'emerge')) continue;
       const d = Math.abs(s.x - paddle.x);
       if (s.x < paddle.x) {
-        if (d < nearLeft) { nearLeft = d; left = s; }
-      } else if (d < nearRight) { nearRight = d; right = s; }
+        if (d < nearLeft) {
+          nearLeft = d;
+          left = s;
+        }
+      } else if (d < nearRight) {
+        nearRight = d;
+        right = s;
+      }
     }
     const out = new Set<Scarab>();
     if (left) out.add(left);
@@ -384,7 +433,8 @@ export class ScarabSystem implements HazardSystem {
    */
   static route(def: ScarabNestDef, floor?: number): ScarabPoint[] {
     const points: ScarabPoint[] = [{ x: def.x, y: def.y }, ...(def.path ?? [])];
-    if (floor !== undefined && points.length > 1) points[points.length - 1] = { x: points[points.length - 1].x, y: floor };
+    if (floor !== undefined && points.length > 1)
+      points[points.length - 1] = { x: points[points.length - 1].x, y: floor };
     return roundedPath(points, false, def.radius ?? 0);
   }
 
@@ -818,7 +868,10 @@ export class ScarabSystem implements HazardSystem {
     const before = s.offset;
     if (Math.abs(s.offset) > limit) {
       const edge = Math.sign(s.offset) * limit;
-      s.offset = s.offset > 0 ? Math.max(edge, s.offset - (SCARAB.scuttleRush * dt) / half) : Math.min(edge, s.offset + (SCARAB.scuttleRush * dt) / half);
+      s.offset =
+        s.offset > 0
+          ? Math.max(edge, s.offset - (SCARAB.scuttleRush * dt) / half)
+          : Math.min(edge, s.offset + (SCARAB.scuttleRush * dt) / half);
     } else if (s.pause > 0) {
       s.pause -= dt;
     } else {
@@ -873,12 +926,15 @@ export class ScarabSystem implements HazardSystem {
         b.x += dir * overlap * k;
       }
     }
-    for (const s of this.items) if (s.active && ScarabSystem.grounded(s) && this.edgeGap(s, paddle) < 0) this.keepClear(s, paddle, height);
+    for (const s of this.items)
+      if (s.active && ScarabSystem.grounded(s) && this.edgeGap(s, paddle) < 0) this.keepClear(s, paddle, height);
   }
 
   /** On the floor (where it must keep clear of the paddle). */
   static grounded(s: Scarab): boolean {
-    return s.state === 'crawl' || s.state === 'wait' || s.state === 'flee' || s.state === 'crouch' || s.state === 'land';
+    return (
+      s.state === 'crawl' || s.state === 'wait' || s.state === 'flee' || s.state === 'crouch' || s.state === 'land'
+    );
   }
 
   /** Picks how and from how far it will next go for the paddle, and a moment to gather itself first. */
@@ -899,7 +955,10 @@ export class ScarabSystem implements HazardSystem {
     const scatter = this.rng.range(-1, 1) * this.scaled(SCARAB.aimScatter);
     const fly = s.mode === 'fly';
     const roughly = Math.abs(paddle.x + scatter - s.x);
-    const time = Math.max(fly ? SCARAB.flyMinTime : SCARAB.hopMinTime, roughly / (fly ? SCARAB.flySpeed : SCARAB.hopSpeed));
+    const time = Math.max(
+      fly ? SCARAB.flyMinTime : SCARAB.hopMinTime,
+      roughly / (fly ? SCARAB.flySpeed : SCARAB.hopSpeed),
+    );
     const target = this.inOpen(paddle.x + paddle.vx * time * SCARAB.aimLead + scatter);
     s.facing = target >= s.x ? 1 : -1;
     s.back = false;
@@ -945,7 +1004,11 @@ export class ScarabSystem implements HazardSystem {
         s.offset = Math.max(-1, Math.min(1, (s.x - paddle.x) / half));
         s.x = paddle.x + s.offset * half;
         s.y = paddle.y + PADDLE.halfH;
-        s.lane = this.items.some((o) => o !== s && o.active && (o.state === 'cling' || o.state === 'crushed') && o.lane === 0) ? 1 : 0;
+        s.lane = this.items.some(
+          (o) => o !== s && o.active && (o.state === 'cling' || o.state === 'crushed') && o.lane === 0,
+        )
+          ? 1
+          : 0;
         s.pause = this.rng.range(SCARAB.scuttlePause[0], SCARAB.scuttlePause[1]);
         s.goal = this.nextGoal(s.offset, rideLimit(paddle));
         this.events.emit('scarabCling', { x: s.x, y: s.y });
@@ -1028,7 +1091,8 @@ export class ScarabSystem implements HazardSystem {
     const time = SCARAB.leapOverTime;
     let target = this.inOpen(paddle.x - side * (paddle.width / 2 + BODY + 1.2) + paddle.vx * time * 0.5);
     // Squeezed against the far wall too: it comes down back on this side.
-    if (Math.abs(target - paddle.x) < paddle.width / 2 + BODY) target = this.inOpen(paddle.x + side * (paddle.width / 2 + BODY + 1.2));
+    if (Math.abs(target - paddle.x) < paddle.width / 2 + BODY)
+      target = this.inOpen(paddle.x + side * (paddle.width / 2 + BODY + 1.2));
     s.state = 'hop';
     s.mode = 'hop';
     s.vx = (target - s.x) / time;
