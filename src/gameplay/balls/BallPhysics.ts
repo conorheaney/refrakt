@@ -19,6 +19,8 @@ const enum HitKind {
 }
 
 const CONTACT_EPS = 1e-4;
+/** How far outside a drawn ball area's bounds a ball must be before it counts as escaped. */
+const ESCAPE_MARGIN = BALL.radius * 4;
 
 /**
  * The balls: serving, launching, swept movement with bounces off walls, shield, bricks, paddle and boss, and
@@ -34,6 +36,10 @@ export class BallPhysics {
   private ballContour: Point[] = [];
   private ballOrientation = 1;
   private customBottom: number | null = null;
+  /** The drawn ball area's bounds grown by ESCAPE_MARGIN; a ball outside them has escaped the arena. */
+  private escapeLeft = -Infinity;
+  private escapeRight = Infinity;
+  private escapeTop = Infinity;
   private baseSpeed: number = BALL.baseSpeed;
   private speedBonus = 0;
   /** The ball being depenetrated, for the allocation-free reflect callback below. */
@@ -55,6 +61,10 @@ export class BallPhysics {
     this.ballContour = area ? areaContour(area) : [];
     this.ballOrientation = area ? Math.sign(polygonSignedArea(area.points)) : 1;
     this.customBottom = area ? Math.min(...this.ballContour.map((p) => p.y)) - BALL.radius * 3 : null;
+    const xs = this.ballContour.map((p) => p.x);
+    this.escapeLeft = area ? Math.min(...xs) - ESCAPE_MARGIN : -Infinity;
+    this.escapeRight = area ? Math.max(...xs) + ESCAPE_MARGIN : Infinity;
+    this.escapeTop = area ? Math.max(...this.ballContour.map((p) => p.y)) + ESCAPE_MARGIN : Infinity;
   }
 
   /** A new level: its base speed, with the paddle-hit bonus cleared. */
@@ -88,15 +98,20 @@ export class BallPhysics {
     }
   }
 
-  /** Multiball: every free ball in play splits into three. */
+  /**
+   * Multiball: every ball in play splits into three. A ball held on the paddle (Magnet, or waiting to serve)
+   * stays put and its two copies launch upwards either side of it.
+   */
   splitAll(): void {
     const sources = this.scratchBalls;
     sources.length = 0;
-    for (const ball of this.world.balls.items) if (ball.active && !ball.stuck) sources.push(ball);
+    for (const ball of this.world.balls.items) if (ball.active) sources.push(ball);
     for (let i = 0; i < sources.length; i++) {
       const src = sources[i];
-      this.spawnRotated(src.x, src.y, src.dx, src.dy, 0.32);
-      this.spawnRotated(src.x, src.y, src.dx, src.dy, -0.32);
+      const dx = src.stuck ? 0 : src.dx;
+      const dy = src.stuck ? 1 : src.dy;
+      this.spawnRotated(src.x, src.y, dx, dy, 0.32);
+      this.spawnRotated(src.x, src.y, dx, dy, -0.32);
     }
     if (sources.length > 0) this.world.events.emit('ballsSplit', { x: sources[0].x, y: sources[0].y });
   }
@@ -131,7 +146,11 @@ export class BallPhysics {
       const lossY = this.customBottom !== null
         ? Math.min(this.customBottom, world.shieldY - BALL.radius * 3)
         : world.hasPaddleLane ? Math.min(world.field.bottom, paddle.y - 2) : world.field.bottom;
-      if (ball.y < lossY) {
+      // A ball that slipped out through a drawn area's wall (between two segments, say) would otherwise fly
+      // off for ever with the level still live; count it as lost.
+      const escaped = ball.x < this.escapeLeft || ball.x > this.escapeRight || ball.y > this.escapeTop;
+      if (escaped) console.warn(`Ball escaped the drawn ball area at (${ball.x.toFixed(2)}, ${ball.y.toFixed(2)}); counted as lost.`);
+      if (ball.y < lossY || escaped) {
         world.balls.release(ball);
         world.events.emit('ballLost', { x: ball.x, remaining: world.balls.activeCount });
       }

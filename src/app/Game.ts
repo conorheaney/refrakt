@@ -215,7 +215,11 @@ export class Game {
       this.stepInput.axis = input.axis;
       const raw = input.pointerActive ? this.view.rig.pointerToFieldX(input.pointerX, input.pointerY) : null;
       if (raw === null) this.pointerOffset = 0;
-      else if (this.pointerOffset !== 0 && this.lastRawPointer !== null) {
+      else if (this.timeFx.frozen) {
+        // A hit-stop holds the paddle still while the cursor keeps moving: aim at the paddle, and let the
+        // difference wear off with mouse movement afterwards (as after a shove) instead of lurching to the cursor.
+        this.pointerOffset = this.world.paddle.x - raw;
+      } else if (this.pointerOffset !== 0 && this.lastRawPointer !== null) {
         const left = Math.abs(this.pointerOffset) - Math.abs(raw - this.lastRawPointer) * POINTER_OFFSET_WEAR;
         this.pointerOffset = left > 0 ? Math.sign(this.pointerOffset) * left : 0;
       }
@@ -247,12 +251,15 @@ export class Game {
       this.stepInput.targetX = null;
     }
     this.frameStep++;
-    // While a shove plays out (it overrides control) every bit the paddle moves is the shove's, as far as the
-    // walls let it go: carry that into the pointer offset so the paddle stays where it was pushed.
+    // While a snake's shove or an icicle's push plays out, the pointer doesn't steer (World.updatePaddle), so
+    // every bit the paddle moves is the push's, as far as the walls let it go: carry that into the pointer
+    // offset so the paddle stays where it was pushed. (An icicle's slide is consumed only while it pushes.)
     const paddle = this.world.paddle;
-    const shoved = paddle.shove !== 0 ? paddle.x : null;
+    const before = paddle.x;
+    const shoving = paddle.shove !== 0;
+    const slide = paddle.slide;
     this.world.step(step, this.stepInput);
-    if (shoved !== null && !this.world.demo && !AUTOPILOT) this.pointerOffset += paddle.x - shoved;
+    if ((shoving || paddle.slide !== slide) && !this.world.demo && !AUTOPILOT) this.pointerOffset += paddle.x - before;
     this.stepInput.action = false;
   };
 
@@ -522,8 +529,8 @@ export class Game {
       if (!world.demo) this.fsm.transition('gameover');
     });
 
-    // No full-screen flashes and no hit-stop freezes: a freeze stops the paddle while the pointer keeps
-    // moving, after which it lurches to catch up.
+    // No full-screen flashes, and hit-stop freezes only for Refrakt's light show (refraktStarted below): a
+    // freeze stops the paddle while the pointer keeps moving (simulate() holds its target for that reason).
     ev.on('bossStage', ({ stage }) => {
       if (world.demo) return;
       ui.banner(stage === 2 ? 'CRITICAL' : 'ENRAGED', world.boss.def?.name ?? '', 1.4);

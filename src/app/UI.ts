@@ -102,7 +102,7 @@ const TEMPLATE = /* html */ `
         <li><i style="--c:#8a55ff" class="framed"></i>Framed veined glass &mdash; three hits</li>
         <li><i style="--c:#4a525f"></i>Gunmetal &mdash; only explosions break it</li>
         <li><i style="--c:#ff3a0c"></i>Volatile &mdash; chain explosions</li>
-        <li><i style="--c:#ffa51f"></i>Gold star &mdash; refracts into extra balls</li>
+        <li><i style="--c:#ffa51f"></i>Gold star &mdash; Refrakt: the ball shatters glass</li>
         <li><i style="--c:#a58cff;opacity:.6"></i>Phase &mdash; flickers in and out</li>
       </ul>
     </div>

@@ -316,8 +316,11 @@ export class World implements WorldContext {
     const stunned = p.stun > 0;
     if (stunned) p.stun -= dt;
     if (p.tilt !== 0) p.tilt = p.tilt > 0 ? Math.max(0, p.tilt - dt / ICICLE.tiltTime) : Math.min(0, p.tilt + dt / ICICLE.tiltTime);
-    // An icicle's shove, once the wobble has had a moment to start: quick at first, easing off.
-    if (p.slide !== 0 && Math.abs(p.tilt) <= 1 - ICICLE.pushDelay / ICICLE.tiltTime) {
+    // An icicle's shove, once the wobble has had a moment to start: quick at first, easing off. While it plays
+    // out the pointer doesn't pull the paddle back (Game shifts its pointer target by the push instead); the
+    // keyboard can still steer against it.
+    const pushing = p.slide !== 0 && Math.abs(p.tilt) <= 1 - ICICLE.pushDelay / ICICLE.tiltTime;
+    if (pushing) {
       const move = Math.abs(p.slide) < 0.02 ? p.slide : p.slide * Math.min(1, dt * ICICLE.pushRate);
       p.x += move;
       p.slide -= move;
@@ -331,7 +334,7 @@ export class World implements WorldContext {
       // Locked in place by a boss shot.
     } else if (input.axis !== 0) {
       p.x += clamp(input.axis, -1, 1) * PADDLE.keySpeed * dt;
-    } else if (input.targetX !== null) {
+    } else if (input.targetX !== null && !pushing) {
       const maxMove = PADDLE.pointerSpeed * dt;
       p.x += clamp(input.targetX - p.x, -maxMove, maxMove);
     }
@@ -376,6 +379,8 @@ export class World implements WorldContext {
     }
     this.shieldCharges = 0;
     this.ballPhysics.clearBonus();
+    // Its history is keyed by pooled ball objects and timed by `time`, which a new game sets back to 0.
+    this.ballPhysics.trapGuard.reset();
     this.paddle.stun = 0;
     this.paddle.shove = 0;
     this.paddle.tilt = 0;
