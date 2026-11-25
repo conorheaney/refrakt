@@ -1,10 +1,11 @@
-import { FIELD, PADDLE, SCARAB } from '../../config';
+import { PADDLE, SCARAB } from '../../config';
 import type { EventBus } from '../../../engine/core/EventBus';
 import type { Random } from '../../../engine/core/Random';
 import type { GameEvents } from '../../events';
 import { roundedPath } from '../../../engine/core/paths';
 import type { HazardDef, HazardSystem, ScarabNestDef, ScarabPoint } from '../hazards';
 import type { Ball, Paddle } from '../../types';
+import type { ArenaBounds } from '../../arena/boundary';
 
 /**
  * Scarab swarms (see SCARAB in gameplay/config.ts). Nests are spawn points; their scarabs walk in along the
@@ -21,6 +22,11 @@ export type NestState = 'idle' | 'warn' | 'release' | 'scared';
 
 export interface Nest {
   readonly def: ScarabNestDef;
+  /** The walk-in route (ScarabSystem.route), worked out once at load. */
+  readonly route: readonly ScarabPoint[];
+  /** The route brought down to the floor at `walkInFloor` (the paddle's lane), cached for the current floor. */
+  walkIn: readonly ScarabPoint[];
+  walkInFloor: number;
   /** +1 for a nest left of centre (its swarm sets off rightwards), -1 for one on the right. */
   readonly facing: 1 | -1;
   state: NestState;
@@ -135,6 +141,9 @@ export class ScarabSystem implements HazardSystem {
   /** The open floor between where the nests' walk-ins reach it: scarabs aim their leaps to come down within it. */
   private openLeft = -Infinity;
   private openRight = Infinity;
+  /** The sides of the world's ball area: flyers stay between them (see inField). */
+  private arenaLeft = -Infinity;
+  private arenaRight = Infinity;
 
   constructor(
     private readonly rng: Random,
@@ -148,19 +157,20 @@ export class ScarabSystem implements HazardSystem {
     }
   }
 
-  load(defs: readonly HazardDef[] | undefined, difficulty: number): void {
+  load(defs: readonly HazardDef[] | undefined, difficulty: number, arena: ArenaBounds): void {
     this.difficulty = Math.min(1, Math.max(0, difficulty));
+    this.arenaLeft = arena.left;
+    this.arenaRight = arena.right;
     this.nests.length = 0;
     for (const def of defs ?? []) {
       if (def.kind !== 'scarabs') continue;
-      this.nests.push({ def, facing: def.x < 0 ? 1 : -1, state: 'idle', timer: 0, duration: 0, pending: 0 });
+      this.nests.push({ def, route: ScarabSystem.route(def), walkIn: [], walkInFloor: Number.NaN, facing: def.x < 0 ? 1 : -1, state: 'idle', timer: 0, duration: 0, pending: 0 });
     }
     this.openLeft = -Infinity;
     this.openRight = Infinity;
     for (const n of this.nests) {
       // The open floor starts where the walk-in reaches it.
-      const route = ScarabSystem.route(n.def);
-      const end = route[route.length - 1].x;
+      const end = n.route[n.route.length - 1].x;
       if (n.facing > 0) this.openLeft = Math.max(this.openLeft, end + SCARAB.radius);
       else this.openRight = Math.min(this.openRight, end - SCARAB.radius);
     }
@@ -363,7 +373,7 @@ export class ScarabSystem implements HazardSystem {
    * way its walk-in sets off.
    */
   static foot(n: Nest): { x: number; y: number; facing: 1 | -1 } {
-    const route = ScarabSystem.route(n.def);
+    const route = n.route;
     const dx = route.length > 1 ? route[1].x - route[0].x : 0;
     return { x: n.def.x, y: n.def.y, facing: dx < 0 ? -1 : dx > 0 ? 1 : n.facing };
   }
@@ -454,7 +464,11 @@ export class ScarabSystem implements HazardSystem {
           if (n.def.path) {
             // Walking in along the nest's path (round the scenery), down to the floor at its end.
             s.flown += s.speed * dt;
-            const at = ScarabSystem.along(ScarabSystem.route(n.def, floor), s.flown);
+            if (n.walkInFloor !== floor) {
+              n.walkInFloor = floor;
+              n.walkIn = ScarabSystem.route(n.def, floor);
+            }
+            const at = ScarabSystem.along(n.walkIn, s.flown);
             s.x = at.x;
             s.y = at.y;
             if (Math.abs(at.dx) > 1e-3) s.facing = at.dx > 0 ? 1 : -1;
@@ -747,10 +761,9 @@ export class ScarabSystem implements HazardSystem {
     if (Math.abs(s.vx) > 0.3) s.facing = s.vx > 0 ? 1 : -1;
   }
 
-  /** Keeps a flyer inside the play field's walls. */
+  /** Keeps a flyer inside the sides of the world's ball area. */
   private inField(x: number): number {
-    const edge = FIELD.halfWidth - SCARAB.radius;
-    return Math.max(-edge, Math.min(edge, x));
+    return Math.max(this.arenaLeft + SCARAB.radius, Math.min(this.arenaRight - SCARAB.radius, x));
   }
 
   /** Away scarabs at much the same depth and too close together ease apart, so two never look like one. */

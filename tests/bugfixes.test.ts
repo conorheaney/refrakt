@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { STAGES_PER_WORLD } from '../src/content/worlds';
-import { BALL, ICICLE, SIM } from '../src/gameplay/config';
+import { BALL, ICICLE, PADDLE, SCARAB, SIM } from '../src/gameplay/config';
+import { EventBus } from '../src/engine/core/EventBus';
+import { Random } from '../src/engine/core/Random';
+import type { GameEvents } from '../src/gameplay/events';
+import { ScarabSystem } from '../src/gameplay/hazards/scarabs/scarabs';
 import { PowerUpKind } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
 import { CLASSIC, classicCampaign } from './support/worlds';
@@ -71,5 +75,49 @@ describe('code review 001 fixes', () => {
     expect(lost).toBe(1);
     expect(world.lives).toBe(2);
     expect(Math.abs(ball.x)).toBeLessThan(10 + BALL.radius * 8);
+  });
+
+  it('P2: the paddle lane is recomputed when the paddle changes width, and only then', () => {
+    const world = new World(CLASSIC);
+    world.newGame(1);
+    const lane = world as unknown as { currentPaddleSpans(): unknown };
+    const narrow = lane.currentPaddleSpans();
+    expect(lane.currentPaddleSpans()).toBe(narrow); // same width: the cached spans
+    const right = { targetX: 100, axis: 0, action: false };
+    for (let i = 0; i < 240; i++) world.step(SIM.step, right);
+    expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(14, 3); // reaches the lane's end
+    // Expand: the wider paddle still stops at the lane's end, so the spans followed the width.
+    world.powerUps.collect(PowerUpKind.Expand, 0, 0);
+    for (let i = 0; i < 1200; i++) world.step(SIM.step, right);
+    expect(world.paddle.width).toBeCloseTo(PADDLE.expandedWidth, 6);
+    expect(lane.currentPaddleSpans()).not.toBe(narrow);
+    expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(14, 3);
+  });
+
+  it("P3: a scarab nest's routes are worked out once, not every step", () => {
+    const sys = new ScarabSystem(new Random(1), new EventBus<GameEvents>());
+    const def = { kind: 'scarabs' as const, x: -10, y: -6, path: [{ x: -8, y: -4 }, { x: -6, y: -9 }] };
+    sys.load([def], 0, { left: -14, right: 14, top: 10, bottom: -10 });
+    const nest = sys.nests[0];
+    expect(nest.route).toEqual(ScarabSystem.route(def));
+    expect(ScarabSystem.foot(nest)).toEqual({ x: -10, y: -6, facing: 1 });
+  });
+
+  it("S8: flying scarabs stay inside the world's drawn ball area, not the template arena", () => {
+    const sys = new ScarabSystem(new Random(1), new EventBus<GameEvents>());
+    sys.load([], 0, { left: -9, right: 6, top: 10, bottom: -10 });
+    const inField = (x: number): number => (sys as unknown as { inField(x: number): number }).inField(x);
+    expect(inField(100)).toBeCloseTo(6 - SCARAB.radius, 9);
+    expect(inField(-100)).toBeCloseTo(-9 + SCARAB.radius, 9);
+    expect(inField(1)).toBe(1);
+  });
+
+  it("S8: brick debris rests on the paddle lane's floor", () => {
+    const lane = classicCampaign({ space: { paddle: { radius: 0, points: [{ x: -14, y: -7 }, { x: 14, y: -7 }, { x: 14, y: -5 }, { x: -14, y: -5 }] } } });
+    const world = new World(lane);
+    world.newGame(1);
+    // GameView passes this to DebrisSystem.update and uses it for the lost-ball burst.
+    expect(world.shieldY).toBeCloseTo(world.paddle.y - PADDLE.halfH, 9);
+    expect(world.shieldY).toBeGreaterThan(-7);
   });
 });

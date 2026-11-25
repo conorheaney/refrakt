@@ -9,7 +9,11 @@ import { SCARAB_PATH_POINTS, validateHazards, type ScarabNestDef } from '../src/
 import { rideLimit, ScarabSystem, type Scarab } from '../src/gameplay/hazards/scarabs/scarabs';
 import type { Ball, Paddle } from '../src/gameplay/types';
 import { World } from '../src/gameplay/World';
-import { CLASSIC } from './support/worlds';
+import { CLASSIC, SPACE_AREAS } from './support/worlds';
+import { PolygonBoundary } from '../src/gameplay/arena/boundary';
+
+/** The classic Space arena's extent (walls at x = ±14), as World passes it to the hazard systems. */
+const ARENA = new PolygonBoundary(SPACE_AREAS.ball).bounds;
 
 const LEFT: ScarabNestDef = { kind: 'scarabs', x: -16, y: -9.2 };
 const RIGHT: ScarabNestDef = { kind: 'scarabs', x: 16, y: -9.2 };
@@ -27,7 +31,7 @@ function setup(defs: ScarabNestDef[] = [LEFT], difficulty = 0) {
   const log: string[] = [];
   for (const name of ['scarabWarn', 'scarabEmerge', 'scarabCling', 'scarabCrushed', 'scarabScared', 'scarabLeap', 'scarabLand', 'scarabBump', 'scarabSwatted'] as const) events.on(name, () => log.push(name));
   const sys = new ScarabSystem(new Random(5), events);
-  sys.load(defs, difficulty);
+  sys.load(defs, difficulty, ARENA);
   return { sys, log };
 }
 
@@ -542,7 +546,7 @@ describe('scarab nests', () => {
       const gates: number[] = [];
       events.on('tombGate', ({ duration }) => gates.push(duration));
       const sys = new ScarabSystem(new Random(9), events);
-      sys.load([LEFT, RIGHT], difficulty);
+      sys.load([LEFT, RIGHT], difficulty, ARENA);
       const paddle = paddleAt(0);
       // Nothing until the storm's wait (and the first level's extra delay) is up.
       run(sys, paddle, SCARAB.firstDelay + SCARAB.waitMin[0] * 0.5);

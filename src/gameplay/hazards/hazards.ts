@@ -1,6 +1,7 @@
 import { Random } from '../../engine/core/Random';
 import { MAX_PATH_RADIUS, roundedPath } from '../../engine/core/paths';
 import type { Ball, Paddle } from '../types';
+import type { ArenaBounds } from '../arena/boundary';
 
 /**
  * Hazards are enemies that belong to a world rather than to a level: they live in the world's JSON file
@@ -15,8 +16,11 @@ export type HazardKind = 'snake' | 'icicle' | 'icicles' | 'scarabs';
  * the same way, so a new kind of enemy is one more system there (plus its definition and validation here).
  */
 export interface HazardSystem {
-  /** Takes the world's hazards (every kind; each system keeps its own) for a level; `difficulty` is 0 on a world's first level, 1 on its tenth. */
-  load(defs: readonly HazardDef[] | undefined, difficulty: number): void;
+  /**
+   * Takes the world's hazards (every kind; each system keeps its own) for a level; `difficulty` is 0 on a world's
+   * first level, 1 on its tenth; `arena` is the extent of the world's drawn ball area.
+   */
+  load(defs: readonly HazardDef[] | undefined, difficulty: number, arena: ArenaBounds): void;
   /** Back to the level's starting state after a life is lost. */
   reset(): void;
   /**

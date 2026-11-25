@@ -551,8 +551,8 @@ export class Game {
       // back in from slow motion.
       this.timeFx.hitStop(REFRAKT.freeze);
       this.timeFx.slowMo(0.45, 0.5);
-      const field = world.field;
-      this.view.rig.project(0, (field.top + field.floorY) / 2, this.ndc);
+      const { left, right, top } = world.boundary.bounds;
+      this.view.rig.project((left + right) / 2, (top + world.shieldY) / 2, this.ndc);
       this.ui.popup('REFRAKT', this.ndc.x, this.ndc.y, 0xffffff, 'grand');
     });
   }
@@ -563,8 +563,8 @@ export class Game {
   }
 
   private popup(text: string, x: number, y: number, color: number): void {
-    const half = this.world.field.halfWidth;
-    const clampedX = Math.max(-half + 2, Math.min(half - 2, x));
+    const { left, right } = this.world.boundary.bounds;
+    const clampedX = Math.max(left + 2, Math.min(right - 2, x));
     this.view.rig.project(clampedX, y, this.ndc);
     this.ui.popup(text, this.ndc.x, this.ndc.y, color);
   }

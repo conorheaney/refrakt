@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-25 (after commit `bca75b0`)
+**Last updated:** 2026-11-25 (after the P2/P3/S8 commit)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -23,10 +23,10 @@ are given below where they matter.
 | S5 | `Game` mixes composition root and game-feel logic | Open | Still true. The test in `tests/smoothness.test.ts` still copies `Game`'s pointer logic |
 | S6 | Ad-hoc view-to-audio callbacks | Open | |
 | S7 | Launch options parsed in many places | Open | Fewer flags now (`?boundary=` removed), but still parsed at module level in `Game.ts` and `GameView.ts` |
-| S8 | Per-world arena settings ignored | **Partly done** | The walls and paddle lane now come from the drawn areas. Leftover uses of the template arena are listed under follow-ups |
+| S8 | Per-world arena settings ignored | **Done** | `bca75b0`: walls and paddle lane from the drawn areas. Then: flying scarabs, debris, floor bursts, confetti, popups and tomb dust use the drawn area and paddle lane. What still reads the template arena is listed under follow-ups |
 | P1 | Drawn ball area slow and allocating | **Done** | `bca75b0`: see measurements below |
-| P2 | Paddle-lane spans rebuilt every step | Open, **more important now** | `World.currentPaddleSpans()` runs every step in every world, since all of them have a paddle lane |
-| P3 | Scarab routes rebuilt every step and frame | Open | `ScarabSystem.route()` |
+| P2 | Paddle-lane spans rebuilt every step | **Done** | Spans are cached per level and rebuilt only when the paddle's width changes (Expand) |
+| P3 | Scarab routes rebuilt every step and frame | **Done** | Each nest's route is worked out at load, and its walk-in route once per floor height |
 | P4 | Small per-frame allocations | Open | |
 | P5 | Resolution scaling never recovers | Open | `Renderer.adapt` |
 | P6 | All assets loaded and decoded at boot | Open | |
@@ -75,16 +75,15 @@ Sanctuary and Jungle Ruins, which have the most complex areas.
 
 ## Known follow-ups
 
-**Leftover uses of the template arena (the rest of S8).** Each world still has a template arena from Space or
-Forest (`world.field`, `FIELD`). These places use it where the drawn areas would be right:
+**What still reads the template arena (by design).** Each world keeps a template arena from Space or Forest
+(`world.field`). After S8, these are the only uses left, and none should follow the drawn areas:
 
-| Where | What it does | Effect |
+| Where | What it does | Why it stays |
 |---|---|---|
-| `src/gameplay/hazards/scarabs/scarabs.ts:752` | keeps flying scarabs within ±13.5 | In a narrower drawn area, scarabs can fly over the scenery past the walls. This is the only one that affects gameplay. |
-| `src/gameplay/bricks/DebrisSystem.ts:95` | brick shards bounce on the template floor (-9.7) | Shards can bounce in mid-air or sink, where the paddle lane sits higher or lower |
-| `src/app/GameView.ts` (floor bursts, dust weather bounds), `src/app/Game.ts` (popup clamping) | effect placement | Cosmetic |
-| `src/app/audio/AudioDirector.ts:21` | left/right sound panning uses the arena width | Negligible |
-| `src/gameplay/CameraRig.ts`, `src/themes/scenery/*` | camera framing, scenery | Correct as is: framing belongs to the scenery |
+| `src/gameplay/CameraRig.ts`, `src/themes/scenery/*` | camera framing, scenery | Framing belongs to the scenery |
+| `src/content/authoredWorlds.ts` | seeds a new world's starting areas | That is what the template is for |
+| `src/gameplay/entities/EntityViews.ts` | the paddle's contact shadow offset; the barrier beam's initial length | Relative to the paddle; the beam length is overwritten every frame from the barrier's real span |
+| `src/app/audio/AudioDirector.ts:21` | left/right sound panning scale | A fixed stereo scale; makes no audible difference |
 
 **Other notes**
 - Older browser drafts without areas get the editor's starting shapes when opened. That marks them as changed,
@@ -111,13 +110,26 @@ an autopilot. "Multiball" collects a Multiball power-up every 400 steps.
 
 ---
 
+Cost of `World.step` from the P2/P3 change, measured the same way (median of 5, with old and new interleaved in
+one run). Absolute numbers vary between runs on this machine, so compare within a table only.
+
+| World | One ball, before → after | Multiball, before → after |
+|---|---|---|
+| Outer Space | 12.9 → 5.4 | 38.4 → 30.9 |
+| The Verdant Hollow | 11.5 → 6.1 | 104.1 → 72.7 |
+| Pharoughs Tomb | 30.6 → 19.8 | 118.4 → 100.6 |
+| Frozen Sanctuary | 17.2 → 11.0 | 60.0 → 54.7 |
+| Atlantis | 10.6 → 4.6 | 32.6 → 24.3 |
+| Volcanic Forge | 11.1 → 4.9 | 34.5 → 29.8 |
+| Jungle Ruins | 15.9 → 10.7 | 91.1 → 84.8 |
+
+---
+
 ## Suggested order for what's left
 
-1. P2 and P3: cache paddle-lane spans and scarab routes (small; P2 is likely the biggest remaining per-step cost).
-2. The rest of S8: the leftovers in the table above (small).
-3. Q9 and Q11: linter, formatter and CI (small).
-4. S5, S7, Q6 and Q10: make `Game` testable, then test the state machine (medium).
-5. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
-6. S6: a typed view-to-audio event bus (small).
-7. P6, Q12 and P7: per-world asset loading, editor undo memory, reflection (medium).
-8. P4 and P8: only if profiling shows them.
+1. Q9 and Q11: linter, formatter and CI (small).
+2. S5, S7, Q6 and Q10: make `Game` testable, then test the state machine (medium).
+3. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
+4. S6: a typed view-to-audio event bus (small).
+5. P6, Q12 and P7: per-world asset loading, editor undo memory, reflection (medium).
+6. P4 and P8: only if profiling shows them.

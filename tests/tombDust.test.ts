@@ -2,9 +2,12 @@ import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import tomb from '../public/worlds/Pharoughs-Tomb.json';
 import { validateWorld } from '../src/content/authoredWorlds';
-import { FIELD } from '../src/gameplay/config';
+import { PolygonBoundary } from '../src/gameplay/arena/boundary';
 import { isWeather } from '../src/content/worlds';
 import { envelope, TombDustLayer } from '../src/themes/weather/dust/TombDustLayer';
+
+/** Pharoughs Tomb's ball area: the dust fills its extent. */
+const ARENA = new PolygonBoundary(validateWorld(tomb).playAreas!.ball!).bounds;
 
 const DT = 1 / 60;
 
@@ -31,7 +34,7 @@ it('the Pharoughs Tomb uses tomb dust weather', () => {
 
 it('rumbles 8-12 seconds after entering the tomb, then every 20-40 seconds', () => {
   const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, FIELD);
+  layer.setActive(true, ARENA);
   const { rumbles, maxRumble } = run(layer, 300);
   expect(rumbles[0]).toBeGreaterThanOrEqual(8);
   expect(rumbles[0]).toBeLessThanOrEqual(12.1);
@@ -46,7 +49,7 @@ it('rumbles 8-12 seconds after entering the tomb, then every 20-40 seconds', () 
 
 it('flares the torches regularly, never during a rumble', () => {
   const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, FIELD);
+  layer.setActive(true, ARENA);
   const { flares, maxFlare } = run(layer, 600);
   expect(flares.length).toBeGreaterThan(10);
   for (const [, rumble] of flares) expect(rumble).toBe(0);
@@ -56,7 +59,7 @@ it('flares the torches regularly, never during a rumble', () => {
 
 it('starts no rumble or flare while the game is paused', () => {
   const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, FIELD);
+  layer.setActive(true, ARENA);
   const { rumbles, flares } = run(layer, 120, false);
   expect(rumbles).toHaveLength(0);
   expect(flares).toHaveLength(0);

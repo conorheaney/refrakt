@@ -130,6 +130,9 @@ export class World implements WorldContext {
   /** The paddle lane's outline, and the stretch of it the paddle centre may travel. */
   private paddleContour: Point[] = [];
   private paddleSpan: Interval = [0, 0];
+  /** The lane's spans for a paddle of `spansWidth` (see currentPaddleSpans); rebuilt only when the width changes. */
+  private spans: Interval[] = [];
+  private spansWidth = Number.NaN;
   /** The worlds and levels this game plays (see setCampaign). */
   private campaignValue: Campaign;
   /** The current level's world: arena, brick grid, paddle size and serve gap. */
@@ -231,10 +234,11 @@ export class World implements WorldContext {
     this.paddle.y = lane.y;
     // Keep movement in one connected lane, never teleport across holes in a concave polygon.
     this.paddleSpan = lane.spans.reduce((best, span) => span[1] - span[0] > best[1] - best[0] ? span : best);
+    this.spansWidth = Number.NaN;
     this.paddle.x = this.paddle.px = clampToSpans(this.paddle.x, this.currentPaddleSpans());
     this.clearTransient();
     const difficulty = (levelIndex % STAGES_PER_WORLD) / (STAGES_PER_WORLD - 1);
-    for (const system of this.hazardSystems) system.load(entry.hazards, difficulty);
+    for (const system of this.hazardSystems) system.load(entry.hazards, difficulty, this.boundary.bounds);
     this.powerUps.startLevel();
     this.brickField.load(campaign.levelCells(levelIndex), this.time);
     this.bossSystem.load(def.boss ?? null);
@@ -326,9 +330,18 @@ export class World implements WorldContext {
     p.vx = (p.x - p.px) / dt;
   }
 
+  /**
+   * Where the paddle centre may be along its lane: the stretches of the lane a paddle of its current width fits
+   * in, keeping only the connected one the paddle started in. The lane's height and shape are fixed for the
+   * level, so this is rebuilt only when the width changes (while Expand animates).
+   */
   private currentPaddleSpans(): Interval[] {
-    const centre = (this.paddleSpan[0] + this.paddleSpan[1]) / 2;
-    return paddleIntervals(this.paddleContour, this.paddle.y, this.paddle.width, PADDLE.halfH).filter(([a, b]) => a <= centre && b >= centre);
+    if (this.paddle.width !== this.spansWidth) {
+      this.spansWidth = this.paddle.width;
+      const centre = (this.paddleSpan[0] + this.paddleSpan[1]) / 2;
+      this.spans = paddleIntervals(this.paddleContour, this.paddle.y, this.paddle.width, PADDLE.halfH).filter(([a, b]) => a <= centre && b >= centre);
+    }
+    return this.spans;
   }
 
   // ------------------------------------------------------------ lives, score

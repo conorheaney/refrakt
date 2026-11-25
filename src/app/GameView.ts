@@ -283,7 +283,7 @@ export class GameView {
       const weather = def.weather;
       this.rain.setActive(weather === 'rain');
       this.snow.setActive(weather === 'snow');
-      this.dust.setActive(weather === 'dust', world.field);
+      this.dust.setActive(weather === 'dust', world.boundary.bounds);
       // With scarab nests, the dust storms come only with the scarabs (the tombGate event below).
       this.dust.autoRumble = world.scarabs.nests.length === 0;
       this.onWeather(weather);
@@ -387,7 +387,7 @@ export class GameView {
     });
 
     ev.on('ballLost', ({ x }) => {
-      p.burst(x, world.field.floorY + 0.2, this.white, 8, 4, 0.35, 0.5, 0.8);
+      p.burst(x, world.shieldY + 0.2, this.white, 8, 4, 0.35, 0.5, 0.8);
     });
 
     ev.on('lifeLost', () => {
@@ -599,9 +599,11 @@ export class GameView {
       this.celebrateTimer -= realDt;
       if (this.celebrateTimer <= 0) {
         this.celebrateTimer = 0.45;
-        const field = world.field;
-        const x = (Math.random() - 0.5) * field.halfWidth * 1.4;
-        const y = field.floorY + (field.top - field.floorY) * (0.35 + Math.random() * 0.45);
+        // Spread over the middle of the ball area, between the paddle's floor and the area's top.
+        const { left, right, top } = world.boundary.bounds;
+        const floor = world.shieldY;
+        const x = (left + right) / 2 + (Math.random() - 0.5) * (right - left) * 0.7;
+        const y = floor + (top - floor) * (0.35 + Math.random() * 0.45);
         this.tmp.setHSL(CELEBRATE_HUES[Math.floor(Math.random() * CELEBRATE_HUES.length)], 0.7, 0.6);
         this.particles.burst(x, y, this.tmp, 14, 6, 0.4, 1, 0.9);
       }
@@ -612,7 +614,7 @@ export class GameView {
     this.icicleDust(simDt);
     this.particles.update(fxDt);
     this.dustPuffs.update(fxDt);
-    this.debris.update(fxDt);
+    this.debris.update(fxDt, world.shieldY);
 
     // Fire-ball glow: fades in and out and glides between balls (it used to snap on/off and teleport to
     // whichever ball was lowest, which flickered during multiball).

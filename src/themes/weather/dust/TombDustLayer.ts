@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FRONT_FADE, weatherDepth } from '../weatherDepth';
-import type { FieldDef } from '../../../gameplay/config';
+import type { ArenaBounds } from '../../../gameplay/arena/boundary';
 
 /**
  * Where the light comes from in the Pharoughs Tomb painting, in pixels of the 1600 x 900 artwork (y down).
@@ -445,9 +445,10 @@ export class TombDustLayer {
   }
 
   /** Shown or hidden with the world; it changes only between worlds, behind the level transition. */
-  setActive(on: boolean, field: FieldDef): void {
-    this.dustUniforms.uTop.value = field.top - CEILING_BELOW_TOP;
-    this.dustUniforms.uHalfWidth.value = field.halfWidth - 1.5;
+  /** `arena`: the extent of the world's ball area, which the dust fills. */
+  setActive(on: boolean, arena: ArenaBounds): void {
+    this.dustUniforms.uTop.value = arena.top - CEILING_BELOW_TOP;
+    this.dustUniforms.uHalfWidth.value = Math.max(-arena.left, arena.right) - 1.5;
     if (on && !this.group.visible) {
       this.untilRumble = between(RUMBLE.firstMin, RUMBLE.firstMax);
       this.untilFlare = between(FLARE.firstMin, FLARE.firstMax);

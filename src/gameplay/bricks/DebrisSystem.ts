@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { FIELD } from '../config';
 import { createShardGeometry } from '../../engine/render/geometry';
 import { applySurfaceFx } from '../../engine/render/shaders';
 
@@ -90,9 +89,10 @@ export class DebrisSystem {
     if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
   }
 
-  update(dt: number): void {
+  /** `floorY`: the paddle lane's floor, where shards skitter to rest. */
+  update(dt: number, floorY: number): void {
     const { pos, vel, rot, spin, life, shape, mesh } = this;
-    const floor = FIELD.floorY + 0.08;
+    const floor = floorY + 0.08;
     let i = 0;
     while (i < this.count) {
       life[i] -= dt;
