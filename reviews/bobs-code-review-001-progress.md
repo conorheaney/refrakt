@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (view event bus, AudioDirector tests)
+**Last updated:** 2026-11-26 (editor undo memory)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -44,7 +44,7 @@ are given below where they matter.
 | Q9 | No formatter or linter | **Done** | `978acd7`: Prettier. Then oxlint with type-aware rules (`no-floating-promises`, `no-misused-promises`): `npm run lint`. `typescript-eslint` doesn't support TypeScript 7 yet; oxlint's type checker (`oxlint-tsgolint`) is built on it |
 | Q10 | `Game`, `UI`, `AudioDirector` untested | **Done (except `UI`)** | `Game`'s flow through `GameFlow` (`tests/gameFlow.test.ts`) and `AudioDirector` (`tests/audioDirector.test.ts`, with a recording fake engine: each gameplay moment's sound, silence in the menu demo, the rate limit, the Refrakt hum, pause ducking, weather loops, thunder). Writing these found 12 sound handlers that played in the menu's attract mode, now fixed. `UI` is DOM-only and stays untested (it would need a simulated browser) |
 | Q11 | Tooling: no CI, unchecked indexing, slow tests | **Closed** | **CI deferred by decision**: checks run locally instead (formatting, lint and type-check after each change; tests, world-store checks, build and the editor browser test before major commits). A plan is ready if wanted: one GitHub Actions workflow on Ubuntu/Node 24, with the browser test as a parallel job. **Slow tests: no longer needed**: the suite now takes ~17 s, down from 49 s, after the collision work. **Strict indexing** (`noUncheckedIndexedAccess`): **dropped by decision**. Enabling it raises 1,004 type errors, nearly all array reads in loops whose bounds already guarantee the index, so the fixes would mostly be `!` noise in hot code. The lookups that use outside numbers are already checked at runtime: `Campaign.level()` throws, `worldAt` clamps, `?level=` is range-checked and world files are validated on load |
-| Q12 | Editor undo can use a lot of memory | Open | |
+| Q12 | Editor undo can use a lot of memory | **Done** | Undo snapshots share the background image instead of copying it (`editor/src/undoSnapshot.ts`): 100 steps of a world with a 1.2 MB image took ~121 MB (measured), now ~0.2 MB plus the one image. Undoing an upload or removal still works. The limit stays at 100 (`UNDO_LIMIT`); a stroke of painting is one step |
 
 Regression tests for the fixed bugs are in `tests/bugfixes.test.ts`. The drawn-area boundary is tested in
 `tests/boundary.test.ts`.
@@ -140,7 +140,6 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 Review items first (decided 2026-11-26), then the `PaddleDriver` idea.
 
-1. Q12: keep the background image out of the editor's undo history (small).
-2. P6 and P7: per-world asset loading, compressed audio, validating each world once, a lighter floor reflection (medium).
-3. P4 and P8: only if profiling shows them.
-4. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).
+1. P6 and P7: per-world asset loading, compressed audio, validating each world once, a lighter floor reflection (medium).
+2. P4 and P8: only if profiling shows them.
+3. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).

@@ -9,6 +9,7 @@ import {
   type AuthoredWorld,
 } from '../../src/content/authoredWorlds';
 import { withAreas } from './defaultAreas';
+import { UNDO_LIMIT, undoSnapshot } from './undoSnapshot';
 import { GRID } from '../../src/gameplay/config';
 import { BOSS_PRESETS, type LevelDef } from '../../src/content/levels';
 import { isWeather, WEATHER, type WorldId } from '../../src/content/worlds';
@@ -80,8 +81,8 @@ function markChanged(): void {
   el<HTMLButtonElement>('redo').disabled = redo.length === 0;
 }
 function snapshot(): void {
-  undo.push(structuredClone(data));
-  if (undo.length > 100) undo.shift();
+  undo.push(undoSnapshot(data));
+  if (undo.length > UNDO_LIMIT) undo.shift();
   redo = [];
   markChanged();
 }
@@ -501,7 +502,7 @@ function history(backwards: boolean): void {
   const destination = backwards ? redo : undo;
   const previous = source.pop();
   if (!previous) return;
-  destination.push(structuredClone(data));
+  destination.push(undoSnapshot(data));
   data = previous;
   markChanged();
   render();
