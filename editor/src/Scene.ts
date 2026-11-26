@@ -4,7 +4,6 @@ import { Campaign } from '../../src/content/campaign';
 import { authoredEntry, type AuthoredWorld } from '../../src/content/authoredWorlds';
 import { GameView } from '../../src/app/GameView';
 import { Renderer } from '../../src/engine/render/Renderer';
-import { loadForgeTextures } from '../../src/themes/blocks/forge/forgeAssets';
 import { World } from '../../src/gameplay/World';
 import type { Point } from '../../src/gameplay/arena/playAreas';
 import { STAGE_ASPECT, STAGE_MIN_ASPECT } from '../../src/engine/Stage';
@@ -43,7 +42,7 @@ export class EditorScene {
   }
 
   async init(): Promise<void> {
-    this.view = new GameView(this.world, this.renderer.gl, await loadForgeTextures(), mapBackdrops(this.backgrounds));
+    this.view = new GameView(this.world, this.renderer.gl, mapBackdrops(this.backgrounds));
     this.view.rig.mode = 'play';
     this.view.rig.shakeScale = 0;
     this.renderer.attach(this.view.scene, this.view.rig.camera);

@@ -98,30 +98,10 @@ function metal(shape: BrickShape, color: number, roughness: number, emblem = 0):
  * armored = finely veined violet glass in a violet metal frame, steel = riveted gunmetal, explosive = hot glass with a burst
  * emblem, prism = gold glass with a star, phase = ghosted lavender glass.
  */
-/**
- * The forge block style (themes/blocks/forge): its textures, indexed by BrickKind, and its builders. GameView
- * hands it in, so the brick view doesn't depend on a theme.
- */
-export interface ForgeStyle {
-  readonly textures: readonly THREE.Texture[];
-  armorGeometry(): THREE.BufferGeometry;
-  explosiveGeometry(): THREE.BufferGeometry;
-  prototypeMaterials(
-    kind: 'armored' | 'explosive',
-    basalt: THREE.Texture,
-    steel: THREE.Texture,
-    time: { value: number },
-  ): [THREE.Material, THREE.Material];
-}
-
 export class BrickView {
   private readonly meshes: THREE.InstancedMesh[] = [];
   private readonly fxAttrs: THREE.InstancedBufferAttribute[] = [];
   private readonly looks: KindLook[] = [];
-  private readonly classicGeometry: THREE.BufferGeometry[] = [];
-  private readonly forgeGeometry: THREE.BufferGeometry[] = [];
-  private readonly forgeLooks: KindLook[] = [];
-  private forge = false;
   private readonly counts = new Int32Array(BRICK_KIND_COUNT);
   private readonly palette: THREE.Color[];
   private readonly tmp = new THREE.Color();
@@ -134,11 +114,9 @@ export class BrickView {
   private readonly goldTint = new THREE.Color(0xffa51f);
   private readonly ghostTint = new THREE.Color(0xa58cff);
 
-  constructor(scene: THREE.Scene, forge: ForgeStyle) {
-    const forgeTextures = forge.textures;
+  constructor(scene: THREE.Scene) {
     const { geometry, shape } = createBrickGeometry(GRID.halfW, GRID.halfH, GRID.depth);
     const capacity = GRID.cols * GRID.rows;
-    const forgeBlock = createBrickGeometry(GRID.halfW, GRID.halfH, GRID.depth, true);
     const t = this.time;
 
     const normal = glass(shape, { glow: 0.55, rim: 1.9 }, 0.88, t);
@@ -164,62 +142,6 @@ export class BrickView {
       const fx = new THREE.InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
       fx.setUsage(THREE.DynamicDrawUsage);
       geo.setAttribute('aFx', fx);
-      this.classicGeometry.push(geo);
-      const forgeGeo =
-        kind === BrickKind.Armored
-          ? forge.armorGeometry()
-          : kind === BrickKind.Explosive
-            ? forge.explosiveGeometry()
-            : forgeBlock.geometry.clone();
-      forgeGeo.setAttribute('aFx', fx);
-      this.forgeGeometry.push(forgeGeo);
-      const map = forgeTextures[kind];
-      if (map && (kind === BrickKind.Armored || kind === BrickKind.Explosive) && forgeTextures[BrickKind.Normal]) {
-        this.forgeLooks[kind] = {
-          materials: forge.prototypeMaterials(
-            kind === BrickKind.Armored ? 'armored' : 'explosive',
-            forgeTextures[BrickKind.Normal],
-            forgeTextures[BrickKind.Steel] ?? map,
-            t,
-          ),
-          wallGlow: 0,
-        };
-      } else if (map) {
-        const metalness = [0.04, 0.02, 0.5, 0.85, 0.03, 0.2, 0.15][kind];
-        const roughness = [0.86, 0.8, 0.48, 0.4, 0.72, 0.22, 0.25][kind];
-        // A separate linear texture view supplies relief without treating colour as normal vectors.
-        const bump = map.clone();
-        bump.colorSpace = THREE.NoColorSpace;
-        bump.needsUpdate = true;
-        const material = new THREE.MeshPhysicalMaterial({
-          color: 0xffffff,
-          map,
-          bumpMap: bump,
-          bumpScale: kind === BrickKind.Steel ? 0.018 : 0.045,
-          metalness,
-          roughness,
-          clearcoat: kind >= BrickKind.Prism ? 0.65 : 0.08,
-          emissive: 0xffffff,
-          emissiveMap: map,
-          emissiveIntensity: [0.12, 0.1, 0.12, 0.15, 0.75, 0.45, 0.3][kind],
-          transparent: kind === BrickKind.Phase,
-          opacity: kind === BrickKind.Phase ? 0.7 : 1,
-          envMapIntensity: 0.8,
-        });
-        applySurfaceFx(
-          material,
-          {
-            glow: kind === BrickKind.Explosive ? 0.035 : 0,
-            rim: kind === BrickKind.Phase ? 0.22 : 0.035,
-            instanceFx: true,
-            halfW: forgeBlock.shape.halfW,
-            halfH: forgeBlock.shape.halfH,
-            faceZ: forgeBlock.shape.faceZ,
-          },
-          t,
-        );
-        this.forgeLooks[kind] = { materials: [material, material], wallGlow: 0 };
-      }
       const mesh = new THREE.InstancedMesh(geo, this.looks[kind].materials, capacity);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.setColorAt(0, white);
@@ -231,7 +153,6 @@ export class BrickView {
       scene.add(mesh);
     }
     geometry.dispose();
-    forgeBlock.geometry.dispose();
 
     // Coloured light spilled onto the back wall behind glowing glass.
     this.glowMesh = new THREE.InstancedMesh(
@@ -257,8 +178,6 @@ export class BrickView {
 
   /** Base (unlit, un-flashed) tint of a brick in linear space; also used for shards and sparks. */
   colorOf(brick: Brick, _time: number, out: THREE.Color): THREE.Color {
-    if (this.forge)
-      return out.setHex([0x88817a, 0xc3a17d, 0xaaa09a, 0x738597, 0xff631c, 0xffc657, 0xb680e5][brick.kind]);
     switch (brick.kind) {
       case BrickKind.Tough:
         return out.copy(this.charcoalTint);
@@ -280,14 +199,6 @@ export class BrickView {
   }
 
   update(world: World): void {
-    const forge = world.worldDef.blockStyle === 'forge' && this.forgeLooks.length === BRICK_KIND_COUNT;
-    if (forge !== this.forge) {
-      this.forge = forge;
-      for (let kind = 0; kind < this.meshes.length; kind++) {
-        this.meshes[kind].geometry = (forge ? this.forgeGeometry : this.classicGeometry)[kind];
-        this.meshes[kind].material = (forge ? this.forgeLooks : this.looks)[kind].materials;
-      }
-    }
     const time = world.time;
     this.time.value = time;
     const counts = this.counts;
@@ -322,8 +233,7 @@ export class BrickView {
       let damage = 0;
       let ghost = 0;
 
-      if (this.forge) tmp.setRGB(1, 1, 1);
-      else this.colorOf(b, time, tmp);
+      this.colorOf(b, time, tmp);
       if (b.kind === BrickKind.Tough || b.kind === BrickKind.Armored) {
         damage = 1 - b.hp / b.maxHp;
       } else if (b.kind === BrickKind.Explosive) {
@@ -370,7 +280,7 @@ export class BrickView {
       fx[slot * 3 + 1] = heat;
       fx[slot * 3 + 2] = (b.index * 0.6180339) % 1;
 
-      const wallGlow = (this.forge ? this.forgeLooks : this.looks)[b.kind].wallGlow * (1 - ghost * 0.7) * spawn;
+      const wallGlow = this.looks[b.kind].wallGlow * (1 - ghost * 0.7) * spawn;
       if (wallGlow > 0 && glowColor) {
         const g = glowCount * 16;
         const gx = b.x * along;

@@ -37,20 +37,14 @@ export class Game {
   private lastTime = 0;
   private running = false;
 
-  constructor(
-    canvas: HTMLCanvasElement,
-    uiRoot: HTMLElement,
-    campaign: Campaign,
-    options: LaunchOptions,
-    forgeTextures: readonly THREE.Texture[],
-  ) {
+  constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement, campaign: Campaign, options: LaunchOptions) {
     this.world = new World(campaign);
     this.stage = canvas.parentElement ?? document.body;
     this.uiRoot = uiRoot;
     this.renderer = new Renderer(canvas);
     // Each world's uploaded background is decoded when one of its levels first shows (see BackdropCache).
     const backdrops = new BackdropCache((worldIndex) => this.world.campaign.worlds[worldIndex]?.background);
-    this.view = new GameView(this.world, this.renderer.gl, forgeTextures, backdrops, {
+    this.view = new GameView(this.world, this.renderer.gl, backdrops, {
       debugArena: options.debugArena,
     });
     this.renderer.attach(this.view.scene, this.view.rig.camera);

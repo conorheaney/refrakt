@@ -1,6 +1,5 @@
 import './styles.css';
 import { Game } from './Game';
-import { loadForgeTextures } from '../themes/blocks/forge/forgeAssets';
 import { authoredEntry, readLibrary, validateWorld, type AuthoredWorld } from '../content/authoredWorlds';
 import { Campaign } from '../content/campaign';
 import { buildCampaign, loadFileWorlds } from '../content/fileWorlds';
@@ -43,12 +42,8 @@ async function boot(): Promise<void> {
       }
       campaign = buildCampaign(files.worlds, saved);
     }
-    // The brick textures are fetched up front so bricks never pop in half-drawn; each world's uploaded
-    // background loads when the world is first shown (BackdropCache).
-    const forgeTextures = await loadForgeTextures().catch((err: unknown) => {
-      throw new Error('The game artwork could not be loaded.', { cause: err });
-    });
-    new Game(canvas, uiRoot, campaign, options, forgeTextures).start();
+    // Each world's uploaded background loads when the world is first shown (BackdropCache).
+    new Game(canvas, uiRoot, campaign, options).start();
   } catch (err) {
     console.error(err);
     fatal(uiRoot, err instanceof Error ? err.message : String(err));

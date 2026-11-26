@@ -66,8 +66,6 @@ export function validateWorld(value: unknown): AuthoredWorld {
     throw new Error('Invalid background image. Upload a PNG, JPEG or WebP in the editor.');
   }
   const world = record(data.world);
-  if (world.blockStyle !== undefined && world.blockStyle !== 'classic' && world.blockStyle !== 'forge')
-    throw new Error('Unsupported block style.');
   if (world.music !== undefined && !isMusicTrack(world.music)) throw new Error('Unsupported music track.');
   if (world.weather !== undefined && !isWeather(world.weather)) throw new Error('Unsupported weather.');
   name(world.name);
@@ -89,10 +87,20 @@ export function validateWorld(value: unknown): AuthoredWorld {
   });
   const result = structuredClone(data) as unknown as AuthoredWorld;
   // Settings older files may still carry, for things the game no longer has: built-in scenery templates (and
-  // the arena, grid and paddle sizes that came with them), built-in wall shapes, campaign slots that replaced
+  // the arena, grid and paddle sizes that came with them), built-in wall shapes, brick styles, campaign slots that replaced
   // a built-in world, per-level scenery hues and bosses. Every world now shares one arena and camera.
   const legacyWorld = result.world as WorldDef & Record<string, unknown>;
-  for (const key of ['id', 'field', 'grid', 'paddleWidth', 'paddleExpandedWidth', 'serveLift', 'boundary', 'outline'])
+  for (const key of [
+    'id',
+    'field',
+    'grid',
+    'paddleWidth',
+    'paddleExpandedWidth',
+    'serveLift',
+    'boundary',
+    'outline',
+    'blockStyle',
+  ])
     delete legacyWorld[key];
   delete (result as AuthoredWorld & { replaces?: unknown }).replaces;
   for (const level of result.levels) {

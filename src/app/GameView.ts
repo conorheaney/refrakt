@@ -19,11 +19,6 @@ import {
   ShockwavePool,
 } from '../gameplay/entities/EntityViews';
 import { Environment } from '../themes/scenery/Environment';
-import {
-  createForgeArmorGeometry,
-  createForgeExplosiveGeometry,
-  createForgePrototypeMaterials,
-} from '../themes/blocks/forge/forgeBlocks';
 import { ParticleSystem } from '../engine/render/ParticleSystem';
 import { RainLayer } from '../themes/weather/rain/RainLayer';
 import { SnowLayer } from '../themes/weather/snow/SnowLayer';
@@ -98,8 +93,6 @@ export class GameView {
   constructor(
     private readonly world: World,
     gl: THREE.WebGLRenderer,
-    /** The forge block style's brick textures (themes/blocks/forge/forgeAssets.ts). */
-    forgeTextures: readonly THREE.Texture[],
     private readonly backdrops: BackdropSource,
     /**
      * `debugArena` (`?debugArena`, see app/launchOptions.ts): draws the walls the ball bounces off (the world's drawn
@@ -117,12 +110,7 @@ export class GameView {
     this.dust.onRumble = (strength, lead, rise, hold, fall) =>
       this.events.emit('rumble', { strength, lead, rise, hold, fall });
     this.dust.onFlare = (side, strength) => this.events.emit('torchFlare', { side, strength });
-    this.bricks = new BrickView(scene, {
-      textures: forgeTextures,
-      armorGeometry: createForgeArmorGeometry,
-      explosiveGeometry: createForgeExplosiveGeometry,
-      prototypeMaterials: createForgePrototypeMaterials,
-    });
+    this.bricks = new BrickView(scene);
     this.balls = new BallsView(scene);
     this.paddle = new PaddleView(scene);
     this.drops = new DropsView(scene, DROP.capacity, glow);

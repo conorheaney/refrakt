@@ -22,7 +22,6 @@ import type { DustLine } from '../../src/content/dustLine';
 import type { HazardDef } from '../../src/gameplay/hazards/hazards';
 import { EditorScene } from './Scene';
 import { listWorldFiles, saveWorldFile, type WorldFile } from './WorldFiles';
-import { FORGE_TEXTURE_URLS } from '../../src/themes/blocks/forge/forgeAssets';
 import { AudioEngine } from '../../src/engine/audio/AudioEngine';
 import { Music, type MusicMode } from '../../src/app/audio/Music';
 import { isMusicTrack, MUSIC_TRACKS } from '../../src/content/musicTracks';
@@ -116,9 +115,6 @@ function renderGrid(): void {
     const col = i % GRID.cols;
     const symbol = level.rows[row]?.[col] ?? '.';
     cell.dataset.symbol = symbol;
-    const texture = data.world.blockStyle === 'forge' ? FORGE_TEXTURE_URLS[symbols.indexOf(symbol) - 1] : undefined;
-    if (texture) cell.style.setProperty('--brick', `url("${texture}") center / cover`);
-    else cell.style.removeProperty('--brick');
     cell.textContent = symbol === '.' ? '' : symbol;
     cell.setAttribute('aria-label', `Row ${row + 1}, column ${col + 1}: ${names[symbols.indexOf(symbol)]}`);
     if (symbol !== '.') count++;

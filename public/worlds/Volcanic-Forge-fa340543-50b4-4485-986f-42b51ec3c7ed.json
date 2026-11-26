@@ -1,8 +1,7 @@
 {
   "key": "fa340543-50b4-4485-986f-42b51ec3c7ed",
   "world": {
-    "name": "Volcanic Forge",
-    "blockStyle": "forge"
+    "name": "Volcanic Forge"
   },
   "levels": [
     {

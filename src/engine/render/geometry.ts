@@ -88,12 +88,11 @@ export function createBrickGeometry(
   halfW: number,
   halfH: number,
   depth: number,
-  flatFace = false,
 ): { geometry: THREE.BufferGeometry; shape: BrickShape } {
   const back = -depth / 2;
   const front = depth / 2 - 0.2;
   const bevelTop = depth / 2 - 0.06;
-  const apexZ = flatFace ? bevelTop : depth / 2 + 0.03;
+  const apexZ = depth / 2 + 0.03;
   const chamfer = Math.min(halfW, halfH) * 0.3;
   const inset = Math.min(halfW, halfH) * 0.27;
   const soup = new TriangleSoup(new THREE.Vector3(0, 0, 0));
@@ -133,23 +132,6 @@ export function createBrickGeometry(
   for (let i = 1; i < 7; i++) soup.tri(outerBack[0], outerBack[i], outerBack[i + 1]);
 
   const geometry = soup.build();
-  if (flatFace) {
-    // Box projection keeps the front artwork upright and gives the sides real surface relief.
-    const positions = geometry.getAttribute('position');
-    const normals = geometry.getAttribute('normal');
-    const uv = new Float32Array(positions.count * 2);
-    for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i),
-        y = positions.getY(i),
-        z = positions.getZ(i);
-      const nx = Math.abs(normals.getX(i)),
-        ny = Math.abs(normals.getY(i)),
-        nz = Math.abs(normals.getZ(i));
-      uv[i * 2] = nx > nz && nx > ny ? z / depth + 0.5 : x / (halfW * 2) + 0.5;
-      uv[i * 2 + 1] = ny > nz && ny > nx ? z / depth + 0.5 : y / (halfH * 2) + 0.5;
-    }
-    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  }
   return { geometry, shape: { halfW, halfH, depth, faceZ: bevelTop - 0.005 } };
 }
 

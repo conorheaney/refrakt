@@ -18,8 +18,6 @@ export function isWeather(value: unknown): value is WeatherId {
 export interface WorldDef {
   /** Shown as the level prefix: "Atlantis Level 3". */
   readonly name: string;
-  /** Visual skin only; brick rules and collision sizes remain shared. */
-  readonly blockStyle?: 'classic' | 'forge';
   /** Soundtrack played in this world (app/audio/Music.ts). Absent means 'space'. */
   readonly music?: MusicTrackId;
   /** Weather drawn over the scenery (themes/weather/rain/RainLayer.ts, SnowLayer.ts, TombDustLayer.ts). Absent means clear. */

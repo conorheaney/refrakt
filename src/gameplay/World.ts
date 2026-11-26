@@ -150,7 +150,7 @@ export class World implements WorldContext {
   private spansWidth = Number.NaN;
   /** The worlds and levels this game plays (see setCampaign). */
   private campaignValue: Campaign;
-  /** The current level's world: its name, soundtrack, weather and block style. */
+  /** The current level's world: its name, soundtrack and weather. */
   private worldDefValue: WorldDef;
   private respawnTimer = 0;
 
@@ -176,7 +176,7 @@ export class World implements WorldContext {
     this.campaignValue = campaign;
   }
 
-  /** The current level's world: its name, soundtrack, weather and block style. */
+  /** The current level's world: its name, soundtrack and weather. */
   get worldDef(): WorldDef {
     return this.worldDefValue;
   }
