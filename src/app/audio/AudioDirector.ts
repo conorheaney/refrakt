@@ -7,6 +7,9 @@ import type { AudioEngine } from '../../engine/audio/AudioEngine';
 import { SnowAmbience } from '../../themes/weather/snow/SnowAmbience';
 import { TombAmbience } from '../../themes/weather/dust/TombAmbience';
 
+/** Share of the ambience volume that plays while the game is paused, so the pause screen is calm. */
+const PAUSE_AMBIENCE = 0.3;
+
 /** A minor pentatonic, so rising combo pitches always sit inside the soundtrack's key. */
 const PENTATONIC: readonly number[] = [0, 3, 5, 7, 10];
 /** Refrakt's brighter colour: the major pentatonic, for its sparkles and its climbing shatter chimes. */
@@ -50,9 +53,11 @@ export class AudioDirector {
   }
 
   /** The pause menu: the Refrakt hum waits silently while it is open. */
+  /** While paused the Refrakt hum stops and the ambience (rain, snow, tomb dust) drops to PAUSE_AMBIENCE. */
   setPaused(paused: boolean): void {
     this.hushed = paused;
     this.applyRefraktHum(0.3);
+    this.audio.setAmbienceDuck(paused ? PAUSE_AMBIENCE : 1);
   }
 
   private setRefraktHum(on: boolean, fade = 1.2): void {

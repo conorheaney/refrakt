@@ -28,7 +28,12 @@ interface TrackDef {
   readonly schedule: (s: StepContext) => void;
 }
 
-const LOOKAHEAD = 0.14;
+/**
+ * How far ahead (seconds) notes are scheduled. The scheduler runs once per display frame, so a main-thread stall
+ * longer than this (shader compiles on a world switch, a slow frame) would leave a gap; changes of intensity or
+ * mode are heard up to this much later, which their gradual fades hide.
+ */
+const LOOKAHEAD = 0.35;
 
 function semitone(base: number, n: number): number {
   return base * Math.pow(2, n / 12);

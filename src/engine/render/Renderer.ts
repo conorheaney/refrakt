@@ -5,6 +5,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SCREEN_FX_SHADER } from './shaders';
+import { ResolutionGovernor } from './ResolutionGovernor';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -34,8 +35,8 @@ export const BLOOM_THRESHOLD = 1.25;
 /**
  * WebGL renderer + HDR post-processing chain tuned for a clean "product
  * render" look: scene -> soft bloom -> gentle vignette / grade -> ACES tone
- * mapping. Also performs adaptive
- * resolution scaling to hold the frame rate.
+ * mapping. Also scales its internal resolution to hold the frame rate (ResolutionGovernor), and survives the
+ * browser taking the WebGL context away and giving it back (a GPU reset, memory pressure, a laptop waking).
  */
 export class Renderer {
   readonly gl: THREE.WebGLRenderer;
@@ -44,10 +45,12 @@ export class Renderer {
   private fx: ShaderPass | null = null;
   private bloom: UnrealBloomPass | null = null;
   private profile: QualityProfile = QUALITY_PROFILES.high;
-  private dynamicScale = 1;
-  private frames = 0;
-  private elapsed = 0;
-  private slowWindows = 0;
+  private readonly governor = new ResolutionGovernor();
+  /** True while the browser has taken the WebGL context away: nothing is drawn until it comes back. */
+  private contextLost = false;
+  /** Called when the context is lost (the game pauses) and when it is back (the game resizes and redraws). */
+  onContextLost: () => void = () => {};
+  onContextRestored: () => void = () => {};
   private cssWidth = 1920;
   private cssHeight = 1080;
 
@@ -68,6 +71,16 @@ export class Renderer {
     this.gl.toneMappingExposure = TONE_EXPOSURE;
     this.gl.shadowMap.enabled = true;
     this.gl.shadowMap.type = THREE.VSMShadowMap;
+    // three.js keeps the loss recoverable (preventDefault) and rebuilds its GPU state on restore.
+    canvas.addEventListener('webglcontextlost', () => {
+      this.contextLost = true;
+      this.onContextLost();
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false;
+      this.applySize();
+      this.onContextRestored();
+    });
   }
 
   attach(scene: THREE.Scene, camera: THREE.Camera): void {
@@ -98,8 +111,7 @@ export class Renderer {
 
   setQuality(quality: Quality): void {
     this.profile = QUALITY_PROFILES[quality];
-    this.dynamicScale = 1;
-    this.slowWindows = 0;
+    this.governor.reset();
     if (this.composer) {
       for (const rt of [this.composer.renderTarget1, this.composer.renderTarget2]) {
         if (rt.samples !== this.profile.msaa) {
@@ -133,7 +145,7 @@ export class Renderer {
   }
 
   private applySize(): void {
-    const ratio = Math.min(window.devicePixelRatio || 1, this.profile.pixelRatio) * this.dynamicScale;
+    const ratio = Math.min(window.devicePixelRatio || 1, this.profile.pixelRatio) * this.governor.scale;
     this.gl.setPixelRatio(ratio);
     this.gl.setSize(this.cssWidth, this.cssHeight, false);
     this.composer?.setPixelRatio(ratio);
@@ -142,31 +154,16 @@ export class Renderer {
 
   /** @returns true when the internal resolution changed (callers may need the new buffer size). */
   render(realDt: number): boolean {
-    if (!this.composer || !this.fx) return false;
+    if (!this.composer || !this.fx || this.contextLost) return false;
     // Chromatic aberration is off except for Refrakt's brief colour split (setRefrakt).
     this.composer.render(realDt);
     return this.adapt(realDt);
   }
 
-  /** Lowers internal resolution when the frame rate stays below target for consecutive windows. */
+  /** Lets the governor follow the frame rate; resizes the targets when it changes the resolution. */
   private adapt(realDt: number): boolean {
-    if (realDt >= 0.1) return false; // tab switch / hitch: not representative
-    this.frames++;
-    this.elapsed += realDt;
-    if (this.elapsed < 1.5) return false;
-    const fps = this.frames / this.elapsed;
-    this.frames = 0;
-    this.elapsed = 0;
-    // Only a sustained slowdown (3 consecutive 1.5 s windows under 45 fps) lowers the resolution. Each drop
-    // reallocates every render target (a hitch and a visible blur change), so it must not fire on a 50 Hz
-    // display or a brief background stall.
-    this.slowWindows = fps < 45 ? this.slowWindows + 1 : 0;
-    if (this.slowWindows >= 3 && this.dynamicScale > 0.55) {
-      this.dynamicScale = Math.max(0.55, this.dynamicScale - 0.15);
-      this.slowWindows = 0;
-      this.applySize();
-      return true;
-    }
-    return false;
+    if (!this.governor.frame(realDt)) return false;
+    this.applySize();
+    return true;
   }
 }

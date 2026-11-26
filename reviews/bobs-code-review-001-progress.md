@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (GameFlow tests)
+**Last updated:** 2026-11-26 (tab, pause, music and rendering robustness)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -28,18 +28,18 @@ are given below where they matter.
 | P2 | Paddle-lane spans rebuilt every step | **Done** | Spans are cached per level and rebuilt only when the paddle's width changes (Expand) |
 | P3 | Scarab routes rebuilt every step and frame | **Done** | Each nest's route is worked out at load, and its walk-in route once per floor height |
 | P4 | Small per-frame allocations | Open | |
-| P5 | Resolution scaling never recovers | Open | `Renderer.adapt` |
+| P5 | Resolution scaling never recovers | **Done** | `ResolutionGovernor` (`src/engine/render/ResolutionGovernor.ts`): steps back up after 4 windows at 57 fps or more, and stops stepping up if a raise is soon followed by a drop (no flip-flopping). Tested in `tests/resolutionGovernor.test.ts` |
 | P6 | All assets loaded and decoded at boot | Open | |
 | P7 | Floor reflection re-renders everything | Open | |
 | P8 | Brute-force brick checks | Open (low) | Only worth doing if multiball profiling shows it |
-| P9 | No dispose or context-loss handling | Open | |
+| P9 | No dispose or context-loss handling | **Partly done** | WebGL context loss pauses the game and stops drawing; on restore the game resizes and redraws (checked in a real browser with `WEBGL_lose_context`). Listener cleanup / `dispose()` deliberately left out: one game per page, nothing needs it yet |
 | Q1 | `TrapGuard` never reset | **Fixed** | `f61fa46` |
 | Q2 | How-to text wrong about Prism bricks | **Fixed** | `f61fa46` |
 | Q3 | Multiball does nothing with a Magnet-held ball | **Fixed** | `f61fa46` |
 | Q4 | Icicle push cancelled for mouse and touch players | **Fixed** (confirmed: the push was cancelled completely) | `f61fa46` |
 | Q5 | Escaped ball never recovered | **Fixed** | `f61fa46` (escape counts as a lost ball); `bca75b0` (balls slipping into a wall are pushed back) |
 | Q6 | State transitions fire inside a simulation step | **Done** | `levelCleared` and `gameOver` request their state change; `Game.frame` applies it after the frame's steps (at most one frame later) |
-| Q7 | Pause and visibility gaps | Open | |
+| Q7 | Pause and visibility gaps | **Done** | A hidden tab suspends the whole audio context (ambience loops included) and resumes it when shown. The level transition can be paused, resuming its countdown where it stopped. Music is scheduled 350 ms ahead (was 140 ms) to ride out main-thread stalls. Paused, the ambience ducks to 30%. Kept: the level banner's timer waits while paused, so a banner isn't lost behind the pause screen |
 | Q8 | Comment contradicts the Refrakt hit-stop | **Fixed** | `f61fa46`: the freeze is kept, the paddle no longer lurches afterwards, and the comment is corrected |
 | Q9 | No formatter or linter | **Done** | `978acd7`: Prettier. Then oxlint with type-aware rules (`no-floating-promises`, `no-misused-promises`): `npm run lint`. `typescript-eslint` doesn't support TypeScript 7 yet; oxlint's type checker (`oxlint-tsgolint`) is built on it |
 | Q10 | `Game`, `UI`, `AudioDirector` untested | **Partly done** | `Game`'s flow is tested through `GameFlow` (`tests/gameFlow.test.ts`, 15 tests with fakes: menu demo, picker, pause, transitions, victory, game over, editor test play, world choice, and the Q4/Q6/Q8 steering behaviours, each confirmed to fail when its fix is undone). `UI` (DOM) and `AudioDirector` remain untested |
@@ -139,8 +139,10 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 ## Suggested order for what's left
 
-1. Reconsider `PaddleDriver` now that `GameFlow` is tested (see follow-ups); optionally test `AudioDirector`'s event-to-sound mapping (rest of Q10).
-2. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
-3. S6: a typed view-to-audio event bus (small).
-4. P6, Q12 and P7: per-world asset loading, editor undo memory, reflection (medium).
-5. P4 and P8: only if profiling shows them.
+Review items first (decided 2026-11-26), then the `PaddleDriver` idea.
+
+1. S6: a typed view-to-audio event bus (small), then test `AudioDirector`'s event-to-sound mapping (the rest of Q10).
+2. Q12: keep the background image out of the editor's undo history (small).
+3. P6 and P7: per-world asset loading, compressed audio, validating each world once, a lighter floor reflection (medium).
+4. P4 and P8: only if profiling shows them.
+5. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).

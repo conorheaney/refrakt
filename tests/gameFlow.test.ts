@@ -209,6 +209,40 @@ describe('GameFlow', () => {
     expect(world.time).toBeGreaterThan(time);
   });
 
+  it('pauses during the level transition, carrying on with its countdown after', () => {
+    const { flow, world, ui, run, clearLevel, play } = harness();
+    flow.start();
+    play();
+    clearLevel();
+    run(1); // a second into the 2.6 s transition
+    expect(flow.state).toBe('transition');
+    flow.togglePause();
+    expect(flow.state).toBe('paused');
+    expect(ui.screen).toBe('pause');
+    run(10); // a long pause: the countdown waits
+    expect(flow.state).toBe('paused');
+    flow.onUiAction('resume');
+    expect(flow.state).toBe('transition');
+    expect(ui.screen).toBeNull();
+    run(1.4); // still within what was left of the countdown
+    expect(flow.state).toBe('transition');
+    run(0.5);
+    expect(flow.state).toBe('loadout');
+    expect(world.levelIndex).toBe(1);
+  });
+
+  it('auto-pauses the level transition too (lost focus, hidden tab, lost graphics)', () => {
+    const { flow, run, clearLevel, play } = harness();
+    flow.start();
+    play();
+    clearLevel();
+    run(0.5);
+    flow.autoPause();
+    expect(flow.state).toBe('paused');
+    flow.togglePause();
+    expect(flow.state).toBe('transition');
+  });
+
   it('auto-pauses only a level in play', () => {
     const { flow, play } = harness();
     flow.start();

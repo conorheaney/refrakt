@@ -98,6 +98,10 @@ export class AudioEngine {
   private sfxVolume = 0.8;
   private muted = false;
   private failed = false;
+  /** Share of the ambience volume that plays (lowered while the game is paused). */
+  private ambienceDuck = 1;
+  /** True while the page is hidden: the whole context is suspended (silent, and no CPU spent). */
+  private suspended = false;
 
   get context(): AudioContext | null {
     return this.ctx;
@@ -112,7 +116,7 @@ export class AudioEngine {
     if (this.failed) return;
     try {
       if (!this.ctx) this.build();
-      if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume();
+      if (this.ctx && this.ctx.state === 'suspended' && !this.suspended) void this.ctx.resume();
     } catch (err) {
       this.failed = true;
       console.warn('[Audio] disabled:', err);
@@ -331,19 +335,38 @@ export class AudioEngine {
     this.applyVolumes();
   }
 
+  /**
+   * Silences everything while the page is hidden (a background tab): suspends the audio context, and resumes
+   * it when the page is shown again. Before audio is unlocked there is nothing to suspend.
+   */
+  setSuspended(on: boolean): void {
+    this.suspended = on;
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (on && ctx.state === 'running') void ctx.suspend();
+    else if (!on && ctx.state === 'suspended') void ctx.resume();
+  }
+
+  /** Plays the ambience bus at `level` (0-1) of its volume, easing there (e.g. quieter while paused). */
+  setAmbienceDuck(level: number): void {
+    this.ambienceDuck = level;
+    this.applyVolumes(0.25);
+  }
+
   toggleMute(): boolean {
     this.muted = !this.muted;
     this.applyVolumes();
     return this.muted;
   }
 
-  private applyVolumes(): void {
+  /** `ease`: time constant (seconds) of the change; short for settings, longer for ducking. */
+  private applyVolumes(ease = 0.03): void {
     if (!this.ctx || !this.master || !this.musicBus || !this.sfxBus || !this.ambienceBus) return;
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.muted ? 0 : 0.9, t, 0.03);
     this.musicBus.gain.setTargetAtTime(this.musicVolume * 1.6, t, 0.03);
     this.sfxBus.gain.setTargetAtTime(this.sfxVolume, t, 0.03);
-    this.ambienceBus.gain.setTargetAtTime(this.ambienceVolume, t, 0.03);
+    this.ambienceBus.gain.setTargetAtTime(this.ambienceVolume * this.ambienceDuck, t, ease);
   }
 
   private busNode(bus: Bus | undefined): GainNode | null {

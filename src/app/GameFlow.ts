@@ -130,6 +130,8 @@ export class GameFlow {
   private pendingState: GameState | null = null;
   /** The player's last confirmed power-up loadout this session (pre-selected next time); null before the first. */
   private lastLoadout: readonly PowerUpKind[] | null = null;
+  /** The state a pause returns to: a level in play, or the transition after one. */
+  private resumeTo: 'playing' | 'transition' = 'playing';
 
   constructor(
     private readonly world: World,
@@ -212,13 +214,18 @@ export class GameFlow {
   }
 
   togglePause(): void {
-    if (this.fsm.is('playing')) this.fsm.transition('paused');
+    if (this.pausable) this.fsm.transition('paused');
     else if (this.fsm.is('paused')) this.resume();
   }
 
-  /** The window lost focus or the tab was hidden: pause a level in play. */
+  /** The window lost focus, the tab was hidden or the graphics context was lost: pause a level in play. */
   autoPause(): void {
-    if (this.fsm.is('playing')) this.fsm.transition('paused');
+    if (this.pausable) this.fsm.transition('paused');
+  }
+
+  /** A level in play, or the transition after one (its countdown waits while paused). */
+  private get pausable(): boolean {
+    return this.fsm.is('playing') || this.fsm.is('transition');
   }
 
   // --------------------------------------------------------------- simulation
@@ -358,7 +365,8 @@ export class GameFlow {
     });
 
     fsm.register('paused', {
-      enter: () => {
+      enter: (previous) => {
+        this.resumeTo = previous === 'transition' ? 'transition' : 'playing';
         ui.showScreen('pause');
         audio.setMusicIntensity(0.1);
         audio.setPaused(true);
@@ -368,7 +376,13 @@ export class GameFlow {
     });
 
     fsm.register('transition', {
-      enter: () => {
+      enter: (previous) => {
+        if (previous === 'paused') {
+          // Back from a pause: the countdown carries on where it stopped.
+          ui.showScreen(null);
+          audio.setMusicIntensity(0.3);
+          return;
+        }
         const bossLevel = this.campaign.level(world.levelIndex).boss !== undefined;
         this.transitionTimer = bossLevel ? 4 : 2.6;
         // (No slow motion here: it ran the whole sim, paddle included, at 30% speed, so the paddle felt
@@ -452,7 +466,7 @@ export class GameFlow {
 
   private resume(): void {
     this.input.consumeAction();
-    this.fsm.transition('playing');
+    this.fsm.transition(this.resumeTo);
   }
 
   // ------------------------------------------------------------ world events

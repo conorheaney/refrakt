@@ -88,8 +88,12 @@ export class Game {
     window.addEventListener('resize', this.onResize);
     window.addEventListener('blur', () => this.flow.autoPause());
     document.addEventListener('visibilitychange', () => {
+      // A hidden tab pauses the game and goes silent (ambience loops included); shown again, sound resumes.
       if (document.hidden) this.flow.autoPause();
+      this.audio.setSuspended(document.hidden);
     });
+    this.renderer.onContextLost = () => this.flow.autoPause();
+    this.renderer.onContextRestored = () => this.onResize();
     this.onResize();
     this.view.prewarm(this.renderer.gl);
   }
