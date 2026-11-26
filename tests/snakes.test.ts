@@ -114,7 +114,7 @@ describe('Jungle Ruins snakes', () => {
   it('ships with a snake on each side', () => {
     const data = validateWorld(jungle);
     expect(data.hazards).toHaveLength(2);
-    expect(data.hazards!.map((h) => (h.kind === 'snake' ? Math.sign(h.x) : 0)).sort()).toEqual([-1, 1]);
+    expect(data.hazards!.map((h) => (h.kind === 'snake' ? Math.sign(h.x) : 0)).sort((a, b) => a - b)).toEqual([-1, 1]);
   });
 
   it('loads the world hazards into the simulation and clears them for worlds without any', () => {

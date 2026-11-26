@@ -61,6 +61,15 @@ function status(message: string, error = false): void {
 function report(error: unknown): void {
   status(error instanceof Error ? error.message : String(error), true);
 }
+/**
+ * An event listener for an async handler: the handler's own try/catch deals with expected failures, and
+ * anything it lets through is reported instead of becoming an unhandled rejection.
+ */
+function handle(run: () => Promise<void>): () => void {
+  return () => {
+    run().catch(report);
+  };
+}
 function markChanged(): void {
   dirty = true;
   el('dirty').textContent = 'Unsaved changes';
@@ -366,76 +375,82 @@ el('music-intensity').addEventListener('input', () => {
   music?.setIntensity(previewIntensity());
 });
 showIntensity();
-el('record').addEventListener('click', async () => {
-  const button = el<HTMLButtonElement>('record');
-  const track = data.world.music ?? 'space';
-  const mode = previewMode();
-  const label = MUSIC_TRACKS.find((item) => item.id === track)?.label.split(' — ')[0] ?? track;
-  const part = mode === 'game' ? 'level' : mode;
-  button.disabled = true;
-  button.textContent = 'Recording…';
-  try {
-    // A minute of the chosen part, easing in from a calm start to the chosen intensity over the first 15
-    // seconds so every layer can be heard arriving.
-    const intensity = previewIntensity();
-    const buffer = await renderMusic(track, [
-      { mode, seconds: 15, from: Math.min(intensity, 0.2), to: intensity },
-      { mode, seconds: 45, from: intensity, to: intensity },
-    ]);
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(toWav(buffer));
-    link.download = `${label} - ${part} - ${Math.round(intensity * 100)}%.wav`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-    status(`Saved a one-minute recording of ${label} (${part}, ${Math.round(intensity * 100)}%) to your downloads.`);
-  } catch (err) {
-    status(`Could not record the music: ${err instanceof Error ? err.message : String(err)}`, true);
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Save recording';
-  }
-});
-el('background-file').addEventListener('change', async () => {
-  const input = el<HTMLInputElement>('background-file');
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-  const worldKey = data.key;
-  try {
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024)
-      throw new Error('Choose a PNG, JPEG or WebP under 10 MB.');
-    const bitmap = await createImageBitmap(file);
+el('record').addEventListener(
+  'click',
+  handle(async () => {
+    const button = el<HTMLButtonElement>('record');
+    const track = data.world.music ?? 'space';
+    const mode = previewMode();
+    const label = MUSIC_TRACKS.find((item) => item.id === track)?.label.split(' — ')[0] ?? track;
+    const part = mode === 'game' ? 'level' : mode;
+    button.disabled = true;
+    button.textContent = 'Recording…';
     try {
-      if (data.key !== worldKey) return;
-      if (bitmap.width > 8192 || bitmap.height > 8192 || bitmap.width * bitmap.height > 32000000)
-        throw new Error('Choose an image no larger than 8192 pixels per side and 32 megapixels.');
-      // Match the game's 16:9 stage. Flatten alpha and resize to keep saves portable and storage modest.
-      const canvas = document.createElement('canvas');
-      canvas.width = 1600;
-      canvas.height = 900;
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Image processing is unavailable in this browser.');
-      context.fillStyle = '#10151e';
-      context.fillRect(0, 0, 1600, 900);
-      const scale = Math.max(1600 / bitmap.width, 900 / bitmap.height);
-      const width = bitmap.width * scale;
-      const height = bitmap.height * scale;
-      context.drawImage(bitmap, (1600 - width) / 2, (900 - height) / 2, width, height);
-      let image = canvas.toDataURL('image/jpeg', 0.85);
-      if (image.length > 1200000) image = canvas.toDataURL('image/jpeg', 0.65);
-      if (image.length > 1200000)
-        throw new Error('This image is too detailed to store. Try a smaller or simpler image.');
-      snapshot();
-      data.backgroundImage = image;
-      render();
-      status('Background uploaded and cropped to 16:9. Test the level to see it in the game. Save to keep it.');
+      // A minute of the chosen part, easing in from a calm start to the chosen intensity over the first 15
+      // seconds so every layer can be heard arriving.
+      const intensity = previewIntensity();
+      const buffer = await renderMusic(track, [
+        { mode, seconds: 15, from: Math.min(intensity, 0.2), to: intensity },
+        { mode, seconds: 45, from: intensity, to: intensity },
+      ]);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(toWav(buffer));
+      link.download = `${label} - ${part} - ${Math.round(intensity * 100)}%.wav`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      status(`Saved a one-minute recording of ${label} (${part}, ${Math.round(intensity * 100)}%) to your downloads.`);
+    } catch (err) {
+      status(`Could not record the music: ${err instanceof Error ? err.message : String(err)}`, true);
     } finally {
-      bitmap.close();
+      button.disabled = false;
+      button.textContent = 'Save recording';
     }
-  } catch (error) {
-    report(error);
-  }
-});
+  }),
+);
+el('background-file').addEventListener(
+  'change',
+  handle(async () => {
+    const input = el<HTMLInputElement>('background-file');
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const worldKey = data.key;
+    try {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024)
+        throw new Error('Choose a PNG, JPEG or WebP under 10 MB.');
+      const bitmap = await createImageBitmap(file);
+      try {
+        if (data.key !== worldKey) return;
+        if (bitmap.width > 8192 || bitmap.height > 8192 || bitmap.width * bitmap.height > 32000000)
+          throw new Error('Choose an image no larger than 8192 pixels per side and 32 megapixels.');
+        // Match the game's 16:9 stage. Flatten alpha and resize to keep saves portable and storage modest.
+        const canvas = document.createElement('canvas');
+        canvas.width = 1600;
+        canvas.height = 900;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image processing is unavailable in this browser.');
+        context.fillStyle = '#10151e';
+        context.fillRect(0, 0, 1600, 900);
+        const scale = Math.max(1600 / bitmap.width, 900 / bitmap.height);
+        const width = bitmap.width * scale;
+        const height = bitmap.height * scale;
+        context.drawImage(bitmap, (1600 - width) / 2, (900 - height) / 2, width, height);
+        let image = canvas.toDataURL('image/jpeg', 0.85);
+        if (image.length > 1200000) image = canvas.toDataURL('image/jpeg', 0.65);
+        if (image.length > 1200000)
+          throw new Error('This image is too detailed to store. Try a smaller or simpler image.');
+        snapshot();
+        data.backgroundImage = image;
+        render();
+        status('Background uploaded and cropped to 16:9. Test the level to see it in the game. Save to keep it.');
+      } finally {
+        bitmap.close();
+      }
+    } catch (error) {
+      report(error);
+    }
+  }),
+);
 el('remove-background').addEventListener('click', () => {
   snapshot();
   delete data.backgroundImage;
@@ -541,30 +556,33 @@ el('library').addEventListener('change', () => {
 el('refresh-library').addEventListener('click', () => {
   void refreshLibrary().catch(report);
 });
-el('save').addEventListener('click', async () => {
-  if (saving) return;
-  saving = true;
-  el<HTMLButtonElement>('save').disabled = true;
-  const snapshot = structuredClone(data);
-  try {
-    const saved = await saveWorldFile(snapshot, currentFile);
-    currentFile = { filename: saved.filename, revision: saved.revision };
-    dirty = JSON.stringify(data) !== JSON.stringify(snapshot);
-    render();
-    const problems = playProblems(snapshot);
-    status(
-      problems
-        ? `Draft saved in the game folder. Timestamped backup created. Not playable yet: ${problems}.`
-        : `World saved for play in the game folder. Timestamped backup created. Refresh the game to load it.${dirty ? ' You have newer unsaved changes.' : ''}`,
-    );
-    await refreshLibrary();
-  } catch (error) {
-    report(error);
-  } finally {
-    saving = false;
-    el<HTMLButtonElement>('save').disabled = false;
-  }
-});
+el('save').addEventListener(
+  'click',
+  handle(async () => {
+    if (saving) return;
+    saving = true;
+    el<HTMLButtonElement>('save').disabled = true;
+    const snapshot = structuredClone(data);
+    try {
+      const saved = await saveWorldFile(snapshot, currentFile);
+      currentFile = { filename: saved.filename, revision: saved.revision };
+      dirty = JSON.stringify(data) !== JSON.stringify(snapshot);
+      render();
+      const problems = playProblems(snapshot);
+      status(
+        problems
+          ? `Draft saved in the game folder. Timestamped backup created. Not playable yet: ${problems}.`
+          : `World saved for play in the game folder. Timestamped backup created. Refresh the game to load it.${dirty ? ' You have newer unsaved changes.' : ''}`,
+      );
+      await refreshLibrary();
+    } catch (error) {
+      report(error);
+    } finally {
+      saving = false;
+      el<HTMLButtonElement>('save').disabled = false;
+    }
+  }),
+);
 el('export').addEventListener('click', () => {
   try {
     const value = validateWorld(data);
@@ -580,24 +598,27 @@ el('export').addEventListener('click', () => {
   }
 });
 el('import').addEventListener('click', () => el<HTMLInputElement>('import-file').click());
-el('import-file').addEventListener('change', async () => {
-  const input = el<HTMLInputElement>('import-file');
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file || !canReplace()) return;
-  try {
-    if (file.size > 2 * 1024 * 1024) throw new Error('World files must be smaller than 2 MB.');
-    const imported = validateWorld(JSON.parse(await file.text()));
-    if (saving) throw new Error('Wait for the current save to finish before importing.');
-    // Import as a copy so a shared file cannot overwrite an existing world.
-    imported.key = crypto.randomUUID();
-    delete imported.replaces;
-    replace(imported, false);
-    status('World imported as a new copy. Save to add it to the game folder.');
-  } catch (error) {
-    report(error);
-  }
-});
+el('import-file').addEventListener(
+  'change',
+  handle(async () => {
+    const input = el<HTMLInputElement>('import-file');
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || !canReplace()) return;
+    try {
+      if (file.size > 2 * 1024 * 1024) throw new Error('World files must be smaller than 2 MB.');
+      const imported = validateWorld(JSON.parse(await file.text()));
+      if (saving) throw new Error('Wait for the current save to finish before importing.');
+      // Import as a copy so a shared file cannot overwrite an existing world.
+      imported.key = crypto.randomUUID();
+      delete imported.replaces;
+      replace(imported, false);
+      status('World imported as a new copy. Save to add it to the game folder.');
+    } catch (error) {
+      report(error);
+    }
+  }),
+);
 el('test').addEventListener('click', () => {
   stopListening();
   try {

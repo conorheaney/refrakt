@@ -10,7 +10,7 @@ function world(key: string) {
 }
 function requestFor(entries: Record<string, unknown>): typeof fetch {
   return async (input) => {
-    const url = String(input);
+    const url = input instanceof Request ? input.url : String(input);
     expect(url.startsWith(base.href)).toBe(true);
     const filename = url.slice(base.href.length);
     return new Response(JSON.stringify(entries[filename] ?? null), { status: filename in entries ? 200 : 404 });

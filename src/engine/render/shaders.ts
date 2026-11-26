@@ -150,8 +150,8 @@ export function applySurfaceFx(material: THREE.Material, fx: SurfaceFx, time?: {
     shader.uniforms.uGlow = glow;
     shader.uniforms.uRim = rim;
     shader.uniforms.uTime = uTime;
-    if (fx.instanceFx) shader.defines = { ...(shader.defines ?? {}), USE_INSTANCE_FX: '' };
-    if (stone) shader.defines = { ...(shader.defines ?? {}), USE_STONE: '' };
+    if (fx.instanceFx) shader.defines = { ...shader.defines, USE_INSTANCE_FX: '' };
+    if (stone) shader.defines = { ...shader.defines, USE_STONE: '' };
 
     shader.vertexShader = shader.vertexShader
       .replace(

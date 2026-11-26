@@ -191,6 +191,8 @@ export function createForgePrototypeMaterials(
     emissive: 0xff4800,
   });
   applySurfaceFx(core, { glow: 0, rim: 0, instanceFx: true, halfW: GRID.halfW, halfH: GRID.halfH }, time);
+  // Called with .call(core, ...) below, so `this` stays bound.
+  // oxlint-disable-next-line typescript/unbound-method
   const surfaceCompile = core.onBeforeCompile;
   const cacheKey = core.customProgramCacheKey();
   core.customProgramCacheKey = () => `${cacheKey}-forge-molten-v1`;

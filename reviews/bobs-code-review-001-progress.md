@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-25 (after the P2/P3/S8 commit)
+**Last updated:** 2026-11-26 (after adding the linter)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -41,7 +41,7 @@ are given below where they matter.
 | Q6 | State transitions fire inside a simulation step | Open | |
 | Q7 | Pause and visibility gaps | Open | |
 | Q8 | Comment contradicts the Refrakt hit-stop | **Fixed** | `f61fa46`: the freeze is kept, the paddle no longer lurches afterwards, and the comment is corrected |
-| Q9 | No formatter or linter | Open | |
+| Q9 | No formatter or linter | **Done** | `978acd7`: Prettier. Then oxlint with type-aware rules (`no-floating-promises`, `no-misused-promises`): `npm run lint`. `typescript-eslint` doesn't support TypeScript 7 yet; oxlint's type checker (`oxlint-tsgolint`) is built on it |
 | Q10 | `Game`, `UI`, `AudioDirector` untested | Open | Depends on S5 and S7 |
 | Q11 | Tooling: no CI, unchecked indexing | Open | |
 | Q12 | Editor undo can use a lot of memory | Open | |
@@ -127,7 +127,7 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 ## Suggested order for what's left
 
-1. Q9 and Q11: linter, formatter and CI (small).
+1. Q11: CI, faster everyday tests, then stricter indexing (`noUncheckedIndexedAccess`) (small to medium).
 2. S5, S7, Q6 and Q10: make `Game` testable, then test the state machine (medium).
 3. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
 4. S6: a typed view-to-audio event bus (small).
