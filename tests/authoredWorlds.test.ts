@@ -9,13 +9,11 @@ import {
   saveWorld,
   unfinishedLevels,
   validateWorld,
-  withBackground,
 } from '../src/content/authoredWorlds';
 import { buildCampaign } from '../src/content/fileWorlds';
 import { defaultDustLine, validateDustLine } from '../src/content/dustLine';
 import { worldEntry } from '../src/content/campaign';
-import { GRID } from '../src/gameplay/config';
-import { WORLD_TEMPLATES as WORLDS } from '../src/content/worlds';
+import { FIELD, GRID } from '../src/gameplay/config';
 import { World } from '../src/gameplay/World';
 import { CLASSIC_LEVELS as LEVELS } from './support/classicLevels';
 import { SHIPPED_WORLDS } from './support/worlds';
@@ -47,21 +45,21 @@ describe('authored world files and persistence', () => {
   it('round-trips backgrounds and all brick kinds without changing game definitions', () => {
     const storage = memoryStorage();
     const data = createWorld('roundtrip');
-    data.world = withBackground({ ...data.world, name: 'My forest' }, 'forest');
+    data.world = { ...data.world, name: 'My forest', music: 'forest' };
     data.levels = structuredClone(LEVELS.slice(10, 20));
-    data.levels[0] = { name: 'All kinds', hue: 0.25, rows: ['123SXPG......'] };
+    data.levels[0] = { name: 'All kinds', rows: ['123SXPG......'] };
     data.backgroundImage = 'data:image/jpeg;base64,YQ==';
-    const builtin = JSON.stringify({ worlds: WORLDS, levels: LEVELS });
+    const builtin = JSON.stringify(LEVELS);
     saveWorld(storage, data);
     expect(readLibrary(storage).worlds).toEqual([data]);
     data.world = { ...data.world, name: 'Renamed' };
     saveWorld(storage, data);
     expect(readLibrary(storage).worlds).toHaveLength(1);
     expect(readLibrary(storage).worlds[0].world.name).toBe('Renamed');
-    expect(JSON.stringify({ worlds: WORLDS, levels: LEVELS })).toBe(builtin);
+    expect(JSON.stringify(LEVELS)).toBe(builtin);
   });
 
-  it('rejects invalid layout, arena, hue and image values before writing', () => {
+  it('rejects invalid layout, area and image values before writing', () => {
     const storage = memoryStorage();
     const data = createWorld('validation');
     saveWorld(storage, data);
@@ -73,17 +71,20 @@ describe('authored world files and persistence', () => {
       expect(() => saveWorld(storage, bad)).toThrow();
     }
     expect(() => validateWorld({ ...data, levels: data.levels.slice(1) })).toThrow();
-    expect(() => validateWorld({ ...data, world: { ...data.world, paddleWidth: -1 } })).toThrow();
-    const badHue = structuredClone(data);
-    badHue.levels[0] = { ...badHue.levels[0], hue: NaN };
-    expect(() => validateWorld(badHue)).toThrow();
+    expect(() =>
+      validateWorld({ ...data, playAreas: { ...data.playAreas, paddle: { radius: 0, points: [] } } }),
+    ).toThrow();
     expect(() => validateWorld({ ...data, backgroundImage: 'https://example.com/image.png' })).toThrow();
     expect(storage.getItem(LIBRARY_KEY)).toBe(saved);
   });
 
-  it('drops the bosses older world files carry', () => {
-    const data = createWorld('legacy-boss');
+  it('drops settings older world files carry for things the game no longer has', () => {
+    const data = createWorld('legacy');
     const legacy = JSON.parse(JSON.stringify(data));
+    // A built-in scene (and the arena sizes that came with it), a campaign slot, level hues and a boss.
+    Object.assign(legacy.world, { id: 'forest', field: FIELD, grid: GRID, paddleWidth: 4.2, serveLift: 0 });
+    legacy.replaces = 'forest';
+    for (const level of legacy.levels) level.hue = 0.4;
     legacy.levels[4].boss = { name: 'THE WARDEN', hp: 22 };
     expect(validateWorld(legacy)).toEqual(data);
   });
@@ -139,8 +140,8 @@ describe('authored world files and persistence', () => {
 
   it('loads saved worlds in the real simulation and keeps their ten-level run boundaries', () => {
     const data = createWorld('playable');
-    data.world = withBackground({ ...data.world, name: 'Authored' }, 'forest');
-    data.levels = Array.from({ length: 10 }, (_, i) => ({ name: `Stage ${i}`, hue: 0.4, rows: ['123.XPG......'] }));
+    data.world = { ...data.world, name: 'Authored' };
+    data.levels = Array.from({ length: 10 }, (_, i) => ({ name: `Stage ${i}`, rows: ['123.XPG......'] }));
     data.backgroundImage = 'data:image/jpeg;base64,YQ==';
     const campaign = buildCampaign(SHIPPED_WORLDS, [data]);
     const index = campaign.worlds.length - 1;
@@ -154,14 +155,12 @@ describe('authored world files and persistence', () => {
     world.newGame(123, first);
     expect(world.levelIndex).toBe(first);
     expect(world.bricksRemaining).toBe(6);
-    expect(world.field).toEqual(data.world.field);
     world.loadLevel(first + 9);
     expect(world.levelIndex).toBe(first + 9);
     expect(campaign.runEndLevel(first)).toBe(first + 10);
     expect(campaign.runEndLevel(first + 9)).toBe(first + 10);
-    // The main campaign (the worlds taking the Space and Forest slots) runs through both.
-    expect(campaign.mainWorldCount).toBe(2);
-    expect(campaign.runEndLevel(0)).toBe(20);
+    // Every world is its own run, the first one included.
+    expect(campaign.runEndLevel(0)).toBe(10);
     expect(campaign.runEndLevel(10)).toBe(20);
   });
 

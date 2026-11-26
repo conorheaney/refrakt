@@ -9,12 +9,11 @@ Every playable world has a drawn **ball area** (the walls the ball bounces off,
 with one drain edge) and a drawn **paddle area** (the lane the paddle runs in).
 The ball's walls come only from the ball area.
 
-The files with `"replaces": "space"` and `"replaces": "forest"` (Outer Space and
-`Verdant-Hollow.json`) form the main campaign: they come first, in that order,
-and a run started there plays through both. This field is only honored for
-project files. `Verdant-Hollow.json` keeps the original Forest scenery, ten
-formations under the name **The Verdant Hollow**; its background
-uses the game's bundled Forest artwork, so no embedded image is needed.
+Each world is its own ten-level run; the menu lists them in `index.json` order.
+Every world shares one arena, camera, brick grid and paddle; its look comes from
+its embedded background image. `Verdant-Hollow.json` is the original forest
+formations under the name **The Verdant Hollow**, with the tree-arch painting as
+its background.
 
 `Frozen-Sanctuary.json` adds a new ten-level campaign using its exported artwork
 and custom collision arena. Its formations progress from First Snow to The

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 /**
  * Where GameView gets each world's uploaded background, by world index: the texture when it is ready, null when the
- * world has none (it shows its built-in scenery), or a promise of either while it loads.
+ * world has none (it shows a plain dark backdrop), or a promise of either while it loads.
  */
 export interface BackdropSource {
   get(worldIndex: number): THREE.Texture | null | Promise<THREE.Texture | null>;
@@ -56,7 +56,7 @@ export class BackdropCache implements BackdropSource {
         return texture;
       },
       (error: unknown) => {
-        console.warn('An uploaded background could not load; using built-in scenery.', error);
+        console.warn('An uploaded background could not load; showing a plain backdrop.', error);
         if (this.loading === loading) this.loading = null;
         return null;
       },

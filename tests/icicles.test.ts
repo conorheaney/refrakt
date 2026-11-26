@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import frozen from '../public/worlds/Frozen-Sanctuary.json';
-import { BALL, ICICLE, PADDLE, SIM } from '../src/gameplay/config';
+import { BALL, GRID, ICICLE, PADDLE, SIM } from '../src/gameplay/config';
 import { validateWorld } from '../src/content/authoredWorlds';
 import { EventBus } from '../src/engine/core/EventBus';
 import { Random } from '../src/engine/core/Random';
@@ -174,7 +174,7 @@ describe('icicles in a world', () => {
     const icicles = worldIcicles(data.hazards);
     expect(icicles).toHaveLength(9);
     // Every level keeps its top two rows empty, so a hanging icicle never overlaps a brick.
-    const grid = data.world.grid;
+    const grid = GRID;
     const thirdRowTop = grid.topY - 2 * grid.cellH + grid.halfH;
     for (const h of icicles) expect(h.y - h.length).toBeGreaterThan(thirdRowTop);
     for (const level of data.levels) expect(level.rows[0] + level.rows[1]).toMatch(/^\.+$/);

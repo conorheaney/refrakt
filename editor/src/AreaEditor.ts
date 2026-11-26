@@ -12,7 +12,6 @@ import {
   type Point,
   type PolygonArea,
 } from '../../src/gameplay/arena/playAreas';
-import forestImage from '../../src/themes/scenery/forest/background.webp';
 import { defaultArea } from './defaultAreas';
 import { PathTool, svg, type EditPath, type PathModel } from './PathTool';
 import type { EditorScene } from './Scene';
@@ -143,7 +142,7 @@ export class AreaEditor {
         if (!final || !drawsArea(this.mode)) return;
         const area = this.toArea(this.mode, model[this.mode][0] as AreaPath);
         validateArea(area, this.mode === 'ball');
-        if (this.mode === 'paddle') findPaddleLane(area, this.getData().world.paddleExpandedWidth, PADDLE.halfH);
+        if (this.mode === 'paddle') findPaddleLane(area, PADDLE.expandedWidth, PADDLE.halfH);
         this.commit(this.mode, area);
         this.status(
           message ||
@@ -183,8 +182,7 @@ export class AreaEditor {
     button('reset-area').addEventListener('click', () => {
       if (drawsArea(this.mode)) {
         this.tool.stopDrawing();
-        const data = this.getData();
-        this.commit(this.mode, this.mode === 'ball' ? defaultArea(data, 'ball') : defaultArea(data, 'paddle'));
+        this.commit(this.mode, this.mode === 'ball' ? defaultArea('ball') : defaultArea('paddle'));
         this.refresh();
       }
     });
@@ -220,7 +218,7 @@ export class AreaEditor {
 
   refresh(): void {
     const data = this.getData();
-    this.edges.load(data.backgroundImage ?? (data.world.id === 'forest' ? forestImage : ''));
+    this.edges.load(data.backgroundImage ?? '');
     this.root.setAttribute('viewBox', `0 0 ${this.root.clientWidth || 1} ${this.root.clientHeight || 1}`);
     if (drawsArea(this.mode) && !this.tool.selection) this.tool.selection = { kind: this.mode, index: 0 };
     this.tool.refresh();
@@ -231,8 +229,8 @@ export class AreaEditor {
     const data = this.getData();
     const area =
       mode === 'ball'
-        ? (data.playAreas?.ball ?? defaultArea(data, 'ball'))
-        : (data.playAreas?.paddle ?? defaultArea(data, 'paddle'));
+        ? (data.playAreas?.ball ?? defaultArea('ball'))
+        : (data.playAreas?.paddle ?? defaultArea('paddle'));
     return structuredClone(area) as AreaPath;
   }
 
@@ -293,7 +291,7 @@ export class AreaEditor {
         if (segment.drain) line(segment.a, segment.b, 'area-line ball drain');
     if (this.mode === 'paddle')
       try {
-        const lane = findPaddleLane(paddle, this.getData().world.paddleExpandedWidth, PADDLE.halfH);
+        const lane = findPaddleLane(paddle, PADDLE.expandedWidth, PADDLE.halfH);
         for (const [left, right] of lane.spans) line({ x: left, y: lane.y }, { x: right, y: lane.y }, 'lane-guide');
       } catch {
         /* A transient drag can be invalid; saving explains it. */

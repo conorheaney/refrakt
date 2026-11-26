@@ -1,37 +1,13 @@
 {
   "key": "2f8b8217-7129-4b91-b15c-de33b78ee8db",
   "world": {
-    "id": "space",
     "name": "Frozen Sanctuary",
     "weather": "snow",
-    "music": "crystal",
-    "field": {
-      "halfWidth": 14,
-      "top": 10.4,
-      "cornerRadius": 3,
-      "bottom": -10.7,
-      "floorY": -9.8,
-      "shieldY": -9.8,
-      "paddleReach": 14
-    },
-    "grid": {
-      "cols": 13,
-      "rows": 12,
-      "cellW": 1.76,
-      "cellH": 1.1,
-      "halfW": 0.845,
-      "halfH": 0.515,
-      "depth": 0.88,
-      "topY": 8.8
-    },
-    "paddleWidth": 4.2,
-    "paddleExpandedWidth": 6.3,
-    "serveLift": 0
+    "music": "crystal"
   },
   "levels": [
     {
       "name": "FIRST SNOW",
-      "hue": 0.5,
       "rows": [
         ".............",
         ".............",
@@ -49,7 +25,6 @@
     },
     {
       "name": "ICICLE GARDEN",
-      "hue": 0.514,
       "rows": [
         ".............",
         ".............",
@@ -67,7 +42,6 @@
     },
     {
       "name": "CRYSTAL BRIDGE",
-      "hue": 0.528,
       "rows": [
         ".............",
         ".............",
@@ -85,7 +59,6 @@
     },
     {
       "name": "AVALANCHE STEPS",
-      "hue": 0.542,
       "rows": [
         ".............",
         ".............",
@@ -103,7 +76,6 @@
     },
     {
       "name": "AURORA VEIL",
-      "hue": 0.556,
       "rows": [
         ".............",
         ".............",
@@ -121,7 +93,6 @@
     },
     {
       "name": "GLACIER GATES",
-      "hue": 0.5700000000000001,
       "rows": [
         ".............",
         ".............",
@@ -139,7 +110,6 @@
     },
     {
       "name": "FROSTBOUND CROWN",
-      "hue": 0.584,
       "rows": [
         ".............",
         ".............",
@@ -157,7 +127,6 @@
     },
     {
       "name": "MIRROR OF WINTER",
-      "hue": 0.598,
       "rows": [
         ".............",
         ".............",
@@ -175,7 +144,6 @@
     },
     {
       "name": "HEART OF THE BLIZZARD",
-      "hue": 0.612,
       "rows": [
         ".............",
         ".............",
@@ -193,7 +161,6 @@
     },
     {
       "name": "THE ETERNAL SANCTUM",
-      "hue": 0.626,
       "rows": [
         ".............",
         ".............",

@@ -11,7 +11,7 @@ const [MIN_POINTS, MAX_POINTS] = DUST_LINE_POINTS;
 
 /** The world's dust line, or the line a world starts with when it gets tomb dust. */
 export function dustLineOrDefault(data: AuthoredWorld): DustLine {
-  return data.dustLine ?? defaultDustLine(data.playAreas?.ball ?? defaultArea(data, 'ball'));
+  return data.dustLine ?? defaultDustLine(data.playAreas?.ball ?? defaultArea('ball'));
 }
 
 /**
@@ -65,7 +65,7 @@ export class DustEditor {
     button('dust-reset').addEventListener('click', () => {
       this.tool.stopDrawing();
       const data = this.getData();
-      this.commit(defaultDustLine(data.playAreas?.ball ?? defaultArea(data, 'ball')));
+      this.commit(defaultDustLine(data.playAreas?.ball ?? defaultArea('ball')));
       status('Dust line reset: straight, just under the top of the ball area.');
       this.tool.refresh();
     });

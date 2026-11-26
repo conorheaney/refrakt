@@ -133,7 +133,7 @@ body {
 .readout.level {
   left: 104px;
 }
-/* "SPACE LEVEL" is longer than the other labels; tighten it so it stays inside its bay. */
+/* "<WORLD> LEVEL" is longer than the other labels; tighten it so it stays inside its bay. */
 .readout.level label {
   letter-spacing: 0.2em;
   white-space: nowrap;

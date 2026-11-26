@@ -66,7 +66,7 @@ export class BallPhysics {
     ball.dx = 0;
     ball.dy = 1;
     ball.x = ball.px = world.paddle.x;
-    ball.y = ball.py = world.paddle.y + PADDLE.halfH + BALL.radius + world.worldDef.serveLift;
+    ball.y = ball.py = world.paddle.y + PADDLE.halfH + BALL.radius;
   }
 
   launchStuck(): void {
@@ -107,12 +107,7 @@ export class BallPhysics {
         // Held clear of the ball area's sides (a paddle lane may reach right up to them).
         const bounds = world.boundary.bounds;
         ball.x = clamp(paddle.x + ball.stuckOffset, bounds.left + BALL.radius, bounds.right - BALL.radius);
-        ball.y =
-          paddle.y +
-          PADDLE.halfH +
-          BALL.radius +
-          world.worldDef.serveLift +
-          ball.stuckOffset * Math.tan(paddleSlope(paddle));
+        ball.y = paddle.y + PADDLE.halfH + BALL.radius + ball.stuckOffset * Math.tan(paddleSlope(paddle));
         ball.stuckTime += dt;
         const autoLaunch =
           (world.demo && ball.stuckTime > 0.7) || (world.phase !== 'serve' && ball.stuckTime > BALL.magnetHoldTime);

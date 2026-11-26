@@ -1,35 +1,11 @@
 {
   "key": "3b1c5af2-e102-4dcc-97f3-3104fe58995e",
   "world": {
-    "id": "space",
-    "name": "Atlantis",
-    "field": {
-      "halfWidth": 14,
-      "top": 10.4,
-      "cornerRadius": 3,
-      "bottom": -10.7,
-      "floorY": -9.8,
-      "shieldY": -9.8,
-      "paddleReach": 14
-    },
-    "grid": {
-      "cols": 13,
-      "rows": 12,
-      "cellW": 1.76,
-      "cellH": 1.1,
-      "halfW": 0.845,
-      "halfH": 0.515,
-      "depth": 0.88,
-      "topY": 8.8
-    },
-    "paddleWidth": 4.2,
-    "paddleExpandedWidth": 6.3,
-    "serveLift": 0
+    "name": "Atlantis"
   },
   "levels": [
     {
       "name": "THE SUNKEN GATE",
-      "hue": 0.48,
       "rows": [
         ".............",
         ".............",
@@ -47,7 +23,6 @@
     },
     {
       "name": "CORAL GARDENS",
-      "hue": 0.488,
       "rows": [
         ".............",
         ".............",
@@ -65,7 +40,6 @@
     },
     {
       "name": "TIDAL CURRENTS",
-      "hue": 0.496,
       "rows": [
         ".............",
         ".............",
@@ -83,7 +57,6 @@
     },
     {
       "name": "CRYSTAL OFFERINGS",
-      "hue": 0.504,
       "rows": [
         ".............",
         ".............",
@@ -101,7 +74,6 @@
     },
     {
       "name": "GUARDIAN OF THE GATE",
-      "hue": 0.512,
       "rows": [
         ".............",
         ".............",
@@ -119,7 +91,6 @@
     },
     {
       "name": "THE LOST COLONNADE",
-      "hue": 0.52,
       "rows": [
         ".............",
         ".............",
@@ -137,7 +108,6 @@
     },
     {
       "name": "ECHOES OF THE DEEP",
-      "hue": 0.528,
       "rows": [
         ".............",
         ".............",
@@ -155,7 +125,6 @@
     },
     {
       "name": "TRIDENT OF ATLANTIS",
-      "hue": 0.536,
       "rows": [
         ".............",
         ".............",
@@ -173,7 +142,6 @@
     },
     {
       "name": "THE DROWNED CROWN",
-      "hue": 0.544,
       "rows": [
         ".............",
         ".............",
@@ -191,7 +159,6 @@
     },
     {
       "name": "HEART OF THE OCEAN",
-      "hue": 0.552,
       "rows": [
         ".............",
         ".............",

@@ -12,25 +12,21 @@ export type Quality = 'low' | 'medium' | 'high';
 interface QualityProfile {
   readonly pixelRatio: number;
   readonly msaa: number;
-  readonly shadows: boolean;
-  readonly shadowMapSize: number;
-  /** Floor reflection resolution as a fraction of the drawing buffer. */
-  readonly reflectionScale: number;
 }
 
 export const QUALITY_PROFILES: Readonly<Record<Quality, QualityProfile>> = {
-  low: { pixelRatio: 1, msaa: 0, shadows: false, shadowMapSize: 512, reflectionScale: 0.25 },
-  medium: { pixelRatio: 1.5, msaa: 2, shadows: true, shadowMapSize: 1024, reflectionScale: 0.35 },
-  high: { pixelRatio: 2, msaa: 4, shadows: true, shadowMapSize: 1024, reflectionScale: 0.4 },
+  low: { pixelRatio: 1, msaa: 0 },
+  medium: { pixelRatio: 1.5, msaa: 2 },
+  high: { pixelRatio: 2, msaa: 4 },
 };
 
-/** Exposure of the ACES tone mapping (the forest painting's shader undoes it; see ForestEnvironment). */
-export const TONE_EXPOSURE = 0.95;
+/** Exposure of the ACES tone mapping. */
+const TONE_EXPOSURE = 0.95;
 
 /** Strength of the soft bloom pass. */
 const BLOOM_STRENGTH = 0.3;
 /** Scene luminance (three.js luminance(), Rec. 709 weights, as the bloom's high pass measures it) above which pixels bloom. */
-export const BLOOM_THRESHOLD = 1.25;
+const BLOOM_THRESHOLD = 1.25;
 
 /**
  * WebGL renderer + HDR post-processing chain tuned for a clean "product
@@ -69,8 +65,6 @@ export class Renderer {
     }
     this.gl.toneMapping = THREE.ACESFilmicToneMapping;
     this.gl.toneMappingExposure = TONE_EXPOSURE;
-    this.gl.shadowMap.enabled = true;
-    this.gl.shadowMap.type = THREE.VSMShadowMap;
     // three.js keeps the loss recoverable (preventDefault) and rebuilds its GPU state on restore.
     canvas.addEventListener('webglcontextlost', () => {
       this.contextLost = true;
@@ -101,14 +95,6 @@ export class Renderer {
     return this.gl.domElement.height;
   }
 
-  get bufferWidth(): number {
-    return this.gl.domElement.width;
-  }
-
-  get reflectionScale(): number {
-    return this.profile.reflectionScale;
-  }
-
   setQuality(quality: Quality): void {
     this.profile = QUALITY_PROFILES[quality];
     this.governor.reset();
@@ -121,11 +107,6 @@ export class Renderer {
       }
     }
     this.applySize();
-  }
-
-  /** Draws the scene with this camera from now on (worlds frame the arena with different cameras). */
-  setCamera(camera: THREE.Camera): void {
-    if (this.scenePass) this.scenePass.camera = camera;
   }
 
   /** Refrakt's screen light: the edge spectrum's strength (0..1) and hue, and a colour split (screen UV). */

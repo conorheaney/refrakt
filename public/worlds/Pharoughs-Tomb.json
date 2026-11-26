@@ -1,37 +1,13 @@
 {
   "key": "4a2517ab-fb61-490b-bd75-0dc7a512accf",
   "world": {
-    "id": "space",
     "name": "Pharoughs Tomb",
-    "field": {
-      "halfWidth": 14,
-      "top": 10.4,
-      "cornerRadius": 3,
-      "bottom": -10.7,
-      "floorY": -9.8,
-      "shieldY": -9.8,
-      "paddleReach": 14
-    },
-    "grid": {
-      "cols": 13,
-      "rows": 12,
-      "cellW": 1.76,
-      "cellH": 1.1,
-      "halfW": 0.845,
-      "halfH": 0.515,
-      "depth": 0.88,
-      "topY": 8.8
-    },
-    "paddleWidth": 4.2,
-    "paddleExpandedWidth": 6.3,
-    "serveLift": 0,
     "weather": "dust",
     "music": "desert"
   },
   "levels": [
     {
       "name": "TEMPLE STEPS",
-      "hue": 0.1,
       "rows": [
         ".............",
         ".............",
@@ -49,7 +25,6 @@
     },
     {
       "name": "NILE CROSSING",
-      "hue": 0.12,
       "rows": [
         ".............",
         ".............",
@@ -67,7 +42,6 @@
     },
     {
       "name": "TWIN OBELISKS",
-      "hue": 0.09,
       "rows": [
         ".............",
         ".............",
@@ -85,7 +59,6 @@
     },
     {
       "name": "SUN DISC",
-      "hue": 0.13,
       "rows": [
         ".............",
         ".............",
@@ -103,7 +76,6 @@
     },
     {
       "name": "SCARAB WINGS",
-      "hue": 0.11,
       "rows": [
         ".............",
         ".............",
@@ -121,7 +93,6 @@
     },
     {
       "name": "HALL OF PILLARS",
-      "hue": 0.08,
       "rows": [
         ".............",
         ".............",
@@ -139,7 +110,6 @@
     },
     {
       "name": "ROYAL PYRAMID",
-      "hue": 0.1,
       "rows": [
         ".............",
         ".............",
@@ -157,7 +127,6 @@
     },
     {
       "name": "SARCOPHAGUS",
-      "hue": 0.07,
       "rows": [
         ".............",
         ".............",
@@ -175,7 +144,6 @@
     },
     {
       "name": "GUARDIANS OF ANUBIS",
-      "hue": 0.09,
       "rows": [
         ".............",
         ".............",
@@ -193,7 +161,6 @@
     },
     {
       "name": "PHARAOHS LAST SEAL",
-      "hue": 0.12,
       "rows": [
         ".............",
         ".............",

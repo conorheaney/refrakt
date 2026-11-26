@@ -5,7 +5,7 @@ import { MUSIC_TRACKS, type MusicTrackId } from '../src/content/musicTracks';
 import verdantHollow from '../public/worlds/Verdant-Hollow.json';
 import jungleRuins from '../public/worlds/Jungle-Ruins-jungle-ruins.json';
 import pharoughsTomb from '../public/worlds/Pharoughs-Tomb.json';
-import { createWorld, validateWorld, withBackground } from '../src/content/authoredWorlds';
+import { createWorld, validateWorld } from '../src/content/authoredWorlds';
 
 /** Runs `seconds` of a track at full intensity against a fake engine and returns what it scheduled. */
 function render(track: MusicTrackId, seconds = 8): { tones: ToneOptions[]; noises: NoiseOptions[]; beatSeen: boolean } {
@@ -61,23 +61,20 @@ it('plays distinct, well-formed forest, jungle, crystal and desert tracks with a
   ).toBe(true);
 });
 
-it('stores the chosen track in a world and keeps it through validation and scene changes', () => {
+it('stores the chosen track in a world and keeps it through validation', () => {
   const data = createWorld('music-test');
   expect(data.world.music).toBeUndefined();
-  expect(withBackground(data.world, 'forest').music).toBe('forest'); // forest scenery defaults to its own track
   data.world = { ...data.world, music: 'forest' };
   expect(validateWorld(data).world.music).toBe('forest');
-  expect(withBackground(data.world, 'space').music).toBe('forest');
   expect(() => validateWorld({ ...data, world: { ...data.world, music: 'disco' } })).toThrow('Unsupported music track');
   expect(MUSIC_TRACKS.map((track) => track.id)).toEqual(['space', 'forest', 'jungle', 'crystal', 'desert']);
 });
 
-it('stores weather in a world and keeps it through validation and scene changes', () => {
+it('stores weather in a world and keeps it through validation', () => {
   const data = createWorld('weather-test');
   expect(data.world.weather).toBeUndefined();
   data.world = { ...data.world, weather: 'rain' };
   expect(validateWorld(data).world.weather).toBe('rain');
-  expect(withBackground(data.world, 'forest').weather).toBe('rain');
   expect(() => validateWorld({ ...data, world: { ...data.world, weather: 'hail' } })).toThrow('Unsupported weather');
   expect(validateWorld(jungleRuins).world.weather).toBe('rain');
   expect(validateWorld(verdantHollow).world.weather).toBeUndefined();

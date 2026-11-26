@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { BALL, FIELD, LASER, PADDLE, SHIELD_CHARGES } from '../config';
 import { POWERUPS } from '../powerups/powerUps';
-import type { WorldId } from '../../content/worlds';
 import { clamp, easeOutCubic, lerp } from '../../engine/core/math';
 import { POWERUP_KIND_COUNT, PowerUpKind, type Paddle } from '../types';
 import { paddleSlope } from '../hazards/scarabs/scarabs';
@@ -266,7 +265,6 @@ export class BallsView {
     const geo = new THREE.SphereGeometry(BALL.radius, 48, 32);
     for (let i = 0; i < BALL.capacity; i++) {
       const mesh = new THREE.Mesh(geo, this.matChrome);
-      mesh.castShadow = true;
       mesh.visible = false;
       this.meshes.push(mesh);
       const trail = new Trail(this.trailMaterial);
@@ -443,7 +441,6 @@ export class PaddleView {
       envMapIntensity: 1.35,
     });
     const body = new THREE.Mesh(createSlabGeometry(halfW, halfH, PADDLE_HALF_D, 0.5, 0.16), chrome);
-    body.castShadow = true;
 
     this.topMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xe9f1fa,
@@ -515,11 +512,6 @@ export class PaddleView {
 
   get lightColor(): THREE.Color {
     return this.color;
-  }
-
-  /** The contact shadow lies on the Space deck; the forest's painted floor has none. */
-  setWorld(world: WorldId): void {
-    this.contact.visible = world === 'space';
   }
 
   update(world: World, alpha: number, dt: number): void {
@@ -600,7 +592,6 @@ export class DropsView {
       group.renderOrder = 10;
       const tile = new THREE.Mesh(geo, this.materials[0]);
       tile.renderOrder = 1;
-      tile.castShadow = true;
       const icon = new THREE.Sprite(this.iconMaterials[0]);
       icon.scale.setScalar(0.92);
       icon.position.z = 0.3;

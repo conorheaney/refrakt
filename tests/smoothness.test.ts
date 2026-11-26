@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { FIELD, FOREST_ART, FOREST_FIELD, PADDLE, SIM } from '../src/gameplay/config';
+import { FIELD, PADDLE, SIM } from '../src/gameplay/config';
 import { lerp } from '../src/engine/core/math';
 import { FixedStepper } from '../src/engine/core/Time';
 import { CameraRig } from '../src/gameplay/CameraRig';
@@ -168,29 +168,6 @@ describe('pointer mapping', () => {
       for (const x of [-FIELD.halfWidth, -5, 0, 7.5, FIELD.halfWidth]) {
         rig.project(x, PADDLE.y, ndc);
         expect(Math.abs(ndc.x)).toBeLessThan(1); // the whole field width is on screen
-        expect(rig.pointerToFieldX(ndc.x, ndc.y)).toBeCloseTo(x, 3);
-      }
-    });
-
-    it(`frames the forest arena on the painted arch at aspect ${aspect.toFixed(2)}`, () => {
-      const rig = new CameraRig();
-      rig.setAspect(aspect);
-      rig.setWorld('forest');
-      rig.mode = 'play';
-      rig.update(1 / 60);
-      const ndc = new THREE.Vector3();
-      // The painting fills the frame's height: px y = (1 - ndc.y) / 2 * heightPx, whatever the aspect.
-      rig.project(0, FOREST_FIELD.top, ndc);
-      expect(((1 - ndc.y) / 2) * FOREST_ART.heightPx).toBeCloseTo(FOREST_ART.ceilingPx, 3);
-      // Horizontally it is centred, so the walls land on painting px 268 and 1404 (both on screen).
-      const visiblePx = FOREST_ART.heightPx * aspect;
-      for (const [x, px] of [
-        [-FOREST_FIELD.halfWidth, 268],
-        [FOREST_FIELD.halfWidth, 1404],
-      ]) {
-        rig.project(x, PADDLE.y, ndc);
-        expect(Math.abs(ndc.x)).toBeLessThan(1);
-        expect(FOREST_ART.widthPx / 2 + (ndc.x * visiblePx) / 2).toBeCloseTo(px, 3);
         expect(rig.pointerToFieldX(ndc.x, ndc.y)).toBeCloseTo(x, 3);
       }
     });

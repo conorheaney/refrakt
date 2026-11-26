@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { GRID } from '../src/gameplay/config';
 import { createBrickGeometry } from '../src/engine/render/geometry';
-import { createWorld, validateWorld, withBackground } from '../src/content/authoredWorlds';
+import { createWorld, validateWorld } from '../src/content/authoredWorlds';
 import { createForgeArmorGeometry, createForgeExplosiveGeometry } from '../src/themes/blocks/forge/forgeBlocks';
 
 it('keeps the sculpted Forge prototypes inside their collision footprint with separate surface materials', () => {
@@ -39,12 +39,11 @@ it('keeps Forge collision dimensions while providing finite UVs on every face', 
   geometry.dispose();
 });
 
-it('opts into Forge explicitly and preserves the style through editor validation and arena changes', () => {
+it('opts into Forge explicitly and preserves the style through editor validation', () => {
   const data = createWorld('forge-render-test');
   expect(data.world.blockStyle).toBeUndefined();
   data.world = { ...data.world, blockStyle: 'forge' };
   expect(validateWorld(data).world.blockStyle).toBe('forge');
-  expect(withBackground(data.world, 'forest').blockStyle).toBe('forge');
   expect(() => validateWorld({ ...data, world: { ...data.world, blockStyle: 'unknown' } })).toThrow(
     'Unsupported block style',
   );

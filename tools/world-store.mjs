@@ -117,8 +117,6 @@ export function createWorldStore(root, validate, isComplete) {
         for (const entry of library.worlds) {
           if (entry.filename === filename) continue;
           if (entry.world.key === world.key) fail('Another file already uses this world key.', 409);
-          if (world.replaces && entry.world.replaces === world.replaces)
-            fail('Another world already replaces this campaign.', 409);
         }
         const index = await manifest();
         const complete = isComplete(world);

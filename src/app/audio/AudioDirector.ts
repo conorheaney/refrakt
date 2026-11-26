@@ -20,7 +20,7 @@ const REFRAKT_CHORD: readonly number[] = [110, 164.8, 220, 277.2, 329.6, 493.9, 
 /** Level of the crystal hum under an active Refrakt. */
 const REFRAKT_HUM = 0.32;
 
-/** Stereo position of a playfield x: +/-0.6 at the Space walls (the wider forest arena is clamped to that). */
+/** Stereo position of a playfield x: +/-0.6 at the arena's walls (wider drawn areas are clamped to that). */
 function panOf(x: number): number {
   return Math.max(-0.6, Math.min(0.6, (x / FIELD.halfWidth) * 0.6));
 }

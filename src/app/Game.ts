@@ -8,8 +8,7 @@ import { Storage, type Settings } from './Storage';
 import { Input } from '../engine/input/Input';
 import { GameView } from './GameView';
 import { BackdropCache } from './backdrops';
-import { QUALITY_PROFILES, Renderer } from '../engine/render/Renderer';
-import type { ForestAssets } from '../themes/scenery/forest/assets';
+import { Renderer } from '../engine/render/Renderer';
 import { World } from '../gameplay/World';
 import type { LaunchOptions } from './launchOptions';
 import { layoutStage } from '../engine/Stage';
@@ -43,7 +42,7 @@ export class Game {
     uiRoot: HTMLElement,
     campaign: Campaign,
     options: LaunchOptions,
-    assets: ForestAssets,
+    forgeTextures: readonly THREE.Texture[],
   ) {
     this.world = new World(campaign);
     this.stage = canvas.parentElement ?? document.body;
@@ -51,7 +50,9 @@ export class Game {
     this.renderer = new Renderer(canvas);
     // Each world's uploaded background is decoded when one of its levels first shows (see BackdropCache).
     const backdrops = new BackdropCache((worldIndex) => this.world.campaign.worlds[worldIndex]?.background);
-    this.view = new GameView(this.world, this.renderer.gl, assets, backdrops, { debugArena: options.debugArena });
+    this.view = new GameView(this.world, this.renderer.gl, forgeTextures, backdrops, {
+      debugArena: options.debugArena,
+    });
     this.renderer.attach(this.view.scene, this.view.rig.camera);
     this.audio.addSamples(SAMPLE_URLS);
     this.audio.want(CORE_SAMPLES);
@@ -156,8 +157,6 @@ export class Game {
     try {
       this.music.update();
       this.flow.update(realDt);
-      // The world's camera (Space product shot or the flat forest view) may have changed with the level.
-      this.renderer.setCamera(this.view.rig.camera);
       const refrakt = this.view.refraktScreen;
       this.renderer.setRefrakt(refrakt.screenGlow, refrakt.hue, refrakt.chroma);
       if (this.renderer.render(realDt)) this.onResize();
@@ -190,11 +189,9 @@ export class Game {
 
   private applySettings(persist: boolean): void {
     const s = this.settings;
-    const profile = QUALITY_PROFILES[s.quality];
     this.audio.setVolumes(s.musicVolume, s.sfxVolume, s.ambienceVolume);
     this.view.rig.shakeScale = s.screenShake ? 1 : 0;
     this.renderer.setQuality(s.quality);
-    this.view.setShadows(profile.shadows, profile.shadowMapSize);
     this.onResize();
     if (persist) Storage.saveSettings(s);
   }
@@ -203,11 +200,6 @@ export class Game {
     const layout = layoutStage(this.stage, this.uiRoot);
     this.input.refreshBounds();
     this.renderer.resize(layout.width, layout.height);
-    this.view.resize(
-      layout.aspect,
-      this.renderer.bufferWidth,
-      this.renderer.bufferHeight,
-      this.renderer.reflectionScale,
-    );
+    this.view.resize(layout.aspect, this.renderer.bufferHeight);
   };
 }

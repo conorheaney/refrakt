@@ -11,5 +11,3 @@ reviews/
 *.html
 *.css
 *.py
-# Written by tools/trace_arch_outline.py
-src/content/outlines/

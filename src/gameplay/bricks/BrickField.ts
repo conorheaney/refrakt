@@ -38,14 +38,6 @@ export class BrickField {
     this.bricks = bricks;
   }
 
-  /** Re-places every cell for a world's grid. */
-  layout(grid: GridDef): void {
-    for (const b of this.bricks) {
-      b.x = (b.col - (grid.cols - 1) / 2) * grid.cellW;
-      b.y = grid.topY - b.row * grid.cellH;
-    }
-  }
-
   /** Clears the field and builds a level's formation (bricks pop in row by row from `time`). */
   load(cells: readonly LevelCell[], time: number): void {
     for (const brick of this.bricks) {

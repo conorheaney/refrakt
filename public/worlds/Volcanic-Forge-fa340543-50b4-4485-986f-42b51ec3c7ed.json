@@ -1,36 +1,12 @@
 {
   "key": "fa340543-50b4-4485-986f-42b51ec3c7ed",
   "world": {
-    "id": "space",
     "name": "Volcanic Forge",
-    "field": {
-      "halfWidth": 14,
-      "top": 10.4,
-      "cornerRadius": 3,
-      "bottom": -10.7,
-      "floorY": -9.8,
-      "shieldY": -9.8,
-      "paddleReach": 14
-    },
-    "grid": {
-      "cols": 13,
-      "rows": 12,
-      "cellW": 1.76,
-      "cellH": 1.1,
-      "halfW": 0.845,
-      "halfH": 0.515,
-      "depth": 0.88,
-      "topY": 8.8
-    },
-    "paddleWidth": 4.2,
-    "paddleExpandedWidth": 6.3,
-    "serveLift": 0,
     "blockStyle": "forge"
   },
   "levels": [
     {
       "name": "FIRST EMBERS",
-      "hue": 0.065,
       "rows": [
         ".............",
         ".....111.....",
@@ -48,7 +24,6 @@
     },
     {
       "name": "BASALT GATE",
-      "hue": 0.060000000000000005,
       "rows": [
         ".............",
         ".............",
@@ -66,7 +41,6 @@
     },
     {
       "name": "LAVA CHANNELS",
-      "hue": 0.055,
       "rows": [
         ".............",
         ".............",
@@ -84,7 +58,6 @@
     },
     {
       "name": "CRYSTAL FURNACE",
-      "hue": 0.05,
       "rows": [
         ".............",
         ".............",
@@ -102,7 +75,6 @@
     },
     {
       "name": "THE IRON ANVIL",
-      "hue": 0.045,
       "rows": [
         ".............",
         ".............",
@@ -120,7 +92,6 @@
     },
     {
       "name": "SMOKE AND CINDERS",
-      "hue": 0.04,
       "rows": [
         ".............",
         ".............",
@@ -138,7 +109,6 @@
     },
     {
       "name": "OBSIDIAN CRUCIBLE",
-      "hue": 0.035,
       "rows": [
         ".............",
         ".............",
@@ -156,7 +126,6 @@
     },
     {
       "name": "FORGE GEARS",
-      "hue": 0.03,
       "rows": [
         ".............",
         ".............",
@@ -174,7 +143,6 @@
     },
     {
       "name": "MAGMA PRESSURE",
-      "hue": 0.025,
       "rows": [
         ".............",
         ".............",
@@ -192,7 +160,6 @@
     },
     {
       "name": "HEART OF THE VOLCANO",
-      "hue": 0.020000000000000004,
       "rows": [
         ".............",
         ".............",

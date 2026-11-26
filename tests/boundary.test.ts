@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BALL, FIELD, FOREST_ART, SIM } from '../src/gameplay/config';
-import { FOREST_OUTLINE_MAPPING } from '../src/content/outlines/forest';
+import { BALL, FIELD, SIM } from '../src/gameplay/config';
+import { findPaddleLane } from '../src/gameplay/arena/playAreas';
 import { STAGES_PER_WORLD } from '../src/content/worlds';
 import { Contact, PolygonBoundary, TrapGuard } from '../src/gameplay/arena/boundary';
 import type { SweepHit } from '../src/gameplay/arena/collision';
@@ -38,21 +38,13 @@ function autopilot(world: World, input: StepInput, step: number): void {
   input.action = step % 60 === 0;
 }
 
-describe("forest outline data (the editor's starting shape for Forest worlds)", () => {
-  it('was traced with the mapping the forest view uses', () => {
-    expect(FOREST_OUTLINE_MAPPING.widthPx).toBe(FOREST_ART.widthPx);
-    expect(FOREST_OUTLINE_MAPPING.heightPx).toBe(FOREST_ART.heightPx);
-    expect(FOREST_OUTLINE_MAPPING.centrePx).toBe(FOREST_ART.centrePx);
-    expect(FOREST_OUTLINE_MAPPING.ceilingPx).toBe(FOREST_ART.ceilingPx);
-    expect(FOREST_OUTLINE_MAPPING.pxPerUnit).toBeCloseTo(FOREST_ART.pxPerUnit, 4);
-    expect((FOREST_OUTLINE_MAPPING.pitchDeg * Math.PI) / 180).toBeCloseTo(FOREST_ART.pitch, 9);
-  });
-
-  it('becomes a ball area that encloses the play space, with its drain below the paddle', () => {
+describe("Verdant Hollow's ball area (the tree arch of its painting)", () => {
+  it('encloses the play space, with its drain below the paddle', () => {
     const area = FOREST_AREAS.ball;
     const boundary = new PolygonBoundary(area);
     expect(area.points.length).toBeLessThanOrEqual(96);
-    expect(boundary.bounds.bottom).toBeLessThan(FIELD.bottom + 0.5);
+    const lane = findPaddleLane(FOREST_AREAS.paddle, 6.3, 0.55);
+    expect(boundary.bounds.bottom).toBeLessThan(lane.y - 0.55);
     for (const [x, y] of [
       [0, 0],
       [0, -8.2],

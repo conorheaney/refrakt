@@ -119,7 +119,6 @@ class ScarabMesh {
     let shadow: THREE.Mesh | null = null;
     for (const part of parts) {
       const mesh = new THREE.Mesh(part.geometry, own(part.material));
-      mesh.castShadow = mesh.receiveShadow = false;
       if (part.material === 'shadow') {
         // On the floor, so it stays put while the body bobs.
         mesh.scale.setScalar(LENGTH);

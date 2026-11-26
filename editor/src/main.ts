@@ -5,14 +5,13 @@ import {
   playProblems,
   unfinishedLevels,
   validateWorld,
-  withBackground,
   type AuthoredWorld,
 } from '../../src/content/authoredWorlds';
 import { withAreas } from './defaultAreas';
 import { UNDO_LIMIT, undoSnapshot } from './undoSnapshot';
 import { GRID } from '../../src/gameplay/config';
 import type { LevelDef } from '../../src/content/levels';
-import { isWeather, WEATHER, type WorldId } from '../../src/content/worlds';
+import { isWeather, WEATHER } from '../../src/content/worlds';
 import type { PlayAreas, PolygonArea } from '../../src/gameplay/arena/playAreas';
 import { AreaEditor } from './AreaEditor';
 import { SnakeEditor } from './SnakeEditor';
@@ -140,7 +139,7 @@ const GRID_TOP_DESIGN_PX = 240;
  * its brick in 2D (see style.css), so the editor's own 3D bricks are hidden (see EditorScene).
  */
 function layoutGrid(): void {
-  const grid = data.world.grid;
+  const grid = GRID;
   const left = (grid.cols / 2) * grid.cellW;
   const top = grid.topY + grid.cellH / 2;
   const bottom = grid.topY - (grid.rows - 0.5) * grid.cellH;
@@ -207,16 +206,14 @@ function commitArea(mode: 'ball' | 'paddle', area: PolygonArea): void {
 }
 function render(): void {
   el<HTMLInputElement>('world-name').value = data.world.name;
-  el<HTMLSelectElement>('background').value = data.world.id;
   el<HTMLSelectElement>('music').value = data.world.music ?? 'space';
   if (music) music.track = data.world.music ?? 'space';
   el<HTMLSelectElement>('weather').value = data.world.weather ?? '';
   el<HTMLInputElement>('level-name').value = data.levels[selected].name;
-  el<HTMLInputElement>('hue').value = String(data.levels[selected].hue);
   el('remove-background').hidden = !data.backgroundImage;
   el('background-info').textContent = data.backgroundImage
-    ? 'Uploaded image · included in saves and exports.'
-    : 'Upload PNG, JPEG or WebP. Images fill the scene; the selected arena keeps its existing physics.';
+    ? 'Included in saves and exports.'
+    : 'Upload PNG, JPEG or WebP. The image fills the scene behind the arena; until then it is plain dark.';
   el('world-title').textContent = data.world.name || 'Untitled';
   renderGrid();
   el<HTMLButtonElement>('undo').disabled = undo.length === 0;
@@ -309,11 +306,6 @@ el('world-name').addEventListener('change', () => {
 el('level-name').addEventListener('change', () => {
   snapshot();
   changeLevel({ name: el<HTMLInputElement>('level-name').value });
-  render();
-});
-el('background').addEventListener('change', () => {
-  snapshot();
-  data.world = withBackground(data.world, el<HTMLSelectElement>('background').value as WorldId);
   render();
 });
 for (const track of MUSIC_TRACKS) el<HTMLSelectElement>('music').add(new Option(track.label, track.id));
@@ -465,12 +457,7 @@ el('remove-background').addEventListener('click', () => {
   snapshot();
   delete data.backgroundImage;
   render();
-  status('Restored the built-in scenery.');
-});
-el('hue').addEventListener('change', () => {
-  snapshot();
-  changeLevel({ hue: Number(el<HTMLInputElement>('hue').value) });
-  render();
+  status('Removed the background image.');
 });
 el('fill').addEventListener('click', () => {
   snapshot();
@@ -614,7 +601,6 @@ el('import-file').addEventListener(
       if (saving) throw new Error('Wait for the current save to finish before importing.');
       // Import as a copy so a shared file cannot overwrite an existing world.
       imported.key = crypto.randomUUID();
-      delete imported.replaces;
       replace(imported, false);
       status('World imported as a new copy. Save to add it to the game folder.');
     } catch (error) {

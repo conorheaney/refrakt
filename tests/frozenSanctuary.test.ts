@@ -12,7 +12,6 @@ const data = validateWorld(frozen);
 
 it('has ten complete formations with increasing durability, all seven block types, and usable boundary clearance', () => {
   expect(data.world.name).toBe('Frozen Sanctuary');
-  expect(data.replaces).toBeUndefined();
   expect(unfinishedLevels(data)).toEqual([]);
   const contour = areaContour(data.playAreas!.ball!);
   const kinds = new Set<BrickKind>();

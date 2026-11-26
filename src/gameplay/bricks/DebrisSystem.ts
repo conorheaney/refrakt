@@ -50,7 +50,6 @@ export class DebrisSystem {
     this.mesh.setColorAt(0, this.color.set(0xffffff));
     this.mesh.instanceColor?.setUsage(THREE.DynamicDrawUsage);
     this.mesh.frustumCulled = false;
-    this.mesh.castShadow = true;
     this.mesh.count = 0;
   }
 

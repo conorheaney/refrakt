@@ -9,7 +9,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   // -------------------------------------------------------------- World 1: Space (levels 1-10)
   {
     name: 'FIRST LIGHT',
-    hue: 0.58,
     rows: [
       '...221P122...',
       '..211111112..',
@@ -25,7 +24,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'SPECTRUM',
-    hue: 0.5,
     rows: [
       '2222222222222',
       '1111111111111',
@@ -42,7 +40,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'PRISM GARDEN',
-    hue: 0.42,
     rows: [
       '......P......',
       '.....121.....',
@@ -59,7 +56,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'VOLATILE',
-    hue: 0.06,
     rows: [
       'S.S.S.S.S.S.S',
       '1111111111111',
@@ -76,7 +72,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'THE WARDEN',
-    hue: 0.78,
     rows: [
       '.............',
       '.............',
@@ -90,7 +85,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'PHASE SHIFT',
-    hue: 0.72,
     rows: [
       'G1G1G1G1G1G1G',
       '1G1G1G1G1G1G1',
@@ -106,7 +100,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'FORTRESS',
-    hue: 0.12,
     rows: [
       'SSSSSS.SSSSSS',
       'S11113X31111S',
@@ -123,7 +116,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'DIFFRACTION',
-    hue: 0.33,
     rows: [
       '3.3.3.3.3.3.3',
       '.2.2.2.2.2.2.',
@@ -141,7 +133,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'EVENT HORIZON',
-    hue: 0.86,
     rows: [
       '3333333333333',
       '3X222222222X3',
@@ -158,7 +149,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'SINGULARITY',
-    hue: 0.98,
     rows: [
       '.............',
       '.............',
@@ -175,7 +165,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   // ------------------------------------------------------------ World 2: Forest (levels 11-20)
   {
     name: 'GREENWOOD',
-    hue: 0.33,
     rows: [
       '....11111....',
       '...1111111...',
@@ -191,7 +180,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'CANOPY',
-    hue: 0.3,
     // Two stacked beds under a lintel.
     rows: [
       '.22222222222.',
@@ -208,7 +196,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'FAIRY RING',
-    hue: 0.02,
     rows: [
       '....22222....',
       '..221111122..',
@@ -225,7 +212,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'WILDFIRE',
-    hue: 0.08,
     rows: [
       '1.1.1.1.1.1.1',
       '.X.1.X.1.X.1.',
@@ -242,7 +228,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'THE ELDER OAK',
-    hue: 0.26,
     rows: [
       '.............',
       '.............',
@@ -256,7 +241,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: "WILL-O'-WISP",
-    hue: 0.7,
     rows: [
       'G.G.G.G.G.G.G',
       '1G1G1G1G1G1G1',
@@ -272,7 +256,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'STONE CIRCLE',
-    hue: 0.45,
     rows: [
       '...SS333SS...',
       '..S1111111S..',
@@ -289,7 +272,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'BRAMBLE',
-    hue: 0.36,
     rows: [
       '3.2.3.2.3.2.3',
       '.1.1.1.1.1.1.',
@@ -306,7 +288,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'MOONLIT GROVE',
-    hue: 0.6,
     rows: [
       '3333333333333',
       '32X2222222X23',
@@ -323,7 +304,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
   },
   {
     name: 'HEART OF THE FOREST',
-    hue: 0.95,
     rows: [
       '.............',
       '.............',

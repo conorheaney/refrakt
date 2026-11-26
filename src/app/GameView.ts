@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { DROP } from '../gameplay/config';
 import { POWERUPS } from '../gameplay/powerups/powerUps';
-import type { WorldId } from '../content/worlds';
 import { areaSegments } from '../gameplay/arena/playAreas';
 import { clamp, damp, lerp } from '../engine/core/math';
 import { BrickKind, PowerUpKind, type Brick } from '../gameplay/types';
@@ -25,7 +24,6 @@ import {
   createForgeExplosiveGeometry,
   createForgePrototypeMaterials,
 } from '../themes/blocks/forge/forgeBlocks';
-import type { ForestAssets } from '../themes/scenery/forest/assets';
 import { ParticleSystem } from '../engine/render/ParticleSystem';
 import { RainLayer } from '../themes/weather/rain/RainLayer';
 import { SnowLayer } from '../themes/weather/snow/SnowLayer';
@@ -57,7 +55,6 @@ export class GameView {
 
   private readonly env: Environment;
   private readonly bricks: BrickView;
-  private worldId: WorldId = 'space';
   private backdropOutline: THREE.Group | null = null;
   private readonly balls: BallsView;
   private readonly paddle: PaddleView;
@@ -89,7 +86,6 @@ export class GameView {
   private readonly chromeShard = new THREE.Color(0.75, 0.78, 0.82);
   private readonly ballLightFire = new THREE.Color(0xff7a2a);
   private clock = 0;
-  private bufferHeight = 1080;
   private celebrate = 0;
   private celebrateTimer = 0;
 
@@ -102,7 +98,8 @@ export class GameView {
   constructor(
     private readonly world: World,
     gl: THREE.WebGLRenderer,
-    assets: ForestAssets,
+    /** The forge block style's brick textures (themes/blocks/forge/forgeAssets.ts). */
+    forgeTextures: readonly THREE.Texture[],
     private readonly backdrops: BackdropSource,
     /**
      * `debugArena` (`?debugArena`, see app/launchOptions.ts): draws the walls the ball bounces off (the world's drawn
@@ -112,7 +109,7 @@ export class GameView {
   ) {
     const scene = this.scene;
     const glow = createGlowTexture();
-    this.env = new Environment(scene, gl, assets);
+    this.env = new Environment(scene, gl);
     this.rain = new RainLayer(scene);
     this.snow = new SnowLayer(scene);
     this.dust = new TombDustLayer(scene);
@@ -121,7 +118,7 @@ export class GameView {
       this.events.emit('rumble', { strength, lead, rise, hold, fall });
     this.dust.onFlare = (side, strength) => this.events.emit('torchFlare', { side, strength });
     this.bricks = new BrickView(scene, {
-      textures: assets.forge,
+      textures: forgeTextures,
       armorGeometry: createForgeArmorGeometry,
       explosiveGeometry: createForgeExplosiveGeometry,
       prototypeMaterials: createForgePrototypeMaterials,
@@ -162,7 +159,6 @@ export class GameView {
     });
     gl.compile(this.scene, this.rig.camera);
     for (const o of hidden) o.visible = false;
-    this.env.prewarm(gl);
   }
 
   /** Refrakt's screen-wide light (edge spectrum, colour split), for the renderer's final pass. */
@@ -170,40 +166,19 @@ export class GameView {
     return this.refrakt;
   }
 
-  /** Switches what differs between worlds: the scenery, the arena's width and the camera framing. */
-  setWorld(id: WorldId): void {
-    if (id === this.worldId) return;
-    this.worldId = id;
-    this.env.setWorld(id);
-    this.paddle.setWorld(id);
-    // Each world frames the arena with its own lens; point sizes follow the field of view.
-    this.rig.setWorld(id);
-    this.bricks.flatView = this.rig.isFlat;
-    this.particles.setViewport(this.bufferHeight, this.rig.fov);
-    this.dustPuffs.setViewport(this.bufferHeight, this.rig.fov);
-    this.snow.setViewport(this.bufferHeight, this.rig.fov);
-    this.dust.setViewport(this.bufferHeight, this.rig.fov);
-  }
-
   /** Shard and spark tint for a brick. */
   private brickColor(brick: Brick, time: number, out: THREE.Color): THREE.Color {
     return this.bricks.colorOf(brick, time, out);
   }
 
-  setShadows(enabled: boolean, mapSize: number): void {
-    this.env.setShadows(enabled, mapSize);
-  }
-
-  resize(aspect: number, bufferWidth: number, bufferHeight: number, reflectionScale: number): void {
+  resize(aspect: number, bufferHeight: number): void {
     this.rig.setAspect(aspect);
     this.env.resizeBackdrop(aspect);
-    this.bufferHeight = bufferHeight;
     this.particles.setViewport(bufferHeight, this.rig.fov);
     this.dustPuffs.setViewport(bufferHeight, this.rig.fov);
     this.snow.setViewport(bufferHeight, this.rig.fov);
     this.dust.setViewport(bufferHeight, this.rig.fov);
     this.dust.setAspect(aspect);
-    this.env.setReflectionSize(bufferWidth * reflectionScale, bufferHeight * reflectionScale);
   }
 
   /** Small camera sway for rare, significant events only (no zoom punch or colour fringing). */
@@ -283,7 +258,7 @@ export class GameView {
     return out;
   }
 
-  /** Shown while a world's background decodes: plain dark, rather than a flash of the built-in scenery. */
+  /** Shown while a world's background decodes: plain dark, rather than a flash of the last world's. */
   private readonly loadingBackdrop = Object.assign(new THREE.DataTexture(new Uint8Array([5, 7, 13, 255]), 1, 1), {
     colorSpace: THREE.SRGBColorSpace,
     needsUpdate: true,
@@ -314,8 +289,6 @@ export class GameView {
       this.refrakt.clear();
       const campaign = world.campaign;
       const def = campaign.worldDefAt(index);
-      const changed = def.id !== this.worldId;
-      this.setWorld(def.id);
       this.showBackdrop(campaign.worldIndexOf(index));
       const weather = def.weather;
       this.rain.setActive(weather === 'rain');
@@ -350,7 +323,6 @@ export class GameView {
         );
         this.scene.add(this.backdropOutline);
       }
-      this.env.setTheme(campaign.level(index).hue, changed);
       this.celebrate = 0;
     });
 
@@ -712,8 +684,6 @@ export class GameView {
     if (refraktOn) light.color.setHSL(this.balls.refraktHue, 0.9, 0.6);
     else light.color.copy(this.ballLightFire);
 
-    const paddleX = lerp(world.paddle.px, world.paddle.x, alpha);
-    this.env.update(realDt, this.clock, paddleX);
     this.rain.update(realDt, simDt);
     this.env.setLightning(this.rain.flash);
     this.snow.update(realDt);
@@ -726,7 +696,7 @@ export class GameView {
     }
     this.dust.setStirrers(
       this.balls.hasFocus ? { x: this.balls.focusX, y: this.balls.focusY } : null,
-      paddleX,
+      lerp(world.paddle.px, world.paddle.x, alpha),
       world.paddle.y,
       world.paddle.width / 2,
     );

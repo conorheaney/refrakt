@@ -311,86 +311,11 @@ void main() {
 }`;
 
 /**
- * Polished studio floor: blurred planar reflection over a softly lit grey
- * base with warm (left) and cool (right) light pools.
- */
-export const FLOOR_SHADER = {
-  name: 'RefraktFloor',
-  uniforms: {
-    color: { value: null as THREE.Color | null },
-    tDiffuse: { value: null as THREE.Texture | null },
-    textureMatrix: { value: null as THREE.Matrix4 | null },
-    uTexel: { value: [1 / 960, 1 / 540] as [number, number] },
-    uReflect: { value: 0.5 },
-    uWarm: { value: null as THREE.Color | null },
-    uCool: { value: null as THREE.Color | null },
-    uPaddleX: { value: 0 },
-    uPaddleGlow: { value: null as THREE.Color | null },
-  },
-  vertexShader: /* glsl */ `
-uniform mat4 textureMatrix;
-varying vec4 vUv;
-varying vec3 vWorld;
-void main() {
-  vUv = textureMatrix * vec4(position, 1.0);
-  vec4 world = modelMatrix * vec4(position, 1.0);
-  vWorld = world.xyz;
-  gl_Position = projectionMatrix * viewMatrix * world;
-}`,
-  fragmentShader: /* glsl */ `
-uniform vec3 color;
-uniform sampler2D tDiffuse;
-uniform vec2 uTexel;
-uniform float uReflect;
-uniform vec3 uWarm;
-uniform vec3 uCool;
-uniform float uPaddleX;
-uniform vec3 uPaddleGlow;
-varying vec4 vUv;
-varying vec3 vWorld;
-
-const vec2 TAPS[12] = vec2[12](
-  vec2(-0.326, -0.406), vec2(-0.840, -0.074), vec2(-0.696, 0.457), vec2(-0.203, 0.621),
-  vec2(0.962, -0.195), vec2(0.473, -0.480), vec2(0.519, 0.767), vec2(0.185, -0.893),
-  vec2(0.507, 0.064), vec2(0.896, 0.412), vec2(-0.322, -0.933), vec2(-0.792, -0.598));
-
-void main() {
-  vec2 uv = vUv.xy / vUv.w;
-  // Blur grows with distance from the camera so near reflections stay crisper.
-  float depth = clamp((8.0 - vWorld.z) / 16.0, 0.0, 1.0);
-  vec2 radius = uTexel * mix(3.0, 10.0, depth) * vec2(1.0, 1.8);
-  vec3 refl = texture2D(tDiffuse, uv).rgb * 0.2;
-  for (int i = 0; i < 12; i++) refl += texture2D(tDiffuse, uv + TAPS[i] * radius).rgb * (0.8 / 12.0);
-  // Soft-compress bright reflections (e.g. the chrome paddle catching the studio's light strip) so they
-  // read as a sheen on the floor instead of a hot white glow; dim reflections are almost unchanged.
-  refl /= 1.0 + max(refl.r, max(refl.g, refl.b)) * 1.5;
-
-  // Base: polished grey with light pools from the warm key (left) and cool fill (right).
-  vec3 base = color;
-  float wa = (vWorld.x + 22.0) / 14.0;
-  float wb = (vWorld.x + 8.0) / 18.0;
-  float ca = (vWorld.x - 22.0) / 13.0;
-  float warm = exp(-wa * wa) * 0.9 + exp(-wb * wb) * 0.25;
-  float cool = exp(-ca * ca) * 0.8;
-  base += uWarm * warm + uCool * cool;
-  base *= mix(1.0, 0.72, depth);
-  // Warm pool spilled onto the floor by the paddle light bar.
-  float px = vWorld.x - uPaddleX;
-  float pz = max(vWorld.z - 1.0, 0.0);
-  base += uPaddleGlow * exp(-px * px / 10.0) * exp(-pz * pz / 4.0) * smoothstep(-1.0, 1.4, vWorld.z);
-
-  float fres = mix(0.55, 1.0, depth);
-  vec3 col = base + refl * uReflect * fres;
-  gl_FragColor = vec4(col, 1.0);
-}`,
-};
-
-/**
  * Final screen pass: gentle vignette, colour split (only for Refrakt's big moments), and Refrakt's spectrum:
  * a rainbow of light round the screen edges, its hues wheeling slowly round the frame.
  */
 /** Default vignette strength of the screen pass. */
-export const SCREEN_VIGNETTE = 0.32;
+const SCREEN_VIGNETTE = 0.32;
 
 export const SCREEN_FX_SHADER = {
   name: 'RefraktScreenFx',

@@ -9,8 +9,6 @@ export interface LevelDef {
    * `X` explosive, `P` prism, `G` phase.
    */
   readonly rows: readonly string[];
-  /** Sky hue (0..1) used by the environment theme. */
-  readonly hue: number;
 }
 
 export interface LevelCell {

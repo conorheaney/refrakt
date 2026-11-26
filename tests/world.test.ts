@@ -3,8 +3,6 @@ import {
   BALL,
   DROP,
   FIELD,
-  FOREST_ART,
-  FOREST_FIELD,
   GRID,
   PADDLE,
   PLAYER,
@@ -284,10 +282,8 @@ describe('levels', () => {
     const r = BALL.radius;
     LEVELS.forEach((_, i) => {
       const cells = CLASSIC.levelCells(i);
-      // Each world lays its bricks out on its own grid, inside its own arena.
-      const { grid, field } = CLASSIC.worldDefAt(i);
-      expect(grid.cols).toBe(GRID.cols);
-      expect(grid.rows).toBe(GRID.rows);
+      const grid = GRID;
+      const field = FIELD;
       const cornerX = field.halfWidth - field.cornerRadius;
       const cornerY = field.top - field.cornerRadius;
       for (const cell of cells) {
@@ -302,7 +298,7 @@ describe('levels', () => {
         expect(Math.hypot(ox, oy)).toBeLessThan(field.cornerRadius);
       }
     });
-    for (const world of WORLDS) expect(world.field.floorY).toBeCloseTo(PADDLE.y - PADDLE.halfH, 6);
+    expect(FIELD.floorY).toBeCloseTo(PADDLE.y - PADDLE.halfH, 6);
   });
 
   it('open each later world slower than the level that ended the previous one', () => {
@@ -326,45 +322,26 @@ describe('World', () => {
     expect(world.bricksTotal).toBeGreaterThan(0);
   });
 
-  it('uses the forest arena on forest levels with the space grid and paddle, and the space arena again after', () => {
+  it('gives every world the same arena, brick grid and paddle; only the drawn areas differ', () => {
     const world = new World(CLASSIC);
     world.newGame(1, STAGES_PER_WORLD + 1);
-    expect(world.field).toBe(FOREST_FIELD);
+    expect(world.field).toBe(FIELD);
     expect(world.grid).toBe(GRID);
     expect(world.paddle.width).toBe(PADDLE.width);
     const brick = world.bricks[GRID.cols + 1];
     expect(brick.x).toBeCloseTo((1 - (GRID.cols - 1) / 2) * GRID.cellW, 9);
     expect(brick.y).toBeCloseTo(GRID.topY - GRID.cellH, 9);
     const ball = world.balls.items.find((b) => b.active);
-    expect(ball?.y).toBeCloseTo(PADDLE.y + PADDLE.halfH + BALL.radius, 9);
-    // The paddle reaches the walls, passing in front of the painted roots.
+    expect(ball?.y).toBeCloseTo(world.paddle.y + PADDLE.halfH + BALL.radius, 9);
+    // The paddle runs to the end of the world's own lane.
     const input: StepInput = { targetX: 100, axis: 0, action: false };
     for (let i = 0; i < 120; i++) world.step(SIM.step, input);
-    expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(FOREST_FIELD.paddleReach, 3);
-    expect(FOREST_FIELD.paddleReach).toBe(FOREST_FIELD.halfWidth);
+    const forestRight = world.paddle.x;
     world.loadLevel(0);
     expect(world.field).toBe(FIELD);
     for (let i = 0; i < 120; i++) world.step(SIM.step, input);
     expect(world.paddle.x + world.paddle.width / 2).toBeCloseTo(FIELD.halfWidth, 3);
-  });
-
-  it('maps the forest arena onto the painted tree arch', () => {
-    const px = (x: number): number => FOREST_ART.centrePx + x * FOREST_ART.pxPerUnit;
-    const py = (y: number): number => FOREST_ART.ceilingPx + (FOREST_FIELD.top - y) * FOREST_ART.pxPerUnitY;
-    // Walls on the trunks' inner edges (259-268 px on the left, 1406-1411 px on the right).
-    expect(px(-FOREST_FIELD.halfWidth)).toBeCloseTo(268, 6);
-    expect(px(FOREST_FIELD.halfWidth)).toBeCloseTo(1404, 6);
-    // Ceiling just under the branch's lowest dips (103-106 px).
-    expect(py(FOREST_FIELD.top)).toBeCloseTo(110, 6);
-    // The paddle's drawn bottom edge sits 100 px above the bottom of the 941 px painting.
-    expect(py(PADDLE.y) + FOREST_ART.paddleDrawnDrop * FOREST_ART.pxPerUnit).toBeCloseTo(941 - 100, 6);
-    // Barrier at 831 px and the ball-loss line at 864 px, just below the paddle; the paddle's ends reach the walls.
-    expect(py(FOREST_FIELD.floorY)).toBeCloseTo(831, 0);
-    expect(py(FOREST_FIELD.bottom)).toBeCloseTo(864, 0);
-    expect(px(-FOREST_FIELD.paddleReach)).toBeCloseTo(268, 6);
-    // Same heights as the Space arena, so Space bricks and serve positions carry over unchanged.
-    expect(FOREST_FIELD.top).toBe(FIELD.top);
-    expect(FOREST_FIELD.floorY).toBe(FIELD.floorY);
+    expect(forestRight).not.toBeCloseTo(world.paddle.x, 1);
   });
 
   it('launches on action and breaks bricks', () => {

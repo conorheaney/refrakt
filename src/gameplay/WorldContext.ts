@@ -35,7 +35,7 @@ export interface WorldContext {
 
   // Arena
   readonly worldDef: WorldDef;
-  /** The world's template arena: framing and effects only; the walls are `boundary`. */
+  /** The shared arena: framing and effects only; the walls are `boundary`. */
   readonly field: FieldDef;
   readonly grid: GridDef;
   /** The walls: the world's drawn ball area. */

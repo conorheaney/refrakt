@@ -3,7 +3,7 @@ import { GRID, PHASE_BRICK, ROW_PALETTE, WALL_Z } from '../config';
 import { clamp, easeOutCubic } from '../../engine/core/math';
 import { BRICK_KIND_COUNT, BrickKind, type Brick } from '../types';
 import type { World } from '../World';
-import { CAMERA_HOME, FOREST_VIEW } from '../CameraRig';
+import { CAMERA_HOME } from '../CameraRig';
 import { createBrickGeometry, type BrickShape } from '../../engine/render/geometry';
 import { applySurfaceFx, type SurfaceFx } from '../../engine/render/shaders';
 import { createGlowTexture } from '../../engine/render/textures';
@@ -134,9 +134,6 @@ export class BrickView {
   private readonly goldTint = new THREE.Color(0xffa51f);
   private readonly ghostTint = new THREE.Color(0xa58cff);
 
-  /** Set when the scene is seen straight on through an orthographic camera (the forest view). */
-  flatView = false;
-
   constructor(scene: THREE.Scene, forge: ForgeStyle) {
     const forgeTextures = forge.textures;
     const { geometry, shape } = createBrickGeometry(GRID.halfW, GRID.halfH, GRID.depth);
@@ -227,8 +224,6 @@ export class BrickView {
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.setColorAt(0, white);
       mesh.instanceColor?.setUsage(THREE.DynamicDrawUsage);
-      mesh.castShadow = true;
-      mesh.receiveShadow = kind !== BrickKind.Phase;
       mesh.frustumCulled = false;
       mesh.count = 0;
       this.meshes.push(mesh);
@@ -302,12 +297,10 @@ export class BrickView {
     const glowMatrix = this.glowMesh.instanceMatrix.array;
     const glowColor = this.glowMesh.instanceColor?.array;
     let glowCount = 0;
-    // Project wall glow to where the brick appears against the wall from the camera's home pose (in the
-    // flat forest view, along its parallel view direction).
+    // Project wall glow to where the brick appears against the wall from the camera's home pose.
     const camY = CAMERA_HOME.y;
     const camZ = CAMERA_HOME.z;
-    const along = this.flatView ? 1 : (WALL_Z - camZ) / -camZ;
-    const flatDrop = WALL_Z * Math.tan(FOREST_VIEW.pitch);
+    const along = (WALL_Z - camZ) / -camZ;
 
     for (let i = 0; i < bricks.length; i++) {
       const b = bricks[i];
@@ -381,7 +374,7 @@ export class BrickView {
       if (wallGlow > 0 && glowColor) {
         const g = glowCount * 16;
         const gx = b.x * along;
-        const gy = (this.flatView ? b.y + flatDrop : camY + (b.y - camY) * along) - 0.25;
+        const gy = camY + (b.y - camY) * along - 0.25;
         glowMatrix[g] = GRID.cellW * 2.6;
         glowMatrix[g + 5] = GRID.cellH * 2.9;
         glowMatrix[g + 10] = 1;

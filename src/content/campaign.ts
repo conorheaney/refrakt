@@ -22,7 +22,7 @@ export interface WorldEntry {
   readonly playAreas: WorldAreas;
   /** Enemies active in every level of this world (gameplay/hazards/hazards.ts). */
   readonly hazards?: readonly HazardDef[];
-  /** Uploaded scenery image (a data: URL) replacing the built-in backdrop. */
+  /** The world's scenery: an uploaded image (a data: URL). Without one the backdrop is plain dark. */
   readonly background?: string;
   /** Where tomb dust pours from (content/dustLine.ts); every world with dust weather has one. */
   readonly dustLine?: DustLine;
@@ -70,14 +70,7 @@ export class Campaign {
   /** Every level in play order (worlds[w].levels flattened). */
   readonly levels: readonly LevelDef[];
 
-  /**
-   * @param mainWorldCount How many leading worlds form the main campaign (the world files that take the Space
-   *   and Forest slots, `replaces`); a run started there plays through all of them (see runEndLevel).
-   */
-  constructor(
-    readonly worlds: readonly WorldEntry[],
-    readonly mainWorldCount = 0,
-  ) {
+  constructor(readonly worlds: readonly WorldEntry[]) {
     if (worlds.length === 0)
       throw new Error('No playable worlds: add a finished world file with a ball area and a paddle area.');
     this.levels = worlds.flatMap((world) => world.levels);
@@ -85,10 +78,6 @@ export class Campaign {
 
   get levelCount(): number {
     return this.levels.length;
-  }
-
-  get mainLevelCount(): number {
-    return this.mainWorldCount * STAGES_PER_WORLD;
   }
 
   /** The world a level belongs to (clamped to the campaign). */
@@ -119,31 +108,26 @@ export class Campaign {
     return this.worldDefAt(levelIndex).music ?? 'space';
   }
 
-  /** "Space Level 3", "Forest Level 7". */
+  /** "Atlantis Level 3". */
   stageLabel(levelIndex: number): string {
     return `${this.worldDefAt(levelIndex).name} Level ${levelNumber(levelIndex)}`;
   }
 
-  /** Index one past a run's last level: the main campaign runs to its end, any other world for its ten levels. */
+  /** Index one past a run's last level: a run plays the ten levels of the world it starts in. */
   runEndLevel(start: number): number {
-    return start < this.mainLevelCount
-      ? this.mainLevelCount
-      : (Math.floor(start / STAGES_PER_WORLD) + 1) * STAGES_PER_WORLD;
+    return (Math.floor(start / STAGES_PER_WORLD) + 1) * STAGES_PER_WORLD;
   }
 
   /** This campaign with `entry` appended as a new world. */
   withWorld(entry: WorldEntry): Campaign {
-    return new Campaign([...this.worlds, entry], this.mainWorldCount);
+    return new Campaign([...this.worlds, entry]);
   }
 
   /** This campaign with world `index` replaced by `entry` (levels keep their position). */
   withWorldAt(index: number, entry: WorldEntry): Campaign {
     if (!Number.isInteger(index) || index < 0 || index >= this.worlds.length)
       throw new Error(`No world slot ${index}.`);
-    return new Campaign(
-      this.worlds.map((world, i) => (i === index ? entry : world)),
-      this.mainWorldCount,
-    );
+    return new Campaign(this.worlds.map((world, i) => (i === index ? entry : world)));
   }
 
   /** This campaign with world `index`'s areas and extras (hazards, background) replaced. */

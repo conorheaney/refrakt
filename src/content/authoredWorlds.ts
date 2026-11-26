@@ -1,5 +1,5 @@
 import { isMusicTrack } from './musicTracks';
-import { GRID, PADDLE } from '../gameplay/config';
+import { FIELD, GRID, PADDLE } from '../gameplay/config';
 import {
   defaultBallArea,
   defaultPaddleArea,
@@ -9,18 +9,16 @@ import {
 } from '../gameplay/arena/playAreas';
 import { validateHazards, type HazardDef } from '../gameplay/hazards/hazards';
 import { parseLevel, type LevelDef } from './levels';
-import { isWeather, STAGES_PER_WORLD, WORLD_TEMPLATES, type WorldDef, type WorldId } from './worlds';
+import { isWeather, STAGES_PER_WORLD, type WorldDef } from './worlds';
 import { worldEntry, type WorldEntry } from './campaign';
 import { validateDustLine, type DustLine } from './dustLine';
 
 /** Editor/library envelope only. WorldDef, LevelDef and their row alphabet are unchanged. */
 export interface AuthoredWorld {
   key: string;
-  /** Only honored for project files, never browser saves or editor previews. */
-  replaces?: WorldId;
   world: WorldDef;
   levels: LevelDef[];
-  /** Editor asset metadata; not part of WorldDef or LevelDef. Embedded for portable exports. */
+  /** The world's scenery, embedded for portable exports. Without one the arena shows a plain dark backdrop. */
   backgroundImage?: string;
   /** The ball's walls and the paddle's lane; a world needs both to be played (see missingAreas). */
   playAreas?: PlayAreas;
@@ -31,32 +29,17 @@ export interface AuthoredWorld {
 }
 
 export const LIBRARY_KEY = 'refrakt.authored-worlds';
-/** The scenery an authored world can be built on (its arena, grid and paddle come with it). */
-export const BACKGROUNDS = WORLD_TEMPLATES;
 
 export function createWorld(key: string): AuthoredWorld {
   return {
     key,
-    world: { ...BACKGROUNDS[0], name: 'Untitled world' },
-    // A world starts with the template arena's walls and paddle line, ready to be reshaped in the editor.
-    playAreas: { ball: defaultBallArea(BACKGROUNDS[0].field), paddle: defaultPaddleArea(BACKGROUNDS[0].field) },
+    world: { name: 'Untitled world' },
+    // A world starts with the standard arena's walls and paddle line, ready to be reshaped in the editor.
+    playAreas: { ball: defaultBallArea(FIELD), paddle: defaultPaddleArea(FIELD) },
     levels: Array.from({ length: STAGES_PER_WORLD }, (_, i) => ({
       name: `LEVEL ${i + 1}`,
-      hue: 0.58,
       rows: Array.from({ length: GRID.rows }, () => '.'.repeat(GRID.cols)),
     })),
-  };
-}
-
-export function withBackground(world: WorldDef, id: WorldId): WorldDef {
-  const background = BACKGROUNDS.find((item) => item.id === id);
-  if (!background) throw new Error('Choose Space or Forest.');
-  return {
-    ...background,
-    name: world.name,
-    ...(world.blockStyle ? { blockStyle: world.blockStyle } : {}),
-    ...(world.music ? { music: world.music } : {}),
-    ...(world.weather ? { weather: world.weather } : {}),
   };
 }
 
@@ -73,8 +56,6 @@ function name(value: unknown): asserts value is string {
 /** Reject malformed imports before they reach the simulation or overwrite a saved world. */
 export function validateWorld(value: unknown): AuthoredWorld {
   const data = record(value);
-  if (data.replaces !== undefined && data.replaces !== 'space' && data.replaces !== 'forest')
-    throw new Error('Invalid campaign replacement.');
   if (typeof data.key !== 'string' || !/^[\w-]{1,100}$/.test(data.key)) throw new Error('Invalid world key.');
   if (
     data.backgroundImage !== undefined &&
@@ -90,23 +71,10 @@ export function validateWorld(value: unknown): AuthoredWorld {
   if (world.music !== undefined && !isMusicTrack(world.music)) throw new Error('Unsupported music track.');
   if (world.weather !== undefined && !isWeather(world.weather)) throw new Error('Unsupported weather.');
   name(world.name);
-  const background = BACKGROUNDS.find((item) => item.id === world.id);
-  if (!background) throw new Error('Unsupported background. Choose Space or Forest.');
-  // The editor uses the existing arenas; do not accept arbitrary physics values from an import.
-  for (const field of ['field', 'grid'] as const) {
-    const values = record(world[field]);
-    for (const [key, expected] of Object.entries(background[field])) {
-      if (values[key] !== expected) throw new Error(`Unsupported ${field}.${key}. Use the existing arena settings.`);
-    }
-  }
-  for (const key of ['paddleWidth', 'paddleExpandedWidth', 'serveLift'] as const) {
-    if (world[key] !== background[key]) throw new Error(`Unsupported ${key}.`);
-  }
   if (data.playAreas !== undefined) {
     const areas = record(data.playAreas);
     if (areas.ball !== undefined) validateArea(areas.ball, true);
-    if (areas.paddle !== undefined)
-      findPaddleLane(validateArea(areas.paddle), background.paddleExpandedWidth, PADDLE.halfH);
+    if (areas.paddle !== undefined) findPaddleLane(validateArea(areas.paddle), PADDLE.expandedWidth, PADDLE.halfH);
   }
   if (data.hazards !== undefined) validateHazards(data.hazards);
   if (data.dustLine !== undefined) validateDustLine(data.dustLine);
@@ -115,20 +83,23 @@ export function validateWorld(value: unknown): AuthoredWorld {
   data.levels.forEach((value: unknown, i: number) => {
     const level = record(value);
     name(level.name);
-    if (typeof level.hue !== 'number' || !Number.isFinite(level.hue) || level.hue < 0 || level.hue > 1)
-      throw new Error(`Level ${i + 1}: hue must be between 0 and 1.`);
     if (!Array.isArray(level.rows) || !level.rows.every((row) => typeof row === 'string'))
       throw new Error(`Level ${i + 1}: invalid rows.`);
     parseLevel(level as unknown as LevelDef, i);
   });
   const result = structuredClone(data) as unknown as AuthoredWorld;
-  // Older files name a built-in wall shape ('rect' or a traced 'outline'); walls now always come from the drawn
-  // ball area, so those settings are dropped.
-  const legacy = result.world as WorldDef & { boundary?: unknown; outline?: unknown };
-  delete legacy.boundary;
-  delete legacy.outline;
-  // Bosses were removed from the game; older files may still carry one per level.
-  for (const level of result.levels) delete (level as LevelDef & { boss?: unknown }).boss;
+  // Settings older files may still carry, for things the game no longer has: built-in scenery templates (and
+  // the arena, grid and paddle sizes that came with them), built-in wall shapes, campaign slots that replaced
+  // a built-in world, per-level scenery hues and bosses. Every world now shares one arena and camera.
+  const legacyWorld = result.world as WorldDef & Record<string, unknown>;
+  for (const key of ['id', 'field', 'grid', 'paddleWidth', 'paddleExpandedWidth', 'serveLift', 'boundary', 'outline'])
+    delete legacyWorld[key];
+  delete (result as AuthoredWorld & { replaces?: unknown }).replaces;
+  for (const level of result.levels) {
+    const legacyLevel = level as LevelDef & { hue?: unknown; boss?: unknown };
+    delete legacyLevel.hue;
+    delete legacyLevel.boss;
+  }
   return result;
 }
 

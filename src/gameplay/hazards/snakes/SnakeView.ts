@@ -189,13 +189,11 @@ class SnakeMesh {
     geo.setAttribute('normal', this.normals);
     geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     this.body = new THREE.Mesh(geo, skin);
-    this.body.castShadow = true;
     this.body.frustumCulled = false;
 
     // Head: upper skull, a hinged lower jaw with a pink mouth lining, fangs, eyes and a forked tongue.
     const skull = new THREE.Mesh(headGeometry(0.5, 1.4, 0.6), skin);
     skull.position.x = 0.3;
-    skull.castShadow = true;
     const lining = new THREE.Mesh(headGeometry(0.4, 1.35, 0.12), mouth);
     lining.position.set(0.5, 0.04, 0);
     const jawBone = new THREE.Mesh(headGeometry(0.42, 1.4, 0.3), skin);

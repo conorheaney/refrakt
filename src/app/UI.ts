@@ -237,7 +237,7 @@ export class UI {
       this.pickCards.push(card);
     }
 
-    // Built-in and saved worlds are selectable in development and production.
+    // Project and saved worlds are selectable in development and production.
     const worldPick = this.ref('worldPick');
     this.campaign.worlds.forEach(({ def: world }, i) => {
       const button = document.createElement('button');
@@ -457,7 +457,7 @@ export class UI {
   }
 
   setLevel(index: number, _name: string): void {
-    // Every world shares the HUD; only the label names the world ("Forest Level 2").
+    // Every world shares the HUD; only the label names the world ("Atlantis Level 2").
     this.ref('levelLabel').textContent = `${this.campaign.worldDefAt(index).name} Level`;
     this.ref('levelNum').textContent = String(levelNumber(index));
   }

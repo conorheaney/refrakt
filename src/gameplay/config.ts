@@ -7,10 +7,11 @@ export const SIM = {
 } as const;
 
 /**
- * The arena's bounds in the XY plane (z = 0), in "world units". Each world has its own (see worlds.ts):
- * straight side walls at +/-halfWidth, a flat ceiling at `top`, joined by quarter-circle corners of
- * `cornerRadius`. The paddle rests on the floor (`floorY`), the barrier power-up lies on `shieldY`, and a
- * ball below `bottom` is lost.
+ * The arena's bounds in the XY plane (z = 0), in "world units", shared by every world. A world's walls are
+ * the ball area drawn in the editor (gameplay/arena/playAreas.ts); this is the default shape a new world
+ * starts from, and what the camera framing and effects use: straight side walls at +/-halfWidth, a flat
+ * ceiling at `top`, joined by quarter-circle corners of `cornerRadius`. The paddle rests on the floor
+ * (`floorY`), the barrier power-up lies on `shieldY`, and a ball below `bottom` is lost.
  */
 export interface FieldDef {
   readonly halfWidth: number;
@@ -26,19 +27,10 @@ export interface FieldDef {
 /** Depth of the back wall behind the play plane (scenery and brick wall glows). */
 export const WALL_Z = -6;
 
-/**
- * The Space arena. It is framed (see CameraRig) to run from just under the HUD down to the studio floor
- * near the bottom of the frame; the paddle rests on the floor (`floorY`) and the barrier power-up sits on
- * the floor itself.
- */
+/** The arena, framed (see CameraRig) to run from just under the HUD to near the bottom of the frame. */
 export const FIELD = {
   halfWidth: 14,
   top: 10.4,
-  /**
-   * Radius of the arch frame's two rounded top corners. The frame's inner
-   * surface is the physical boundary: straight sides at +/-halfWidth, a flat
-   * top at `top`, joined by quarter circles of this radius.
-   */
   cornerRadius: 3,
   bottom: -10.7,
   floorY: -9.8,
@@ -46,77 +38,7 @@ export const FIELD = {
   paddleReach: 14,
 } as const satisfies FieldDef;
 
-/** The forest view looks down at the arena at the Space camera's pitch, so bricks and paddle show the same faces. */
-const FOREST_PITCH = (14 * Math.PI) / 180;
-
-/**
- * How far below the paddle's centre (y = -9.25) its drawn bottom edge appears on screen in the forest
- * view, in screen units: the chrome slab's front bottom edge (0.55 below the centre, 1.07 in front of the
- * playfield plane; see PaddleView in gameplay/entities/EntityViews.ts) seen at the forest pitch.
- */
-const FOREST_PADDLE_DRAWN_DROP = 0.55 * Math.cos(FOREST_PITCH) + 1.07 * Math.sin(FOREST_PITCH);
-
-/** Image y of the ceiling: just under the branch's underside, whose lowest dips reach px 103-106. */
-const FOREST_CEILING_PX = 110;
-/** Image y of the paddle's drawn bottom edge: 100 px above the bottom of the 941 px painting. */
-const FOREST_PADDLE_BOTTOM_PX = 841;
-/**
- * Image px per screen unit (and per world unit along x). The screen distance from the ceiling (world
- * y = 10.4) to the paddle's drawn bottom is the 19.65 units down to the paddle's centre, foreshortened by
- * the pitch, plus the paddle's drawn drop.
- */
-const FOREST_PX_PER_UNIT =
-  (FOREST_PADDLE_BOTTOM_PX - FOREST_CEILING_PX) / ((10.4 + 9.25) * Math.cos(FOREST_PITCH) + FOREST_PADDLE_DRAWN_DROP);
-
-/**
- * The forest background painting (src/themes/scenery/forest/background.webp, 1672 x 941 px): a woodland with a
- * tall tree arch whose inside is the Forest arena. It fills the frame's height (see FOREST_VIEW in
- * gameplay/CameraRig.ts), drawn undistorted at a single scale chosen so the Space arena's height runs from
- * the underside of the branch (the ceiling, px y 110) down to the paddle, whose drawn bottom edge lands at
- * px y 841, 100 px above the bottom of the painting. The view is orthographic but pitched down like the
- * Space camera, so on screen a world unit along y is cos(pitch) of one along x. On the playfield plane
- * (z = 0), image px (px, py) <-> world (x, y): x = (px - centrePx) / pxPerUnit,
- * y = FIELD.top - (py - ceilingPx) / pxPerUnitY.
- */
-export const FOREST_ART = {
-  widthPx: 1672,
-  heightPx: 941,
-  /** Image x of world x = 0 (the image's centre column; the arch is symmetric about it to within 2 px). */
-  centrePx: 836,
-  /** Image y of the ceiling (world y = FIELD.top). */
-  ceilingPx: FOREST_CEILING_PX,
-  /** Image y of the paddle's drawn bottom edge at rest. */
-  paddleBottomPx: FOREST_PADDLE_BOTTOM_PX,
-  /** Screen units between the paddle's centre and its drawn bottom edge. */
-  paddleDrawnDrop: FOREST_PADDLE_DRAWN_DROP,
-  /** Downward tilt of the view, radians (the Space camera's). */
-  pitch: FOREST_PITCH,
-  /** Image px per world unit along y on the playfield plane. */
-  pxPerUnitY: FOREST_PX_PER_UNIT * Math.cos(FOREST_PITCH),
-  /** Image px per world unit along x, and per unit of screen distance. */
-  pxPerUnit: FOREST_PX_PER_UNIT,
-} as const;
-
-/**
- * The Forest arena: the inside of the painted tree arch, at the same heights as the Space arena (so the
- * Space bricks, ball and paddle and every level layout fit exactly as they do there) but wider. In image
- * px: walls at x 268 and 1404 (the trunks' inner edges run at 259-268 and 1406-1411 from the corners down
- * to about y 600), ceiling at y 110, top corners rounded with a 170 px radius to follow the bend where
- * trunk meets branch, floor (barrier) at y 831 and the ball is lost below y 864. The roots flare in
- * steeply below about y 650 (to x 419 and 1277 at y 840); the paddle travels the full width between the
- * walls and is drawn in front of the roots, so it can reach every ball.
- */
-export const FOREST_FIELD = {
-  halfWidth: 568 / FOREST_ART.pxPerUnit,
-  top: FIELD.top,
-  cornerRadius: 170 / FOREST_ART.pxPerUnit,
-  bottom: FIELD.bottom,
-  floorY: FIELD.floorY,
-  shieldY: FIELD.shieldY,
-  paddleReach: 568 / FOREST_ART.pxPerUnit,
-} as const satisfies FieldDef;
-
-/** Brick cell layout. Every world shares the same cols x rows; cell size and placement may differ. */
+/** Brick cell layout, shared by every world. */
 export interface GridDef {
   readonly cols: number;
   readonly rows: number;

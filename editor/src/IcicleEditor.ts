@@ -1,4 +1,5 @@
 import type { AuthoredWorld } from '../../src/content/authoredWorlds';
+import { GRID } from '../../src/gameplay/config';
 import { ICICLE_Z } from '../../src/gameplay/hazards/icicles/IcicleView';
 import {
   ICICLE_AREA_LIMITS,
@@ -351,7 +352,7 @@ export class IcicleEditor {
   /** Where the highest bricks in any level start: icicle tips should stay above this. */
   private brickTop(): number | null {
     const data = this.getData();
-    const grid = data.world.grid;
+    const grid = GRID;
     let row = Infinity;
     for (const level of data.levels)
       level.rows.forEach((r, i) => {
@@ -363,7 +364,7 @@ export class IcicleEditor {
   private drawGuide(project: (p: Point) => Point): void {
     const floor = this.brickTop();
     if (floor === null) return;
-    const grid = this.getData().world.grid;
+    const grid = GRID;
     const half = (grid.cols * grid.cellW) / 2 + 2;
     const a = project({ x: -half, y: floor });
     const b = project({ x: half, y: floor });

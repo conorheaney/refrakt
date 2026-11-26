@@ -115,10 +115,10 @@ export class World implements WorldContext {
   }
   /** Lane spans describe paddle centres; add its half-width to recover the area edges. */
   get shieldLeft(): number {
-    return this.paddleSpan[0] - this.worldDefValue.paddleExpandedWidth / 2;
+    return this.paddleSpan[0] - PADDLE.expandedWidth / 2;
   }
   get shieldRight(): number {
-    return this.paddleSpan[1] + this.worldDefValue.paddleExpandedWidth / 2;
+    return this.paddleSpan[1] + PADDLE.expandedWidth / 2;
   }
   /** Below this, falling power-ups have left the arena (under both the drain and the paddle). */
   get lowerLimit(): number {
@@ -135,10 +135,10 @@ export class World implements WorldContext {
   /** Attract mode: infinite lives, auto-launch, no score bonuses. */
   demo = false;
 
-  /** The current world's template arena (see WorldDef): camera framing and effects. The walls are `boundary`. */
-  field: FieldDef = FIELD;
-  /** Brick cell size and placement for the current level's world (see WorldDef). */
-  grid: GridDef = GRID;
+  /** The arena every world shares, for camera framing and effects. The walls are `boundary`. */
+  readonly field: FieldDef = FIELD;
+  /** Brick cell size and placement (every world shares it). */
+  readonly grid: GridDef = GRID;
   /** What the ball bounces off: the current world's drawn ball area (gameplay/arena/boundary.ts). */
   boundary: PolygonBoundary;
   private boundaryArea: BallArea;
@@ -150,7 +150,7 @@ export class World implements WorldContext {
   private spansWidth = Number.NaN;
   /** The worlds and levels this game plays (see setCampaign). */
   private campaignValue: Campaign;
-  /** The current level's world: arena, brick grid, paddle size and serve gap. */
+  /** The current level's world: its name, soundtrack, weather and block style. */
   private worldDefValue: WorldDef;
   private respawnTimer = 0;
 
@@ -176,7 +176,7 @@ export class World implements WorldContext {
     this.campaignValue = campaign;
   }
 
-  /** The current level's world: arena, brick grid, paddle size and serve gap. */
+  /** The current level's world: its name, soundtrack, weather and block style. */
   get worldDef(): WorldDef {
     return this.worldDefValue;
   }
@@ -238,14 +238,14 @@ export class World implements WorldContext {
     const def = campaign.level(levelIndex);
     const entry = campaign.worldAt(levelIndex);
     this.levelIndex = levelIndex;
-    this.setWorldDef(entry.def);
+    this.worldDefValue = entry.def;
     const areas = entry.playAreas;
     if (areas.ball !== this.boundaryArea) {
       this.boundaryArea = areas.ball;
       this.boundary = new PolygonBoundary(areas.ball);
     }
     this.paddleContour = areaContour(areas.paddle);
-    const lane = findPaddleLane(areas.paddle, this.worldDefValue.paddleExpandedWidth, PADDLE.halfH);
+    const lane = findPaddleLane(areas.paddle, PADDLE.expandedWidth, PADDLE.halfH);
     this.paddle.y = lane.y;
     // Keep movement in one connected lane, never teleport across holes in a concave polygon.
     this.paddleSpan = lane.spans.reduce((best, span) => (span[1] - span[0] > best[1] - best[0] ? span : best));
@@ -260,16 +260,6 @@ export class World implements WorldContext {
     this.phase = 'serve';
     this.ballPhysics.serve();
     this.events.emit('levelLoaded', { index: levelIndex, name: def.name });
-  }
-
-  /** Adopts a world's template arena, brick grid and paddle size (bricks are re-placed; the paddle snaps to its width). */
-  private setWorldDef(def: WorldDef): void {
-    if (def === this.worldDefValue && def.grid === this.grid && def.field === this.field) return;
-    this.worldDefValue = def;
-    this.field = def.field;
-    this.grid = def.grid;
-    this.brickField.layout(def.grid);
-    this.paddle.width = def.paddleWidth;
   }
 
   // --------------------------------------------------------------------- step
@@ -311,9 +301,7 @@ export class World implements WorldContext {
   private updatePaddle(dt: number, input: StepInput): void {
     const p = this.paddle;
     p.px = p.x;
-    const targetWidth = this.powerUps.grants('widePaddle')
-      ? this.worldDefValue.paddleExpandedWidth
-      : this.worldDefValue.paddleWidth;
+    const targetWidth = this.powerUps.grants('widePaddle') ? PADDLE.expandedWidth : PADDLE.width;
     p.width += (targetWidth - p.width) * Math.min(1, dt * 10);
 
     if (p.tilt !== 0)
