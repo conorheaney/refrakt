@@ -164,8 +164,13 @@ try {
   assert.equal(await evaluate('localStorage.getItem("refrakt.authored-worlds")'), null);
   const backup = path.join(artifacts, 'world.json');
   await writeFile(backup, JSON.stringify(saved));
+  // Mark the old page: Page.reload returns before it is torn down, and its library would pass the check below.
+  await evaluate('window.__beforeReload = true');
   await send('Page.reload');
-  await until(() => evaluate('document.querySelectorAll("#library option").length === 2'), 'saved library reload');
+  await until(
+    () => evaluate('!window.__beforeReload && document.querySelectorAll("#library option").length === 2'),
+    'saved library reload',
+  );
   await evaluate('const s=document.querySelector("#library");s.selectedIndex=1;s.dispatchEvent(new Event("change"))');
   assert.equal(await evaluate('document.querySelector("#world-name").value'), 'Browser smoke world');
   // Scarabs (shared path tool): draw a nest (entry point then one path point, finished by clicking the last point
