@@ -231,6 +231,7 @@ export class AudioDirector {
     });
 
     events.on('powerUpCollected', ({ x }) => {
+      if (!this.enabled) return;
       const t = audio.context?.currentTime ?? 0;
       [0, 4, 7, 12].forEach((s, i) =>
         audio.tone({
@@ -247,6 +248,7 @@ export class AudioDirector {
 
     // A timed power running out: a soft tick each second of the warning, rising and getting more insistent.
     events.on('powerUpWarning', ({ left, x }) => {
+      if (!this.enabled) return;
       const t = audio.context?.currentTime ?? 0;
       const urgency = POWER_WARN - left;
       const f = 1500 + urgency * 260;
@@ -256,6 +258,7 @@ export class AudioDirector {
 
     // ...and gone: a short power-down.
     events.on('powerUpExpired', ({ x }) => {
+      if (!this.enabled) return;
       const t = audio.context?.currentTime ?? 0;
       audio.tone({ freq: 1100, endFreq: 180, dur: 0.38, vol: 0.09, type: 'triangle', pan: panOf(x), when: t });
       audio.tone({
@@ -280,6 +283,7 @@ export class AudioDirector {
     });
 
     events.on('shieldHit', ({ x, charges }) => {
+      if (!this.enabled) return;
       const t = audio.context?.currentTime ?? 0;
       const pan = panOf(x);
       // The pulse: a bright rising ping, then the spent strand powering down (lower and longer on the last one).
@@ -304,11 +308,13 @@ export class AudioDirector {
     });
 
     events.on('lifeLost', () => {
+      if (!this.enabled) return;
       audio.tone({ freq: 420, endFreq: 50, dur: 0.8, vol: 0.35, type: 'sawtooth', filter: 1600 });
       audio.noise({ dur: 0.5, vol: 0.3, filter: 900, endFilter: 100 });
     });
 
     events.on('gameOver', () => {
+      if (!this.enabled) return;
       const t = (audio.context?.currentTime ?? 0) + 0.5;
       [7, 3, 0, -5].forEach((s, i) =>
         audio.tone({ freq: 220 * Math.pow(2, s / 12), dur: 0.5, vol: 0.2, type: 'triangle', when: t + i * 0.28 }),
@@ -316,6 +322,7 @@ export class AudioDirector {
     });
 
     events.on('levelCleared', () => {
+      if (!this.enabled) return;
       const t = audio.context?.currentTime ?? 0;
       [0, 4, 7, 12, 16, 19, 24].forEach((s, i) =>
         audio.tone({
@@ -336,6 +343,7 @@ export class AudioDirector {
     });
 
     events.on('bossStage', () => {
+      if (!this.enabled) return;
       audio.tone({ freq: 80, endFreq: 320, dur: 0.7, vol: 0.4, type: 'sawtooth', filter: 1400 });
       audio.noise({ dur: 0.7, vol: 0.3, filter: 400, endFilter: 4000 });
     });
@@ -346,6 +354,7 @@ export class AudioDirector {
     });
 
     events.on('bossDefeated', () => {
+      if (!this.enabled) return;
       const t = audio.context?.currentTime ?? 0;
       for (let i = 0; i < 7; i++) {
         audio.noise({
@@ -363,6 +372,7 @@ export class AudioDirector {
     });
 
     events.on('paddleStunned', ({ x }) => {
+      if (!this.enabled) return;
       audio.tone({ freq: 160, endFreq: 60, dur: 0.3, vol: 0.35, type: 'square', filter: 1000, pan: panOf(x) });
       audio.noise({ dur: 0.2, vol: 0.25, filter: 2500, pan: panOf(x) });
     });
@@ -462,6 +472,7 @@ export class AudioDirector {
       }
     });
     events.on('paddleStruck', ({ x }) => {
+      if (!this.enabled) return;
       const pan = panOf(x);
       // Ice smashing on the paddle, a dull thud, and a short low wobble as it rocks.
       audio.noise({ dur: 0.25, vol: 0.28, filterType: 'highpass', filter: 3000, pan });
@@ -598,6 +609,7 @@ export class AudioDirector {
     });
 
     events.on('paddleBitten', ({ x }) => {
+      if (!this.enabled) return;
       const pan = panOf(x);
       if (audio.sample('snakeBite', { vol: 0.7, pan, rate: 0.85 })) {
         // A sour, sinking tone under the bite.

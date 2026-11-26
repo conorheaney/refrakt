@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (tab, pause, music and rendering robustness)
+**Last updated:** 2026-11-26 (view event bus, AudioDirector tests)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -21,7 +21,7 @@ are given below where they matter.
 | S3 | No common hazard interface | **Done** | `e926974`: `HazardSystem`; `World.hazards` renamed `World.snakes` |
 | S4 | Two implementations of ball vs polygon arena | **Done** | `bca75b0`: one `PolygonBoundary` (`src/gameplay/arena/boundary.ts`); every world uses its drawn areas, no fallbacks |
 | S5 | `Game` mixes composition root and game-feel logic | **Done** | Pointer control moved into `PointerDriver` (`src/gameplay/PointerDriver.ts`); `tests/smoothness.test.ts` now drives the real class instead of a copy. Then the states, timing, steering and gameplay-event handling moved into `GameFlow` (`src/app/GameFlow.ts`), which reaches the view, HUD, sound, input and storage only through small interfaces; `Game` is now just the composition root and frame loop. See the `PaddleDriver` follow-up below |
-| S6 | Ad-hoc view-to-audio callbacks | Open | |
+| S6 | Ad-hoc view-to-audio callbacks | **Done** | `8adaaac`: typed `ViewEvents` on `GameView.events` (`src/app/viewEvents.ts`); `AudioDirector` subscribes itself. Per-frame events reuse their payloads |
 | S7 | Launch options parsed in many places | **Done** | `parseLaunchOptions` (`src/app/launchOptions.ts`) reads the URL once in `main.ts`; `Game` and `GameView` take the options |
 | S8 | Per-world arena settings ignored | **Done** | `bca75b0`: walls and paddle lane from the drawn areas. Then: flying scarabs, debris, floor bursts, confetti and popups use the drawn area and paddle lane. Tomb dust: `44b0eec` wrongly moved its origin from the painted lintel to 1.15 below the ball area's top (1.4 units too low in Pharoughs Tomb); it now pours from an explicit dust line drawn in the editor, and Pharoughs Tomb's line restores the lintel height. What still reads the template arena is listed under follow-ups |
 | P1 | Drawn ball area slow and allocating | **Done** | `bca75b0`: see measurements below |
@@ -42,7 +42,7 @@ are given below where they matter.
 | Q7 | Pause and visibility gaps | **Done** | A hidden tab suspends the whole audio context (ambience loops included) and resumes it when shown. The level transition can be paused, resuming its countdown where it stopped. Music is scheduled 350 ms ahead (was 140 ms) to ride out main-thread stalls. Paused, the ambience ducks to 30%. Kept: the level banner's timer waits while paused, so a banner isn't lost behind the pause screen |
 | Q8 | Comment contradicts the Refrakt hit-stop | **Fixed** | `f61fa46`: the freeze is kept, the paddle no longer lurches afterwards, and the comment is corrected |
 | Q9 | No formatter or linter | **Done** | `978acd7`: Prettier. Then oxlint with type-aware rules (`no-floating-promises`, `no-misused-promises`): `npm run lint`. `typescript-eslint` doesn't support TypeScript 7 yet; oxlint's type checker (`oxlint-tsgolint`) is built on it |
-| Q10 | `Game`, `UI`, `AudioDirector` untested | **Partly done** | `Game`'s flow is tested through `GameFlow` (`tests/gameFlow.test.ts`, 15 tests with fakes: menu demo, picker, pause, transitions, victory, game over, editor test play, world choice, and the Q4/Q6/Q8 steering behaviours, each confirmed to fail when its fix is undone). `UI` (DOM) and `AudioDirector` remain untested |
+| Q10 | `Game`, `UI`, `AudioDirector` untested | **Done (except `UI`)** | `Game`'s flow through `GameFlow` (`tests/gameFlow.test.ts`) and `AudioDirector` (`tests/audioDirector.test.ts`, with a recording fake engine: each gameplay moment's sound, silence in the menu demo, the rate limit, the Refrakt hum, pause ducking, weather loops, thunder). Writing these found 12 sound handlers that played in the menu's attract mode, now fixed. `UI` is DOM-only and stays untested (it would need a simulated browser) |
 | Q11 | Tooling: no CI, unchecked indexing, slow tests | **Closed** | **CI deferred by decision**: checks run locally instead (formatting, lint and type-check after each change; tests, world-store checks, build and the editor browser test before major commits). A plan is ready if wanted: one GitHub Actions workflow on Ubuntu/Node 24, with the browser test as a parallel job. **Slow tests: no longer needed**: the suite now takes ~17 s, down from 49 s, after the collision work. **Strict indexing** (`noUncheckedIndexedAccess`): **dropped by decision**. Enabling it raises 1,004 type errors, nearly all array reads in loops whose bounds already guarantee the index, so the fixes would mostly be `!` noise in hot code. The lookups that use outside numbers are already checked at runtime: `Campaign.level()` throws, `worldAt` clamps, `?level=` is range-checked and world files are validated on load |
 | Q12 | Editor undo can use a lot of memory | Open | |
 
@@ -91,11 +91,10 @@ wider `PaddleDriver` owning all three (pointer, keyboard, autopilot) would put "
 place and let tests drive the paddle through one object. It was kept narrow for the S5 commit; reconsider once
 the `Game` state-machine tests (Q10) exist to prove the merge changes nothing.
 
-**Intermittent editor browser-test failure.** `editor/browser-smoke.mjs` has failed twice in about 14 runs
-with an `assert.equal` mismatch (after `8fe4c35` and again after the `GameFlow` extraction), then passed on
-every rerun, including 6 in a row; the failing assertion couldn't be caught. The test doesn't touch the code
-those commits changed, so it looks like a timing race in the test. If it recurs, run it in a loop
-saving each output (`.tmp/smoke-loop-*.txt`) to find which assertion and when.
+**Intermittent editor browser-test failure: solved (`d73a541`).** It failed about 1 run in 7 at the
+library step after a reload. Caught on the next loop: `Page.reload` returns before the old page is torn down,
+so the wait for the library could pass on the old page. The test now waits for the reload properly; 8 runs in a
+row passed after.
 
 **Other notes**
 - Older browser drafts without areas get the editor's starting shapes when opened. That marks them as changed,
@@ -141,8 +140,7 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 Review items first (decided 2026-11-26), then the `PaddleDriver` idea.
 
-1. S6: a typed view-to-audio event bus (small), then test `AudioDirector`'s event-to-sound mapping (the rest of Q10).
-2. Q12: keep the background image out of the editor's undo history (small).
-3. P6 and P7: per-world asset loading, compressed audio, validating each world once, a lighter floor reflection (medium).
-4. P4 and P8: only if profiling shows them.
-5. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).
+1. Q12: keep the background image out of the editor's undo history (small).
+2. P6 and P7: per-world asset loading, compressed audio, validating each world once, a lighter floor reflection (medium).
+3. P4 and P8: only if profiling shows them.
+4. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).
