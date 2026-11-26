@@ -45,7 +45,7 @@ input[type=range] { accent-color: #a5e7de; padding: 0; }
 .layer-panel label:has(input[type=range]) { flex-direction: row; flex-wrap: wrap; align-items: center; }
 .layer-panel details { margin-top: 8px; }
 .layer-panel summary { cursor: pointer; font-size: 11px; color: #a5e7de; }
-body:not([data-mode=level]) #level-tools,body:not([data-mode=blocks]) #block-tools,body:not([data-mode=boss]) #boss-tools { display: none; }
+body:not([data-mode=level]) #level-tools,body:not([data-mode=blocks]) #block-tools { display: none; }
 #snake-reach-value { color: #ffe08a; }
 #icicle-tools label span { color: #a8e4ff; }
 #arena { position: absolute; overflow: hidden; }
@@ -70,8 +70,8 @@ body:not([data-mode=level]) #level-tools,body:not([data-mode=blocks]) #block-too
 .cell[data-symbol='G']::before { border: 1px dashed #c8bcff; }
 .cell:hover,.cell:focus-visible { background: #a5e7de29; outline: 1px solid #c0fff4; outline-offset: 0; }
 #areas { pointer-events: none; overflow: visible; }
-/* Every layer that edits paths takes the pointer; blocks, level and boss leave it to the brick grid and panels. */
-body:not([data-tool=blocks]):not([data-tool=level]):not([data-tool=boss]) #areas { pointer-events: auto; touch-action: none; }
+/* Every layer that edits paths takes the pointer; blocks and level leave it to the brick grid and panels. */
+body:not([data-tool=blocks]):not([data-tool=level]) #areas { pointer-events: auto; touch-action: none; }
 body[data-path-drawing=true] #areas { cursor: crosshair; }
 /* Paths (editor/src/PathTool.ts): every tool's lines and outlines, coloured by their group (color). */
 .path { pointer-events: none; }

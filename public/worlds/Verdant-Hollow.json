@@ -107,20 +107,7 @@
         "3.2.2.2.2.2.3",
         ".1.1.1.1.1.1.",
         "2.1.2.1.2.1.2"
-      ],
-      "boss": {
-        "name": "THE ELDER OAK",
-        "hp": 28,
-        "radius": 1.8,
-        "y": 7.6,
-        "sway": 9,
-        "swaySpeed": 0.65,
-        "fireInterval": 2.7,
-        "volley": 1,
-        "shotSpeed": 7.5,
-        "summonInterval": 12,
-        "points": 8000
-      }
+      ]
     },
     {
       "name": "WILL-O'-WISP",
@@ -202,20 +189,7 @@
         "3.2.2.2.2.2.3",
         ".G.1.G.1.G.1.",
         "1.2.1.2.1.2.1"
-      ],
-      "boss": {
-        "name": "HEART OF THE FOREST",
-        "hp": 44,
-        "radius": 1.9,
-        "y": 7.7,
-        "sway": 9.5,
-        "swaySpeed": 0.8,
-        "fireInterval": 2.3,
-        "volley": 2,
-        "shotSpeed": 8.5,
-        "summonInterval": 8,
-        "points": 20000
-      }
+      ]
     }
   ],
   "playAreas": {

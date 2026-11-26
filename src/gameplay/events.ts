@@ -2,7 +2,7 @@ import type { Brick, DamageCause, PowerUpKind } from './types';
 
 /** Everything the simulation announces. Views, audio and flow control subscribe; the sim never calls them. */
 export interface GameEvents {
-  levelLoaded: { index: number; name: string; boss: boolean };
+  levelLoaded: { index: number; name: string };
   ballLaunched: { x: number; y: number };
   ballWall: { x: number; y: number; nx: number; ny: number };
   ballPaddle: { x: number; y: number; offset: number; caught: boolean };
@@ -30,11 +30,6 @@ export interface GameEvents {
   lifeLost: { lives: number };
   gameOver: { score: number };
   levelCleared: { index: number; bonus: number };
-  bossHit: { x: number; y: number; hp: number; maxHp: number };
-  bossStage: { stage: number };
-  bossFired: { x: number; y: number };
-  bossDefeated: { x: number; y: number; points: number };
-  paddleStunned: { x: number };
   /** A wall snake starts its warning; (x, y) is its den. */
   snakeWarn: { x: number; y: number };
   snakeStrike: { x: number; y: number };

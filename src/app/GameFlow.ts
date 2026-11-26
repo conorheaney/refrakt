@@ -296,12 +296,9 @@ export class GameFlow {
           this.demoTimer += dt;
           if (this.demoTimer > 2.2) {
             this.demoTimer = 0;
-            // Cycle through the picked world's ordinary levels (bosses are skipped).
+            // Cycle through the picked world's levels.
             const first = this.startWorld * STAGES_PER_WORLD;
-            for (let n = 0; n < STAGES_PER_WORLD; n++) {
-              this.demoLevel = first + ((this.demoLevel - first + 1) % STAGES_PER_WORLD);
-              if (!this.campaign.level(this.demoLevel).boss) break;
-            }
+            this.demoLevel = first + ((this.demoLevel - first + 1) % STAGES_PER_WORLD);
             world.loadLevel(this.demoLevel);
           }
         }
@@ -355,8 +352,7 @@ export class GameFlow {
           audio.setMusicIntensity(0.3);
           return;
         }
-        const bossLevel = this.campaign.level(world.levelIndex).boss !== undefined;
-        this.transitionTimer = bossLevel ? 4 : 2.6;
+        this.transitionTimer = 2.6;
         // (No slow motion here: it ran the whole sim, paddle included, at 30% speed, so the paddle felt
         // stuck after every clear.)
         audio.setMusicIntensity(0.3);
@@ -431,8 +427,7 @@ export class GameFlow {
   private showLevelBanner(): void {
     const index = this.world.levelIndex;
     const def = this.campaign.level(index);
-    if (def.boss) this.ui.banner('WARNING', def.name, 2.4);
-    else this.ui.banner(this.campaign.stageLabel(index).toUpperCase(), def.name, 1.9);
+    this.ui.banner(this.campaign.stageLabel(index).toUpperCase(), def.name, 1.9);
   }
 
   private resume(): void {
@@ -446,11 +441,11 @@ export class GameFlow {
     const { world, ui } = this;
     const ev = world.events;
 
-    ev.on('levelLoaded', ({ index, name, boss }) => {
+    ev.on('levelLoaded', ({ index, name }) => {
       if (world.demo) return;
       ui.setLevel(index, name);
       this.audio.setMusicTrack(this.campaign.musicTrackOf(index));
-      this.audio.setMusicMode(boss ? 'boss' : 'game');
+      this.audio.setMusicMode('game');
       // The level banner is shown once the power-up picker is confirmed (see showLevelBanner).
     });
 
@@ -470,16 +465,6 @@ export class GameFlow {
 
     // No full-screen flashes, and hit-stop freezes only for Refrakt's light show (refraktStarted below): a
     // freeze stops the paddle while the pointer keeps moving (simulate() holds its target for that reason).
-    ev.on('bossStage', ({ stage }) => {
-      if (world.demo) return;
-      ui.banner(stage === 2 ? 'CRITICAL' : 'ENRAGED', world.boss.def?.name ?? '', 1.4);
-    });
-
-    ev.on('bossDefeated', ({ x, y, points }) => {
-      if (world.demo) return;
-      this.popup(`+${points.toLocaleString()}`, x, y, 0xffd23b);
-    });
-
     ev.on('comboChanged', ({ combo, multiplier }) => {
       if (world.demo || combo === 0 || multiplier >= PLAYER.maxMultiplier + 1) return;
       if (combo % PLAYER.comboStep === 0 && combo / PLAYER.comboStep < PLAYER.maxMultiplier) {
@@ -525,7 +510,6 @@ export class GameFlow {
 
   private musicIntensity(): number {
     const world = this.world;
-    if (world.boss.active) return 0.78 + (1 - world.boss.hp / world.boss.maxHp) * 0.22;
     const progress = world.bricksTotal > 0 ? 1 - world.bricksRemaining / world.bricksTotal : 0;
     return 0.36 + Math.min(0.3, world.combo * 0.02) + progress * 0.26;
   }

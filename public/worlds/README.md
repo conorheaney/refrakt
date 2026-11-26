@@ -13,7 +13,7 @@ The files with `"replaces": "space"` and `"replaces": "forest"` (Outer Space and
 `Verdant-Hollow.json`) form the main campaign: they come first, in that order,
 and a run started there plays through both. This field is only honored for
 project files. `Verdant-Hollow.json` keeps the original Forest scenery, ten
-formations and two bosses under the name **The Verdant Hollow**; its background
+formations under the name **The Verdant Hollow**; its background
 uses the game's bundled Forest artwork, so no embedded image is needed.
 
 `Frozen-Sanctuary.json` adds a new ten-level campaign using its exported artwork

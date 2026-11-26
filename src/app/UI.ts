@@ -64,7 +64,6 @@ const TEMPLATE = /* html */ `
     <div class="readout frametime" data-ref="frametime" title="Frame time over the last half second: average / worst frame interval, and main-thread work per frame (ms)"><label>Frame ms</label><b data-ref="frameMs">--</b><small data-ref="frameCpu">cpu --</small></div>
     <button class="pause-btn" data-action="pause" aria-label="Pause"><i></i><i></i></button>
   </div>
-  <div class="boss" data-ref="boss"><label><span>Target</span> <b data-ref="bossName"></b></label><div class="bar"><i data-ref="bossFill"></i></div></div>
 </div>
 <div class="popups" data-ref="popups"></div>
 <div class="banner" data-ref="banner"><h2 data-ref="bannerTitle"></h2><p data-ref="bannerSub"></p></div>
@@ -197,7 +196,7 @@ export class UI {
   private loadoutKeyTime = -1e9;
 
   // Last rendered HUD values, to avoid redundant DOM writes.
-  private shown = { score: -1, best: -1, lives: -1, slots: -1, mult: -1, boss: -1, bossOn: false };
+  private shown = { score: -1, best: -1, lives: -1, slots: -1, mult: -1 };
 
   constructor(
     private readonly root: HTMLElement,
@@ -556,17 +555,6 @@ export class UI {
       }
       s.mult = world.multiplier;
       combo.classList.toggle('idle', world.multiplier <= 1);
-    }
-
-    const boss = world.boss;
-    if (boss.active !== s.bossOn) {
-      s.bossOn = boss.active;
-      this.ref('boss').classList.toggle('visible', boss.active);
-      if (boss.def) this.ref('bossName').textContent = boss.def.name;
-    }
-    if (boss.active && boss.hp !== s.boss) {
-      s.boss = boss.hp;
-      this.ref('bossFill').style.transform = `scaleX(${Math.max(0, boss.hp / boss.maxHp)})`;
     }
   }
 }

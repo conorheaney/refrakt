@@ -12,14 +12,12 @@ import { CameraRig } from '../gameplay/CameraRig';
 import { DebrisSystem } from '../gameplay/bricks/DebrisSystem';
 import {
   BallsView,
-  BossView,
   DropsView,
   ImpactFlashPool,
   LasersView,
   PaddleView,
   ShieldView,
   ShockwavePool,
-  ShotsView,
 } from '../gameplay/entities/EntityViews';
 import { Environment } from '../themes/scenery/Environment';
 import {
@@ -65,8 +63,6 @@ export class GameView {
   private readonly paddle: PaddleView;
   private readonly drops: DropsView;
   private readonly lasers: LasersView;
-  private readonly shots: ShotsView;
-  private readonly boss: BossView;
   private readonly shield: ShieldView;
   private readonly snakes: SnakesView;
   private readonly venomGreen = new THREE.Color(0x6dff3a);
@@ -134,8 +130,6 @@ export class GameView {
     this.paddle = new PaddleView(scene);
     this.drops = new DropsView(scene, DROP.capacity, glow);
     this.lasers = new LasersView(scene);
-    this.shots = new ShotsView(scene, glow);
-    this.boss = new BossView(scene);
     this.shield = new ShieldView(scene);
     this.snakes = new SnakesView(scene);
     this.icicles = new IcicleView(scene);
@@ -156,7 +150,7 @@ export class GameView {
 
   /**
    * Compiles every material up front, including pooled objects that start
-   * hidden (drops, shards, flashes, boss), so first use never hitches.
+   * hidden (drops, shards, flashes), so first use never hitches.
    */
   prewarm(gl: THREE.WebGLRenderer): void {
     const hidden: THREE.Object3D[] = [];
@@ -316,7 +310,7 @@ export class GameView {
     const tmp = this.tmp;
     const hitPoint = new THREE.Vector2();
 
-    ev.on('levelLoaded', ({ index, boss }) => {
+    ev.on('levelLoaded', ({ index }) => {
       this.refrakt.clear();
       const campaign = world.campaign;
       const def = campaign.worldDefAt(index);
@@ -356,7 +350,7 @@ export class GameView {
         );
         this.scene.add(this.backdropOutline);
       }
-      this.env.setTheme(campaign.level(index).hue, boss, changed);
+      this.env.setTheme(campaign.level(index).hue, changed);
       this.celebrate = 0;
     });
 
@@ -489,33 +483,6 @@ export class GameView {
 
     ev.on('laserHit', ({ x, y }) => {
       p.sparks(x, y, 0, -1, this.spark, 3, 6);
-    });
-
-    ev.on('bossHit', ({ x, y }) => {
-      p.sparks(x, y, x - world.boss.x, y - world.boss.y, this.warmWhite, 6, 9);
-      this.flashes.spawn(x, y, 1.8, 0.35, 0.35);
-    });
-
-    ev.on('bossStage', () => {
-      this.shockwaves.spawn(world.boss.x, world.boss.y, this.red, 5, 0.9);
-      p.burst(world.boss.x, world.boss.y, this.red, 30, 12, 0.5, 0.8, 1);
-      this.impact(0.2);
-    });
-
-    ev.on('bossFired', ({ x, y }) => {
-      p.burst(x, y, tmp.set(0xff3d5e), 4, 4, 0.3, 0.3, 1);
-    });
-
-    ev.on('bossDefeated', ({ x, y }) => {
-      this.boss.startDeath();
-      this.shockwaves.spawn(x, y, this.white, 7, 1.2);
-      this.flashes.spawn(x, y, 4, 0.9, 0.5);
-      this.impact(0.3);
-    });
-
-    ev.on('paddleStunned', ({ x }) => {
-      p.burst(x, world.paddle.y, this.red, 12, 7, 0.4, 0.45, 1);
-      this.impact(0.12);
     });
 
     ev.on('paddleBitten', ({ x, y }) => {
@@ -698,8 +665,6 @@ export class GameView {
     this.paddle.update(world, alpha, realDt);
     this.drops.update(world, alpha);
     this.lasers.update(world, alpha);
-    this.shots.update(world, alpha, simDt, this.particles);
-    this.boss.update(world, alpha, simDt, this.particles);
     this.shield.update(world, realDt);
     this.snakes.update(world, alpha);
     this.icicles.update(world, alpha);

@@ -25,7 +25,6 @@ void main() {
 
 const FRAGMENT = /* glsl */ `
 uniform sampler2D map;
-uniform vec3 uTint;
 uniform float uExposure;
 uniform float uVignette;
 uniform float uMaxLuma;
@@ -54,7 +53,7 @@ vec3 inverseFit(vec3 y) {
 }
 
 void main() {
-  vec3 painted = texture2D(map, vUv).rgb * uTint;
+  vec3 painted = texture2D(map, vUv).rgb;
   vec3 hdr = inverse(ACES_IN) * inverseFit(inverse(ACES_OUT) * painted);
   // Saturated colours need slightly negative components here (outside sRGB, inside ACES's input gamut);
   // the half-float scene buffer keeps them, and the tone mapper turns them back into the painted colour.
@@ -75,8 +74,6 @@ void main() {
 export class ForestEnvironment {
   readonly group = new THREE.Group();
 
-  private readonly tint = { value: new THREE.Color(1, 1, 1) };
-  private readonly tintGoal = new THREE.Color(1, 1, 1);
   private readonly texture: THREE.Texture;
 
   constructor(scene: THREE.Scene, assets: ForestAssets) {
@@ -84,7 +81,6 @@ export class ForestEnvironment {
     const material = new THREE.ShaderMaterial({
       uniforms: {
         map: { value: assets.background },
-        uTint: this.tint,
         uExposure: { value: TONE_EXPOSURE },
         uVignette: { value: SCREEN_VIGNETTE },
         uMaxLuma: { value: BLOOM_THRESHOLD * 0.98 },
@@ -117,15 +113,5 @@ export class ForestEnvironment {
   /** Uploads the background now, so switching to this world mid-run does not hitch. */
   prewarm(gl: THREE.WebGLRenderer): void {
     gl.initTexture(this.texture);
-  }
-
-  /** Boss levels dim and warm the woodland slightly. */
-  setMood(boss: boolean, immediate = false): void {
-    this.tintGoal.setRGB(boss ? 0.86 : 1, boss ? 0.72 : 1, boss ? 0.7 : 1);
-    if (immediate) this.tint.value.copy(this.tintGoal);
-  }
-
-  update(dt: number): void {
-    this.tint.value.lerp(this.tintGoal, 1 - Math.exp(-2 * dt));
   }
 }

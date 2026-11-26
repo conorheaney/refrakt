@@ -19,9 +19,9 @@ import type { EditorScene } from './Scene';
 
 /**
  * The editor's layers: one thing worked on at a time, with only its panel and overlays showing. 'ball' and
- * 'paddle' are edited here; the rest belong to their own editors (main.ts for level, blocks and boss).
+ * 'paddle' are edited here; the rest belong to their own editors (main.ts for level and blocks).
  */
-export const LAYERS = ['level', 'blocks', 'boss', 'ball', 'paddle', 'snakes', 'icicles', 'scarabs', 'dust'] as const;
+export const LAYERS = ['level', 'blocks', 'ball', 'paddle', 'snakes', 'icicles', 'scarabs', 'dust'] as const;
 export type Mode = (typeof LAYERS)[number];
 const drawsArea = (mode: Mode): mode is 'ball' | 'paddle' => mode === 'ball' || mode === 'paddle';
 const input = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement;

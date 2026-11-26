@@ -44,7 +44,7 @@ describe('authored world files and persistence', () => {
     expect(validateWorld(JSON.parse(JSON.stringify(data)))).toEqual(data);
   });
 
-  it('round-trips backgrounds, bosses and all brick kinds without changing game definitions', () => {
+  it('round-trips backgrounds and all brick kinds without changing game definitions', () => {
     const storage = memoryStorage();
     const data = createWorld('roundtrip');
     data.world = withBackground({ ...data.world, name: 'My forest' }, 'forest');
@@ -61,7 +61,7 @@ describe('authored world files and persistence', () => {
     expect(JSON.stringify({ worlds: WORLDS, levels: LEVELS })).toBe(builtin);
   });
 
-  it('rejects invalid layout, arena, hue, boss and image values before writing', () => {
+  it('rejects invalid layout, arena, hue and image values before writing', () => {
     const storage = memoryStorage();
     const data = createWorld('validation');
     saveWorld(storage, data);
@@ -77,11 +77,15 @@ describe('authored world files and persistence', () => {
     const badHue = structuredClone(data);
     badHue.levels[0] = { ...badHue.levels[0], hue: NaN };
     expect(() => validateWorld(badHue)).toThrow();
-    const badBoss = structuredClone(data);
-    badBoss.levels[0] = { ...LEVELS[4], boss: { ...LEVELS[4].boss!, fireInterval: 0 } };
-    expect(() => validateWorld(badBoss)).toThrow();
     expect(() => validateWorld({ ...data, backgroundImage: 'https://example.com/image.png' })).toThrow();
     expect(storage.getItem(LIBRARY_KEY)).toBe(saved);
+  });
+
+  it('drops the bosses older world files carry', () => {
+    const data = createWorld('legacy-boss');
+    const legacy = JSON.parse(JSON.stringify(data));
+    legacy.levels[4].boss = { name: 'THE WARDEN', hp: 22 };
+    expect(validateWorld(legacy)).toEqual(data);
   });
 
   it('keeps good worlds readable and prevents silent loss of damaged entries', () => {

@@ -78,22 +78,12 @@ export interface Laser extends Poolable {
   py: number;
 }
 
-export interface Shot extends Poolable {
-  x: number;
-  y: number;
-  px: number;
-  py: number;
-  vx: number;
-  vy: number;
-}
-
 export interface Paddle {
   x: number;
   px: number;
   y: number;
   width: number;
   vx: number;
-  stun: number;
   /** Signed distance a snake bite (or a scarab landing) still has to push the paddle (see BITE); input is ignored until it ends. */
   shove: number;
   /**
@@ -108,40 +98,5 @@ export interface Paddle {
    * (right end). Turns every bounce towards the low end (see SCARAB.leanKick) and rolls the drawn paddle.
    */
   lean: number;
-  hitTime: number;
-}
-
-export interface BossDef {
-  readonly name: string;
-  readonly hp: number;
-  readonly radius: number;
-  readonly y: number;
-  readonly sway: number;
-  readonly swaySpeed: number;
-  readonly fireInterval: number;
-  /** Projectiles per volley in the first stage. */
-  readonly volley: number;
-  readonly shotSpeed: number;
-  /** Seconds between brick summons (0 = never). */
-  readonly summonInterval: number;
-  readonly points: number;
-}
-
-export interface Boss {
-  active: boolean;
-  def: BossDef | null;
-  x: number;
-  y: number;
-  px: number;
-  py: number;
-  radius: number;
-  hp: number;
-  maxHp: number;
-  /** 0..2, escalates as health drops. */
-  stage: number;
-  t: number;
-  fireTimer: number;
-  summonTimer: number;
-  invuln: number;
   hitTime: number;
 }

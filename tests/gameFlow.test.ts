@@ -111,11 +111,10 @@ function harness(options: Partial<LaunchOptions> = {}) {
   const run = (seconds: number): void => {
     for (let t = 0; t < seconds - 1e-9; t += FRAME) flow.update(FRAME);
   };
-  /** Clears the current level: every brick gone (a boss level's boss defeated); the next step notices. */
+  /** Clears the current level: every brick gone; the next step notices. */
   const clearLevel = (): void => {
     for (const brick of world.bricks) brick.alive = false;
     world.brickField.remaining = 0;
-    world.boss.active = false;
   };
   /** Starts a run and confirms the power-up picker. */
   const play = (): void => {
@@ -141,7 +140,7 @@ describe('GameFlow', () => {
     expect(world.time).toBeGreaterThan(4); // the demo plays
   });
 
-  it("cycles the demo through the menu world's ordinary levels, skipping bosses", () => {
+  it("cycles the demo through the menu world's levels", () => {
     const { flow, world, run, clearLevel } = harness();
     flow.start();
     const seen: number[] = [];
@@ -150,7 +149,7 @@ describe('GameFlow', () => {
       run(2.5);
       seen.push(world.levelIndex);
     }
-    expect(seen).toEqual([1, 2, 3, 5]); // level 4 (index) is a boss
+    expect(seen).toEqual([1, 2, 3, 4]);
   });
 
   it('starts a run with the power-up picker, then plays with only the picked kinds', () => {
@@ -276,7 +275,7 @@ describe('GameFlow', () => {
   });
 
   it('ends a run that reaches its last level in victory, keeping a new best score', () => {
-    // ?level=19: the second-last level of the main campaign (20 levels, the last a boss).
+    // ?level=19: the second-last level of the main campaign (20 levels).
     const { flow, world, ui, store, run, clearLevel } = harness({ level: 19 });
     flow.start();
     flow.onUiAction('play');
@@ -286,7 +285,6 @@ describe('GameFlow', () => {
     run(3);
     flow.confirmLoadout(PICKS);
     expect(world.levelIndex).toBe(19);
-    expect(world.boss.active).toBe(true);
     clearLevel();
     flow.update(FRAME);
     expect(ui.banners).toContain('VICTORY');

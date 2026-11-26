@@ -19,7 +19,7 @@
       <div class="actions"><button id="new">New</button><button id="import">Import</button><button id="export">Export</button><button id="save" class="primary">Save world</button><button id="test" class="primary">▶ Test level</button><a id="close-editor" class="close-editor" href="../" title="Close the editor and go back to the game" aria-label="Close the editor">✕</a></div>
     </header>
     <nav class="layer-bar hud-panel" aria-label="Layer">
-      <button id="mode-level" aria-pressed="false">Level</button><button id="mode-blocks" aria-pressed="true">Blocks</button><button id="mode-boss" aria-pressed="false">Boss</button><span class="sep"></span><button id="mode-ball" aria-pressed="false">Ball area</button><button id="mode-paddle" aria-pressed="false">Paddle area</button><span class="sep"></span><button id="mode-snakes" aria-pressed="false">Snakes</button><button id="mode-icicles" aria-pressed="false">Icicles</button><button id="mode-scarabs" aria-pressed="false">Scarab nests</button><button id="mode-dust" aria-pressed="false">Dust</button>
+      <button id="mode-level" aria-pressed="false">Level</button><button id="mode-blocks" aria-pressed="true">Blocks</button><span class="sep"></span><button id="mode-ball" aria-pressed="false">Ball area</button><button id="mode-paddle" aria-pressed="false">Paddle area</button><span class="sep"></span><button id="mode-snakes" aria-pressed="false">Snakes</button><button id="mode-icicles" aria-pressed="false">Icicles</button><button id="mode-scarabs" aria-pressed="false">Scarab nests</button><button id="mode-dust" aria-pressed="false">Dust</button>
       <span class="sep"></span><button id="guides-toggle" aria-pressed="true" title="Show the brick grid's guides">Guides</button><button id="hud-toggle" aria-pressed="false" title="Hide the editor to see the scene (H)">Hide · H</button>
     </nav>
     <section id="level-tools" class="hud-panel layer-panel">
@@ -33,11 +33,6 @@
       <div id="palette" class="palette" role="group" aria-label="Brick palette"></div>
       <div class="actions"><button id="fill">Fill row</button><button id="clear">Clear level</button></div>
       <p class="hint"><span id="count">0 bricks</span> · Click or drag to paint, right-click to erase. Fill row paints the focused row.</p>
-    </section>
-    <section id="boss-tools" class="hud-panel layer-panel">
-      <h2>Boss</h2>
-      <label>Boss for this level<select id="boss"><option value="">None</option></select></label>
-      <p class="hint">A level with a boss is finished when the boss is beaten; its bricks are optional.</p>
     </section>
     <section id="area-tools" class="hud-panel layer-panel" hidden>
       <h2 id="area-title">Ball area</h2>
@@ -112,7 +107,7 @@
           <label>Track<select id="music"></select></label>
           <div class="music-preview" role="group" aria-label="Music preview">
             <div class="actions"><button id="listen" aria-pressed="false">▶ Listen</button><button id="record">Save recording</button></div>
-            <label>Part<select id="music-mode"><option value="menu">Menu</option><option value="game" selected>Level</option><option value="boss">Boss fight</option></select></label>
+            <label>Part<select id="music-mode"><option value="menu">Menu</option><option value="game" selected>Level</option></select></label>
             <label>Intensity <span id="music-intensity-value"></span><input id="music-intensity" type="range" min="0" max="1" step="0.05" value="0.8" /></label>
             <p class="hint" id="music-hint">Low intensity is the calm bed; high brings in every layer. Change either while it plays.</p>
           </div>

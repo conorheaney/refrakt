@@ -173,7 +173,7 @@ export class PowerUpSystem {
   updateLasers(dt: number): void {
     const world = this.world;
     const paddle = world.paddle;
-    if (this.grants('lasers') && world.phase === 'live' && paddle.stun <= 0) {
+    if (this.grants('lasers') && world.phase === 'live') {
       this.laserCooldown -= dt;
       if (this.laserCooldown <= 0) {
         this.laserCooldown = LASER.cooldown;
@@ -184,7 +184,6 @@ export class PowerUpSystem {
       }
     }
 
-    const boss = world.bossSystem.boss;
     const bricks = world.brickField;
     const halfH = world.grid.halfH;
     const top = world.boundary.bounds.top;
@@ -202,12 +201,6 @@ export class PowerUpSystem {
         this.lasers.release(laser);
         world.events.emit('laserHit', { x: laser.x, y: brick.y - halfH });
         bricks.damage(brick, 1, 'laser', laser.x, brick.y - halfH, 0, -1);
-        continue;
-      }
-      if (boss.active && Math.hypot(laser.x - boss.x, tipY - boss.y) < boss.radius) {
-        this.lasers.release(laser);
-        world.events.emit('laserHit', { x: laser.x, y: tipY });
-        world.bossSystem.damage(LASER.bossDamage, laser.x, tipY);
       }
     }
   }

@@ -1,12 +1,11 @@
 import type { AudioEngine } from '../../engine/audio/AudioEngine';
 import type { MusicTrackId } from '../../content/musicTracks';
 
-export type MusicMode = 'menu' | 'game' | 'boss';
+export type MusicMode = 'menu' | 'game';
 
 /** Everything a track needs to schedule one 16th-note step. */
 interface StepContext {
   readonly a: AudioEngine;
-  readonly mode: MusicMode;
   /** 0-63: four bars of sixteen steps. */
   readonly step: number;
   /** Step within the bar, 0-15. */
@@ -119,9 +118,8 @@ function scheduleSpace({ a, pos, t, stepDur, lvl, chord, kick }: StepContext): v
 /** Glassy plucks cascade down two octaves of chord tones and back, like water over stones. */
 const FOREST_RIPPLE: readonly number[] = [6, 4, 5, 3, 4, 2, 3, 1, 2, 0, 1, 3, 2, 4, 3, 5];
 
-function scheduleForest({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
+function scheduleForest({ a, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
   const root = chord[0];
-  const boss = mode === 'boss';
 
   // Pad: pairs of detuned triangles for a soft, shimmering wash whose filter opens with intensity.
   if (pos === 0) {
@@ -172,7 +170,7 @@ function scheduleForest({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
   }
 
   // Bass: sine sub with a rounded triangle on a syncopated pattern, octave hop near the end of the bar.
-  if (lvl > 0.16 && (pos === 0 || pos === 3 || pos === 6 || pos === 10 || pos === 12 || (boss && pos % 2 === 0))) {
+  if (lvl > 0.16 && (pos === 0 || pos === 3 || pos === 6 || pos === 10 || pos === 12)) {
     const note = root + (pos === 10 ? 12 : 0);
     a.tone({ freq: semitone(55, note), type: 'sine', dur: stepDur * 1.8, vol: 0.22, when: t, bus: 'music' });
     a.tone({
@@ -279,9 +277,8 @@ function brass(a: AudioEngine, t: number, freq: number, dur: number, vol: number
   }
 }
 
-function scheduleJungle({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
+function scheduleJungle({ a, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
   const root = chord[0];
-  const boss = mode === 'boss';
   const fillBar = step >= 48;
 
   // Pad: warm, filtered saw chord with a slow swell, kept low so the drums and brass lead.
@@ -304,7 +301,7 @@ function scheduleJungle({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
   // Punchy toms: low on a driving pattern, mid answering, high-tom fill rolling into each loop.
   if (lvl > 0.22) {
-    if (JUNGLE_LOW_TOM.has(pos) || (boss && pos % 4 === 0)) {
+    if (JUNGLE_LOW_TOM.has(pos)) {
       jungleTom(a, t, 140, 0.45, -0.1);
       if (pos === 0 || pos === 8) kick(t);
     }
@@ -357,14 +354,6 @@ function scheduleJungle({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
     a.tone({ freq: freq * 3.9, type: 'sine', dur: 0.03, vol: 0.012, pan, when: t, bus: 'music' });
   }
 
-  if (boss) {
-    // Bosses get brass stabs on the chord instead of the melody.
-    if (lvl > 0.5 && (pos === 0 || pos === 6 || (fillBar && pos === 12))) {
-      for (const n of chord) brass(a, t, semitone(220, n), stepDur * 1.6, 0.03, 1100 + lvl * 1200);
-    }
-    return;
-  }
-
   // Heroic brass lead.
   const phrase = JUNGLE_MELODY_AT.get(step);
   if (lvl > 0.55 && phrase)
@@ -415,9 +404,8 @@ function iceBell(a: AudioEngine, t: number, freq: number, vol: number, dur: numb
   });
 }
 
-function scheduleCrystal({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
+function scheduleCrystal({ a, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
   const root = chord[0];
-  const boss = mode === 'boss';
 
   // Pad: detuned sine pairs, a soft shimmering bed that opens up a little with intensity.
   if (pos === 0) {
@@ -464,8 +452,8 @@ function scheduleCrystal({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: S
     iceBell(a, t, semitone(440, note), beat === 0 ? 0.05 : 0.032, 0.6, beat % 2 === 0 ? -0.35 : 0.35);
   }
 
-  // Kick: broken beat in play, straight four on the floor in a boss.
-  if (lvl > 0.24 && (boss ? pos % 4 === 0 : CRYSTAL_KICK.has(pos))) {
+  // Kick: a broken beat.
+  if (lvl > 0.24 && CRYSTAL_KICK.has(pos)) {
     a.tone({ freq: 130, endFreq: 42, dur: 0.2, vol: 0.42, type: 'sine', when: t, bus: 'music' });
     if (pos % 4 === 0) kick(t);
   }
@@ -508,9 +496,9 @@ function scheduleCrystal({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: S
       a.tone({ freq: semitone(55, root), type: 'sine', dur: stepDur * 1.8, vol: 0.14, when: t, bus: 'music' });
   }
 
-  // Bright bell lead through the echo at high intensity (bosses keep to the beat and chimes).
+  // Bright bell lead through the echo at high intensity.
   const phrase = CRYSTAL_MELODY_AT.get(step);
-  if (!boss && lvl > 0.6 && phrase) {
+  if (lvl > 0.6 && phrase) {
     const freq = semitone(440, phrase.note);
     a.tone({
       freq,
@@ -538,8 +526,6 @@ const DESERT_SCALE: readonly number[] = [0, 1, 3, 5, 7, 8, 11];
 /** Maqsum, the classic Egyptian rhythm, in eighths: doum (deep) on 1 and 5, tek (crisp) on 2, 4 and 7. */
 const DESERT_DOUM = new Set([0, 8]);
 const DESERT_TEK = new Set([2, 6, 12]);
-/** Baladi for bosses: a heavier doum-doum start. */
-const DESERT_BOSS_DOUM = new Set([0, 2, 8, 10]);
 /** Oud ostinato on a 3-3-2 rhythm: [step in bar, chord-tone index (3+ climbs an octave), ornamented?]. */
 const DESERT_OUD = new Map<number, readonly [number, boolean]>([
   [0, [0, true]],
@@ -642,9 +628,8 @@ function reed(a: AudioEngine, t: number, freq: number, dur: number, vol: number,
   a.tone({ freq, type: 'sine', dur: dur * 1.2, attack: 0.08, vol: vol * 0.5, when: t + 0.05, bus: 'echo' });
 }
 
-function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
+function scheduleDesert({ a, step, pos, t, stepDur, lvl, chord, kick }: StepContext): void {
   const root = chord[0];
-  const boss = mode === 'boss';
   const fillBar = step >= 48;
   const bar = stepDur * 16;
 
@@ -682,11 +667,10 @@ function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
     }
   }
 
-  // Frame drums: maqsum in play, a heavier baladi for bosses, with ghost taps filling in when it heats up.
+  // Frame drums: maqsum, with ghost taps filling in when it heats up.
   if (lvl > 0.2) {
-    const doum = boss ? DESERT_BOSS_DOUM : DESERT_DOUM;
-    if (doum.has(pos)) {
-      frameDrum(a, t, true, boss ? 0.5 : 0.44, -0.1);
+    if (DESERT_DOUM.has(pos)) {
+      frameDrum(a, t, true, 0.44, -0.1);
       if (pos === 0 || pos === 8) kick(t);
     }
     if (lvl > 0.3 && DESERT_TEK.has(pos)) frameDrum(a, t, false, 0.17, 0.25);
@@ -751,16 +735,6 @@ function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
     a.tone({ freq: 4230, type: 'sine', dur: 0.35, vol: 0.01, pan: 0.4, when: t, bus: 'echo' });
   }
 
-  if (boss) {
-    // War drums and string stabs on the chord instead of the melody.
-    if (lvl > 0.4 && pos % 4 === 0)
-      a.tone({ freq: 62, endFreq: 38, dur: 0.45, vol: 0.4, type: 'sine', when: t, bus: 'music' });
-    if (lvl > 0.5 && (pos === 0 || pos === 6 || (fillBar && pos === 12))) {
-      for (const n of chord) reed(a, t, semitone(220, n), stepDur * 1.4, 0.022, 1300 + lvl * 1000);
-    }
-    return;
-  }
-
   // The soaring lead.
   const phrase = DESERT_MELODY_AT.get(step);
   if (lvl > 0.55 && phrase)
@@ -769,7 +743,7 @@ function scheduleDesert({ a, mode, step, pos, t, stepDur, lvl, chord, kick }: St
 
 const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
   space: {
-    tempo: { menu: 104, game: 122, boss: 138 },
+    tempo: { menu: 104, game: 122 },
     progressions: {
       menu: [
         [0, 3, 7],
@@ -783,17 +757,11 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
         [3, 7, 10],
         [-2, 2, 5],
       ],
-      boss: [
-        [0, 3, 7],
-        [1, 5, 8],
-        [0, 3, 7],
-        [-5, -1, 2],
-      ],
     },
     schedule: scheduleSpace,
   },
   forest: {
-    tempo: { menu: 100, game: 120, boss: 134 },
+    tempo: { menu: 100, game: 120 },
     progressions: {
       // Am - F - Dm - Em: floating and gentle.
       menu: [
@@ -809,18 +777,11 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
         [-2, 2, 5],
         [5, 9, 12],
       ],
-      // Am - F - Bb - E: darker tension for bosses.
-      boss: [
-        [0, 3, 7],
-        [-4, 0, 3],
-        [1, 5, 8],
-        [-5, -1, 2],
-      ],
     },
     schedule: scheduleForest,
   },
   jungle: {
-    tempo: { menu: 96, game: 128, boss: 140 },
+    tempo: { menu: 96, game: 128 },
     progressions: {
       // Am - F - G - Am: a quest about to begin.
       menu: [
@@ -836,18 +797,11 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
         [-4, 0, 3],
         [-5, -1, 2],
       ],
-      // Am - Bb - Am - E: menacing half-step stabs.
-      boss: [
-        [0, 3, 7],
-        [1, 5, 8],
-        [0, 3, 7],
-        [-5, -1, 2],
-      ],
     },
     schedule: scheduleJungle,
   },
   crystal: {
-    tempo: { menu: 108, game: 132, boss: 146 },
+    tempo: { menu: 108, game: 132 },
     progressions: {
       // Am - Em - F - C: bright and open.
       menu: [
@@ -863,18 +817,11 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
         [-2, 2, 5],
         [-4, 0, 3],
       ],
-      // Am - F - Bb - E: urgent half-step tension.
-      boss: [
-        [0, 3, 7],
-        [-4, 0, 3],
-        [1, 5, 8],
-        [-5, -1, 2],
-      ],
     },
     schedule: scheduleCrystal,
   },
   desert: {
-    tempo: { menu: 92, game: 124, boss: 140 },
+    tempo: { menu: 92, game: 124 },
     progressions: {
       // Am - Dm - Bb - E: mysterious, the flattened second hanging over the menu.
       menu: [
@@ -890,13 +837,6 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
         [5, 8, 12],
         [-5, -1, 2],
       ],
-      // Am - Bb - F - E: the descent to the E, pounding.
-      boss: [
-        [0, 3, 7],
-        [1, 5, 8],
-        [-4, 0, 3],
-        [-5, -1, 2],
-      ],
     },
     schedule: scheduleDesert,
   },
@@ -905,7 +845,7 @@ const TRACKS: Readonly<Record<MusicTrackId, TrackDef>> = {
 /**
  * Generative, adaptive soundtrack. A 16th-note step sequencer schedules
  * synthesised parts slightly ahead of the audio clock. Layers fade in as
- * `intensity` rises (combo, level progress, boss), so the music follows the
+ * `intensity` rises (combo, level progress), so the music follows the
  * action without any pre-rendered stems. Each world picks a `track`.
  */
 export class Music {
@@ -962,7 +902,6 @@ export class Music {
       this.intensity += (this.targetIntensity - this.intensity) * 0.1;
       track.schedule({
         a: this.audio,
-        mode: this.mode,
         step: this.step,
         pos: this.step % 16,
         t: this.nextTime,

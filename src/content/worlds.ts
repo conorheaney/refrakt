@@ -39,7 +39,7 @@ export interface WorldDef {
   readonly serveLift: number;
 }
 
-/** Levels per world; each world has a boss at its midpoint and at its end. */
+/** Levels per world. */
 export const STAGES_PER_WORLD = 10;
 
 /**
@@ -78,7 +78,7 @@ export function levelNumber(levelIndex: number): number {
 /**
  * How many ball-speed steps (BALL.speedPerLevel each) a level adds to the base speed. The first world
  * climbs one step per level. Later worlds start part-way up and climb more gently, so a new world opens
- * easier than the boss that ended the last one but still finishes faster than it.
+ * easier than the level that ended the last one but still finishes faster than it.
  */
 export function speedSteps(levelIndex: number): number {
   const world = Math.max(0, Math.floor(levelIndex / STAGES_PER_WORLD));

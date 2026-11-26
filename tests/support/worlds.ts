@@ -49,7 +49,7 @@ export const FOREST_AREAS: WorldAreas = {
 /**
  * TEST campaign: the original Space and Forest levels (tests/support/classicLevels.ts) in the Space and Forest
  * template arenas, drawn as polygons like any world. Level 0 is a plain rounded-rectangle arena; levels 10-19
- * are the tree arch. Bosses sit on levels 4, 9, 14 and 19.
+ * are the tree arch.
  */
 export function classicCampaign(
   parts: { space?: Partial<WorldAreas> & WorldExtras; forest?: Partial<WorldAreas> & WorldExtras } = {},

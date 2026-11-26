@@ -12,7 +12,6 @@ function paddle(x: number): Paddle {
     y: PADDLE.y,
     width: PADDLE.width,
     vx: 0,
-    stun: 0,
     shove: 0,
     tilt: 0,
     slide: 0,

@@ -336,47 +336,6 @@ export class AudioDirector {
       );
     });
 
-    events.on('bossHit', ({ x }) => {
-      if (!this.gate('bossHit', 0.04)) return;
-      audio.tone({ freq: 110, endFreq: 70, dur: 0.16, vol: 0.35, type: 'square', filter: 900, pan: panOf(x) });
-      audio.noise({ dur: 0.1, vol: 0.2, filterType: 'bandpass', filter: 2400, pan: panOf(x) });
-    });
-
-    events.on('bossStage', () => {
-      if (!this.enabled) return;
-      audio.tone({ freq: 80, endFreq: 320, dur: 0.7, vol: 0.4, type: 'sawtooth', filter: 1400 });
-      audio.noise({ dur: 0.7, vol: 0.3, filter: 400, endFilter: 4000 });
-    });
-
-    events.on('bossFired', ({ x }) => {
-      if (this.gate('bossFire', 0.05))
-        audio.tone({ freq: 700, endFreq: 180, dur: 0.2, vol: 0.14, type: 'sawtooth', filter: 2400, pan: panOf(x) });
-    });
-
-    events.on('bossDefeated', () => {
-      if (!this.enabled) return;
-      const t = audio.context?.currentTime ?? 0;
-      for (let i = 0; i < 7; i++) {
-        audio.noise({
-          dur: 0.4,
-          vol: 0.4,
-          filter: 1600,
-          endFilter: 150,
-          when: t + i * 0.18,
-          pan: Math.sin(i * 2.4) * 0.6,
-        });
-        audio.tone({ freq: 140 - i * 8, endFreq: 30, dur: 0.4, vol: 0.4, when: t + i * 0.18 });
-      }
-      audio.noise({ dur: 1.6, vol: 0.6, filter: 2600, endFilter: 80, when: t + 1.3 });
-      audio.tone({ freq: 90, endFreq: 24, dur: 1.5, vol: 0.6, when: t + 1.3 });
-    });
-
-    events.on('paddleStunned', ({ x }) => {
-      if (!this.enabled) return;
-      audio.tone({ freq: 160, endFreq: 60, dur: 0.3, vol: 0.35, type: 'square', filter: 1000, pan: panOf(x) });
-      audio.noise({ dur: 0.2, vol: 0.25, filter: 2500, pan: panOf(x) });
-    });
-
     this.bindSnakes(events);
   }
 

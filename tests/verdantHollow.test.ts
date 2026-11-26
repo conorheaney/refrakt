@@ -39,7 +39,6 @@ it("loads Verdant Hollow from JSON as the main campaign's Forest world, keeping 
     // The ball bounces off the world's drawn ball area.
     expect(sim.boundary.bounds.top).toBeCloseTo(Math.max(...forest.playAreas.ball.points.map((p) => p.y)), 1);
     expect(campaign.levelCells(i)).toEqual(parseLevel(originalLevels[i], i));
-    expect(sim.boss.active).toBe(i === 4 || i === 9);
   }
 });
 

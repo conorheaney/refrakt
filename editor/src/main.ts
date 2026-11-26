@@ -11,7 +11,7 @@ import {
 import { withAreas } from './defaultAreas';
 import { UNDO_LIMIT, undoSnapshot } from './undoSnapshot';
 import { GRID } from '../../src/gameplay/config';
-import { BOSS_PRESETS, type LevelDef } from '../../src/content/levels';
+import type { LevelDef } from '../../src/content/levels';
 import { isWeather, WEATHER, type WorldId } from '../../src/content/worlds';
 import type { PlayAreas, PolygonArea } from '../../src/gameplay/arena/playAreas';
 import { AreaEditor } from './AreaEditor';
@@ -34,7 +34,6 @@ function el<T extends HTMLElement>(id: string): T {
 }
 const symbols = ['.', '1', '2', '3', 'S', 'X', 'P', 'G'];
 const names = ['Eraser', 'Glass', 'Ceramic', 'Armored', 'Steel', 'Explosive', 'Prism', 'Phase'];
-const bosses = BOSS_PRESETS;
 let data = createWorld(crypto.randomUUID());
 let selected = 0;
 let brush = '1';
@@ -103,7 +102,7 @@ function refreshTabs(): void {
   el<HTMLButtonElement>('level-next').disabled = selected === data.levels.length - 1;
   el('level-number').textContent = String(selected + 1).padStart(2, '0');
   el('level-state').textContent = unfinished.includes(selected + 1)
-    ? 'Needs a breakable brick or a boss before it can be played.'
+    ? 'Needs a breakable brick before it can be played.'
     : 'Ready to play.';
 }
 function selectLevel(index: number): void {
@@ -214,10 +213,6 @@ function render(): void {
   el<HTMLSelectElement>('weather').value = data.world.weather ?? '';
   el<HTMLInputElement>('level-name').value = data.levels[selected].name;
   el<HTMLInputElement>('hue').value = String(data.levels[selected].hue);
-  const boss = data.levels[selected].boss;
-  el<HTMLSelectElement>('boss').value = boss
-    ? String(bosses.findIndex((item) => JSON.stringify(item) === JSON.stringify(boss)))
-    : '';
   el('remove-background').hidden = !data.backgroundImage;
   el('background-info').textContent = data.backgroundImage
     ? 'Uploaded image · included in saves and exports.'
@@ -306,8 +301,6 @@ symbols.forEach((symbol, i) => {
 el('level-select').addEventListener('change', () => selectLevel(Number(el<HTMLSelectElement>('level-select').value)));
 el('level-prev').addEventListener('click', () => selectLevel(selected - 1));
 el('level-next').addEventListener('click', () => selectLevel(selected + 1));
-bosses.forEach((boss, i) => el<HTMLSelectElement>('boss').add(new Option(boss.name, String(i))));
-el<HTMLSelectElement>('boss').add(new Option('Imported custom boss (keep)', '-1'));
 el('world-name').addEventListener('change', () => {
   snapshot();
   data.world = { ...data.world, name: el<HTMLInputElement>('world-name').value };
@@ -341,14 +334,14 @@ el('weather').addEventListener('change', () => {
   if (value === 'dust' && !data.dustLine) data.dustLine = dustLineOrDefault(data);
   render();
 });
-// Music preview: audition the world's soundtrack live in any part (menu, level, boss) at any intensity, or
+// Music preview: audition the world's soundtrack live in any part (menu or level) at any intensity, or
 // save a recording of it.
 let audio: AudioEngine | undefined;
 let music: Music | undefined;
 let listening = 0;
 function previewMode(): MusicMode {
   const value = el<HTMLSelectElement>('music-mode').value;
-  return value === 'menu' || value === 'boss' ? value : 'game';
+  return value === 'menu' ? value : 'game';
 }
 function previewIntensity(): number {
   return Number(el<HTMLInputElement>('music-intensity').value);
@@ -477,13 +470,6 @@ el('remove-background').addEventListener('click', () => {
 el('hue').addEventListener('change', () => {
   snapshot();
   changeLevel({ hue: Number(el<HTMLInputElement>('hue').value) });
-  render();
-});
-el('boss').addEventListener('change', () => {
-  const value = el<HTMLSelectElement>('boss').value;
-  if (value === '-1') return;
-  snapshot();
-  changeLevel({ boss: value === '' ? undefined : structuredClone(bosses[Number(value)]) });
   render();
 });
 el('fill').addEventListener('click', () => {
@@ -641,7 +627,7 @@ el('test').addEventListener('click', () => {
   try {
     const value = validateWorld(data);
     if (unfinishedLevels(value).includes(selected + 1))
-      throw new Error('Add a breakable brick or a boss to this level before testing.');
+      throw new Error('Add a breakable brick to this level before testing.');
     if (missingAreas(value).length) throw new Error('Draw a ball area and a paddle area before testing.');
     sessionStorage.setItem('refrakt.editor-preview', JSON.stringify(value));
     el<HTMLIFrameElement>('game-preview').src = `../?editorPreview=1&stage=${selected}`;

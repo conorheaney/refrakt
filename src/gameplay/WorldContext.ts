@@ -4,7 +4,6 @@ import type { Random } from '../engine/core/Random';
 import type { WorldDef } from '../content/worlds';
 import type { PolygonBoundary } from './arena/boundary';
 import type { BallPhysics } from './balls/BallPhysics';
-import type { BossSystem } from './boss/BossSystem';
 import type { BrickField } from './bricks/BrickField';
 import type { FieldDef, GridDef } from './config';
 import type { GameEvents } from './events';
@@ -13,13 +12,13 @@ import type { PowerUpSystem } from './powerups/PowerUpSystem';
 import type { Ball, Paddle, WorldPhase } from './types';
 
 /**
- * The part of World its systems (BallPhysics, BrickField, PowerUpSystem, BossSystem) work through: the
+ * The part of World its systems (BallPhysics, BrickField, PowerUpSystem) work through: the
  * shared game state and each other. World implements it and hands itself to each system, so a system's
  * dependencies are spelled out here rather than reached through World's whole surface.
  */
 export interface WorldContext {
   readonly events: EventBus<GameEvents>;
-  /** The simulation's main random stream (launch angles, drops, boss summons). Hazards use their own. */
+  /** The simulation's main random stream (launch angles, drops). Hazards use their own. */
   readonly rng: Random;
   readonly time: number;
   phase: WorldPhase;
@@ -41,7 +40,7 @@ export interface WorldContext {
   readonly grid: GridDef;
   /** The walls: the world's drawn ball area. */
   readonly boundary: PolygonBoundary;
-  /** Below this, falling power-ups and boss shots have left the arena (under both the drain and the paddle). */
+  /** Below this, falling power-ups have left the arena (under both the drain and the paddle). */
   readonly lowerLimit: number;
 
   // Player
@@ -58,6 +57,5 @@ export interface WorldContext {
   readonly ballPhysics: BallPhysics;
   readonly brickField: BrickField;
   readonly powerUps: PowerUpSystem;
-  readonly bossSystem: BossSystem;
   readonly scarabs: ScarabSystem;
 }

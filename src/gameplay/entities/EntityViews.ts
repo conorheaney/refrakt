@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { BALL, FIELD, LASER, PADDLE, SHIELD_CHARGES, SHOT } from '../config';
+import { BALL, FIELD, LASER, PADDLE, SHIELD_CHARGES } from '../config';
 import { POWERUPS } from '../powerups/powerUps';
 import type { WorldId } from '../../content/worlds';
 import { clamp, easeOutCubic, lerp } from '../../engine/core/math';
@@ -427,7 +427,6 @@ export class PaddleView {
   private readonly goal = new THREE.Color();
   // Light-bar colours. Kept modest so the bar (and its floor reflection) reads clearly without blooming.
   private readonly cBase = hdr(0xff7a1f, 2);
-  private readonly cStun = hdr(0xff2020, 1.6);
   private readonly cVenom = hdr(0x5dff3a, 1.8);
   private readonly cScarab = hdr(0xffb020, 1.7);
 
@@ -541,9 +540,7 @@ export class PaddleView {
     this.cannonL.position.x = -(half - 0.45);
     this.cannonR.position.x = half - 0.45;
 
-    // Stun shows as a steady red light bar (it used to strobe at 30 Hz).
-    if (p.stun > 0) this.goal.copy(this.cStun);
-    else if (p.shove !== 0) this.goal.copy(this.cVenom);
+    if (p.shove !== 0) this.goal.copy(this.cVenom);
     else if (world.scarabs.clinging > 0) this.goal.copy(this.cScarab);
     else this.goal.copy(this.cBase);
     this.color.lerp(this.goal, 1 - Math.exp(-6 * dt));
@@ -664,176 +661,6 @@ export class LasersView {
       mesh.visible = laser.active;
       if (laser.active) mesh.position.set(laser.x, lerp(laser.py, laser.y, alpha), 0);
     }
-  }
-}
-
-// ---------------------------------------------------------------- boss shots
-
-export class ShotsView {
-  private readonly meshes: THREE.Mesh[] = [];
-  private acc = 0;
-
-  constructor(scene: THREE.Scene, glowTexture: THREE.Texture) {
-    const geo = new THREE.IcosahedronGeometry(SHOT.radius, 1);
-    const mat = new THREE.MeshBasicMaterial({ color: hdr(0xff3d5e, 3.5) });
-    const glowColor = hdr(0xff3d5e, 0.8);
-    for (let i = 0; i < SHOT.capacity; i++) {
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.add(glowSprite(glowTexture, glowColor, 1.8));
-      mesh.visible = false;
-      this.meshes.push(mesh);
-      scene.add(mesh);
-    }
-  }
-
-  update(world: World, alpha: number, simDt: number, particles: ParticleSystem): void {
-    this.acc += simDt * 25;
-    const trail = Math.floor(this.acc);
-    this.acc -= trail;
-    const shots = world.shots.items;
-    for (let i = 0; i < shots.length; i++) {
-      const shot = shots[i];
-      const mesh = this.meshes[i];
-      mesh.visible = shot.active;
-      if (!shot.active) continue;
-      const x = lerp(shot.px, shot.x, alpha);
-      const y = lerp(shot.py, shot.y, alpha);
-      mesh.position.set(x, y, 0);
-      mesh.rotation.set(world.time * 3, world.time * 4, 0);
-      for (let n = 0; n < trail; n++) particles.emit(x, y, 0, 0, 0, 0, 2.2, 0.35, 0.5, 0.4, 0.22, 0, 0);
-    }
-  }
-}
-
-// ----------------------------------------------------------------------- boss
-
-const STAGE_COLORS: readonly number[] = [0x3f8cff, 0xff8424, 0xff3d5e];
-
-export class BossView {
-  private readonly group = new THREE.Group();
-  private readonly core: THREE.Mesh;
-  private readonly shell: THREE.Mesh;
-  private readonly rings: THREE.Mesh[] = [];
-  private readonly coreMaterial: THREE.MeshPhysicalMaterial;
-  private readonly shellMaterial: THREE.MeshPhysicalMaterial;
-  private readonly ringMaterial: THREE.MeshPhysicalMaterial;
-  private readonly light = new THREE.PointLight(0x3f8cff, 60, 22, 2);
-  private readonly color = new THREE.Color(STAGE_COLORS[0]);
-  private readonly goal = new THREE.Color(STAGE_COLORS[0]);
-  private appear = 0;
-  private dying = 0;
-  private burstTimer = 0;
-  private lastX = 0;
-  private lastY = 0;
-
-  constructor(scene: THREE.Scene) {
-    this.coreMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x20242c,
-      roughness: 0.1,
-      metalness: 1,
-      clearcoat: 1,
-      flatShading: true,
-      emissive: STAGE_COLORS[0],
-      emissiveIntensity: 0.6,
-      envMapIntensity: 1.5,
-    });
-    this.core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.72, 1), this.coreMaterial);
-    this.core.castShadow = true;
-    this.shellMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      roughness: 0.04,
-      metalness: 0,
-      clearcoat: 1,
-      transparent: true,
-      opacity: 0.14,
-      flatShading: true,
-      emissive: STAGE_COLORS[0],
-      emissiveIntensity: 0.12,
-      envMapIntensity: 0.7,
-      depthWrite: false,
-    });
-    this.shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), this.shellMaterial);
-    this.ringMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xe6eaf0,
-      roughness: 0.14,
-      metalness: 1,
-      clearcoat: 0.6,
-      emissive: STAGE_COLORS[0],
-      emissiveIntensity: 0.3,
-      envMapIntensity: 1.4,
-    });
-    const ringGeo = new THREE.TorusGeometry(1.28, 0.055, 12, 96);
-    for (let i = 0; i < 3; i++) {
-      const ring = new THREE.Mesh(ringGeo, this.ringMaterial);
-      ring.scale.setScalar(1 + i * 0.12);
-      ring.castShadow = true;
-      this.rings.push(ring);
-      this.group.add(ring);
-    }
-    this.light.position.z = 2.5;
-    this.group.add(this.core, this.shell, this.light);
-    this.group.visible = false;
-    scene.add(this.group);
-  }
-
-  /** Starts the multi-burst death sequence at the boss's last position. */
-  startDeath(): void {
-    this.dying = 1.3;
-    this.burstTimer = 0;
-  }
-
-  update(world: World, alpha: number, dt: number, particles: ParticleSystem): void {
-    const boss = world.boss;
-    if (boss.active) {
-      this.lastX = lerp(boss.px, boss.x, alpha);
-      this.lastY = lerp(boss.py, boss.y, alpha);
-      this.appear = Math.min(1, this.appear + dt * 1.2);
-      this.dying = 0;
-    } else if (this.dying > 0) {
-      this.dying -= dt;
-      this.burstTimer -= dt;
-      if (this.burstTimer <= 0) {
-        this.burstTimer = 0.32;
-        const ox = (Math.random() - 0.5) * boss.radius * 2;
-        const oy = (Math.random() - 0.5) * boss.radius * 2;
-        particles.burst(this.lastX + ox, this.lastY + oy, this.color, 12, 8, 0.45, 0.7, 1.1);
-      }
-      if (this.dying <= 0) particles.burst(this.lastX, this.lastY, this.color, 60, 12, 0.55, 1.2, 1.2);
-    } else {
-      this.appear = 0;
-    }
-
-    const visible = boss.active || this.dying > 0;
-    this.group.visible = visible;
-    if (!visible) return;
-
-    const t = world.time;
-    // Hit glow: small and eased out over ~0.35 s; the boss light (which lights the whole scene) barely changes.
-    const hitT = Math.max(0, 1 - (t - boss.hitTime) / 0.35);
-    const flash = hitT * hitT;
-    const dying = this.dying > 0 ? 1 : 0;
-    const scale =
-      boss.radius * easeOutCubic(this.appear) * (1 + flash * 0.03) * (this.dying > 0 ? 0.6 + this.dying * 0.4 : 1);
-    this.group.position.set(this.lastX, this.lastY, 0);
-    this.group.scale.setScalar(Math.max(0.001, scale));
-
-    this.goal.set(STAGE_COLORS[Math.min(STAGE_COLORS.length - 1, boss.stage)]);
-    this.color.lerp(this.goal, 1 - Math.exp(-2 * dt));
-    this.coreMaterial.emissive.copy(this.color);
-    this.coreMaterial.emissiveIntensity = 0.55 + flash * 0.7 + Math.sin(t * 1.2) * 0.06 + dying * 0.6;
-    this.shellMaterial.emissive.copy(this.color);
-    this.shellMaterial.emissiveIntensity = 0.12 + flash * 0.25;
-    this.ringMaterial.emissive.copy(this.color);
-    this.ringMaterial.emissiveIntensity = 0.3 + flash * 0.4;
-    this.light.color.copy(this.color);
-    this.light.intensity = 60 + flash * 25;
-
-    const speed = 1 + boss.stage * 0.8;
-    this.core.rotation.set(t * 0.5 * speed, t * 0.7 * speed, 0);
-    this.shell.rotation.set(-t * 0.3 * speed, t * 0.2 * speed, t * 0.25);
-    this.rings[0].rotation.set(t * 0.9 * speed, t * 0.4, 0);
-    this.rings[1].rotation.set(t * 0.3, t * 1.1 * speed, 1);
-    this.rings[2].rotation.set(1.2, t * 0.5, t * 0.8 * speed);
   }
 }
 

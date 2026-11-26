@@ -168,6 +168,5 @@ export class BrickField {
         }
       }
     }
-    this.world.bossSystem.explosionAt(source.x, source.y);
   }
 }

@@ -178,7 +178,7 @@ export class Environment {
   private readonly shadowLight = new THREE.DirectionalLight(0xfff4ea, 1.25);
   private readonly warmKey = new THREE.DirectionalLight(0xff8a3c, 2.2);
   private readonly coolFill = new THREE.DirectionalLight(0x6f9dff, 1.2);
-  private readonly warmPool = new THREE.PointLight(0xff7424, 700, 34, 2);
+  private readonly warmPool = new THREE.PointLight(0xff8a3c, 700, 34, 2);
   private readonly coolPool = new THREE.PointLight(0x3f7dff, 420, 30, 2);
   /** Cold light from above for lightning (themes/weather/rain/RainLayer.ts). Always in the scene, dark until a strike. */
   private readonly lightning = new THREE.DirectionalLight(0xd8e6ff, 0);
@@ -193,8 +193,6 @@ export class Environment {
   private readonly wallGoal = new THREE.Color(WALL_COLOR);
   /** Planets and moons, turned very slowly in update(). */
   private readonly planets: THREE.Mesh[] = [];
-  private readonly warmBase = new THREE.Color(0xff8a3c);
-  private readonly warmGoal = new THREE.Color(0xff8a3c);
   private readonly floaters: THREE.Mesh[] = [];
   private readonly floaterBaseY: number[] = [];
 
@@ -389,7 +387,7 @@ export class Environment {
     scene.add(this.warmKey, this.coolFill, this.warmPool, this.coolPool, this.ballLight);
   }
 
-  /** Swaps the scenery. Lights stay: they still shade the live objects (pickups, bosses, shards). */
+  /** Swaps the scenery. Lights stay: they still shade the live objects (pickups, shards). */
   setWorld(world: WorldId): void {
     if (world === this.world) return;
     this.world = world;
@@ -468,28 +466,18 @@ export class Environment {
     (this.floorUniforms.uTexel.value as [number, number])[1] = 1 / Math.max(36, height);
   }
 
-  /** Subtle per-level mood: the wall cools or warms slightly; boss stages run hotter and darker. */
-  setTheme(hue: number, boss: boolean, immediate = false): void {
+  /** Subtle per-level mood: the wall cools or warms slightly. */
+  setTheme(hue: number, immediate = false): void {
     const hsl = { h: 0, s: 0, l: 0 };
     new THREE.Color(WALL_COLOR).getHSL(hsl);
-    this.wallGoal.setHSL(boss ? 0.97 : (hsl.h * 0.8 + hue * 0.2) % 1, boss ? 0.12 : hsl.s, boss ? hsl.l * 0.78 : hsl.l);
-    this.warmGoal.set(boss ? 0xff5a2e : 0xff8a3c);
-    if (immediate) {
-      this.wallBase.copy(this.wallGoal);
-      this.warmBase.copy(this.warmGoal);
-    }
-    this.forest.setMood(boss, immediate);
+    this.wallGoal.setHSL((hsl.h * 0.8 + hue * 0.2) % 1, hsl.s, hsl.l);
+    if (immediate) this.wallBase.copy(this.wallGoal);
   }
 
   update(dt: number, time: number, paddleX: number): void {
     const k = 1 - Math.exp(-2 * dt);
     this.wallBase.lerp(this.wallGoal, k);
-    this.warmBase.lerp(this.warmGoal, k);
     this.wallMaterial.color.copy(this.wallBase);
-    this.warmKey.color.copy(this.warmBase);
-    this.warmPool.color.copy(this.warmBase);
-    // Steady key light (it used to pulse with the music's kick drum).
-    this.warmPool.intensity = 700;
     this.floorUniforms.uPaddleX.value = paddleX;
 
     // Planets turn very slowly (one revolution every ~3-5 minutes).
@@ -498,6 +486,5 @@ export class Environment {
     for (let i = 0; i < this.floaters.length; i++) {
       this.floaters[i].position.y = this.floaterBaseY[i] + Math.sin(time * (0.6 + i * 0.23) + i * 2) * 0.25;
     }
-    if (this.world === 'forest') this.forest.update(dt);
   }
 }

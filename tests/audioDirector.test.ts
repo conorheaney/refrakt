@@ -64,13 +64,9 @@ const MOMENTS: [string, (events: EventBus<GameEvents>) => void][] = [
   ['a lost life', (e) => e.emit('lifeLost', { lives: 2 })],
   ['game over', (e) => e.emit('gameOver', { score: 100 })],
   ['a cleared level', (e) => e.emit('levelCleared', { index: 0, bonus: 1000 })],
-  ['a boss hit', (e) => e.emit('bossHit', { x: 0, y: 7, hp: 10, maxHp: 20 })],
   ['a power-up running out', (e) => e.emit('powerUpWarning', { kind: PowerUpKind.Expand, left: 2, x: 0 })],
   ['a power-up ending', (e) => e.emit('powerUpExpired', { kind: PowerUpKind.Expand, x: 0 })],
   ['the barrier saving a ball', (e) => e.emit('shieldHit', { x: 0, charges: 1 })],
-  ['a boss enraged', (e) => e.emit('bossStage', { stage: 1 })],
-  ['a boss defeated', (e) => e.emit('bossDefeated', { x: 0, y: 7, points: 5000 })],
-  ['a stunned paddle', (e) => e.emit('paddleStunned', { x: 0 })],
   ['an icicle striking the paddle', (e) => e.emit('paddleStruck', { x: 0, y: -9 })],
   ['a snake biting the paddle', (e) => e.emit('paddleBitten', { x: 0, y: -9 })],
 ];

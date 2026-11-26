@@ -168,7 +168,6 @@ export const PADDLE = {
   keySpeed: 32,
   /** Maximum deflection from vertical, radians. */
   maxBounceAngle: 1.1,
-  stunTime: 0.8,
 } as const;
 
 export const PLAYER = {
@@ -184,7 +183,6 @@ export const LASER = {
   cooldown: 0.3,
   halfLength: 0.4,
   capacity: 32,
-  bossDamage: 0.5,
 } as const;
 
 export const DROP = {
@@ -198,31 +196,6 @@ export const DROP = {
   capacity: 12,
   halfW: 0.6,
   halfH: 0.5,
-} as const;
-
-export const SHOT = {
-  radius: 0.3,
-  capacity: 48,
-} as const;
-
-/**
- * Boss firing. Each boss's base gap between volleys is `fireInterval` in levels.ts; as it is damaged
- * (stage 0 -> 1 -> 2) the gap is divided by (1 + stage * stageSpeedup).
- */
-export const BOSS_FIRE = {
-  stageSpeedup: 0.2,
-  /**
-   * Extra breathing room before the first volley of a boss fight, on top of `fireInterval`. The timer
-   * only runs while the ball is in play, so this counts from the launch.
-   */
-  openingDelay: 3,
-} as const;
-
-/** Grid rows (inclusive) where a summoning boss revives bricks: the band just beneath it. */
-export const BOSS_SUMMON = {
-  firstRow: 5,
-  lastRow: 8,
-  perWave: 4,
 } as const;
 
 /**
@@ -476,14 +449,10 @@ export const REFRAKT = {
   freeze: 1.5,
   /** Damage each brick next to (not diagonal from) a shattered brick takes from the refracted light. */
   splashDamage: 1,
-  /** Damage to the boss per hit (a plain ball does 1). */
-  bossDamage: 2,
 } as const;
 
 export const EXPLOSION = {
   fuse: 0.09,
-  bossRange: 3.2,
-  bossDamage: 3,
 } as const;
 
 export const BRICK_HP: Readonly<Record<BrickKind, number>> = {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   BALL,
-  BOSS_SUMMON,
   DROP,
   FIELD,
   FOREST_ART,
@@ -277,7 +276,7 @@ describe('levels', () => {
     LEVELS.forEach((level, i) => {
       for (const row of level.rows) expect(row.length).toBe(GRID.cols);
       const breakable = CLASSIC.levelCells(i).filter((c) => c.kind !== BrickKind.Steel).length;
-      expect(breakable > 0 || level.boss !== undefined).toBe(true);
+      expect(breakable).toBeGreaterThan(0);
     });
   });
 
@@ -306,26 +305,7 @@ describe('levels', () => {
     for (const world of WORLDS) expect(world.field.floorY).toBeCloseTo(PADDLE.y - PADDLE.halfH, 6);
   });
 
-  it('keep the boss clear of its own summoning band', () => {
-    LEVELS.forEach((level) => {
-      if (!level.boss) return;
-      const bandTop = GRID.topY - BOSS_SUMMON.firstRow * GRID.cellH + GRID.halfH;
-      // The boss bobs 0.6 units vertically around def.y.
-      expect(level.boss.y - level.boss.radius - 0.6).toBeGreaterThan(bandTop + 2 * BALL.radius);
-      expect(level.boss.sway + level.boss.radius).toBeLessThan(FIELD.halfWidth);
-      expect(level.boss.sway + level.boss.radius).toBeLessThan(FOREST_FIELD.halfWidth);
-      expect(BOSS_SUMMON.lastRow).toBeLessThan(GRID.rows);
-    });
-  });
-
-  it('place boss encounters on the fifth and tenth level of every world, and nowhere else', () => {
-    LEVELS.forEach((level, i) => {
-      const stage = i % STAGES_PER_WORLD;
-      expect(level.boss !== undefined).toBe(stage === 4 || stage === 9);
-    });
-  });
-
-  it('open each later world slower than the boss that ended the previous one', () => {
+  it('open each later world slower than the level that ended the previous one', () => {
     for (let w = 1; w < WORLDS.length; w++) {
       const first = w * STAGES_PER_WORLD;
       expect(speedSteps(first)).toBeLessThan(speedSteps(first - 1));
@@ -660,24 +640,6 @@ describe('World', () => {
       expect(left.hp).toBe(2);
       expect(bursts).toBe(0);
     });
-  });
-
-  it('boss levels clear only when the boss is defeated', () => {
-    const world = new World(CLASSIC);
-    world.newGame(21, 4);
-    expect(world.boss.active).toBe(true);
-    let cleared = false;
-    let defeated = false;
-    world.events.on('bossDefeated', () => (defeated = true));
-    world.events.on('levelCleared', () => (cleared = true));
-    const input: StepInput = { targetX: null, axis: 0, action: false };
-    for (let i = 0; i < 120 * 600 && !cleared && world.phase !== 'over'; i++) {
-      autopilot(world, input, i);
-      world.step(SIM.step, input);
-      if (world.lives < 3) world.lives = 3; // the test is about the win condition, not survival
-    }
-    expect(defeated).toBe(true);
-    expect(cleared).toBe(true);
   });
 });
 

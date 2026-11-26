@@ -1,8 +1,8 @@
-import { BALL, PADDLE, REFRAKT, SCARAB } from '../config';
+import { BALL, PADDLE, SCARAB } from '../config';
 import { clamp } from '../../engine/core/math';
 import { speedSteps } from '../../content/worlds';
 import { Contact, TrapGuard } from '../arena/boundary';
-import { overlapCircleAabb, sweepCircleAabb, sweepCircleCircle, type SweepHit } from '../arena/collision';
+import { overlapCircleAabb, sweepCircleAabb, type SweepHit } from '../arena/collision';
 import { paddleSlope } from '../hazards/scarabs/scarabs';
 import { BrickKind, type Ball, type Brick } from '../types';
 import type { WorldContext } from '../WorldContext';
@@ -13,7 +13,6 @@ const enum HitKind {
   Shield,
   Brick,
   Paddle,
-  Boss,
   Drain,
 }
 
@@ -23,7 +22,7 @@ const ESCAPE_MARGIN = BALL.radius * 4;
 
 /**
  * The balls: serving, launching, swept movement with bounces off the walls (the world's drawn ball area), the
- * barrier, bricks, paddle and boss, and clearing residual overlaps. Owned by World.
+ * barrier, bricks and paddle, and clearing residual overlaps. Owned by World.
  */
 export class BallPhysics {
   /** Frees balls trapped in a pocket of the walls. */
@@ -207,7 +206,6 @@ export class BallPhysics {
     const bricks = world.brickField.bricks;
     const grid = world.grid;
     const paddle = world.paddle;
-    const boss = world.bossSystem.boss;
     const fire = world.powerUps.grants('pierce');
     const refrakt = world.refraktTime > 0;
     let remaining = this.speed * dt;
@@ -298,18 +296,6 @@ export class BallPhysics {
         }
       }
 
-      // Boss
-      if (
-        boss.active &&
-        sweepCircleCircle(ball.x, ball.y, dx, dy, r, boss.x, boss.y, boss.radius, hit) &&
-        hit.t < bestT
-      ) {
-        bestT = hit.t;
-        bestNx = hit.nx;
-        bestNy = hit.ny;
-        kind = HitKind.Boss;
-      }
-
       if (kind === HitKind.None) {
         ball.x += dx;
         ball.y += dy;
@@ -368,10 +354,6 @@ export class BallPhysics {
           } else {
             this.reflect(ball, bestNx, bestNy);
           }
-          break;
-        case HitKind.Boss:
-          this.reflect(ball, bestNx, bestNy);
-          world.bossSystem.damage(refrakt ? REFRAKT.bossDamage : fire ? 2 : 1, cx, cy);
           break;
       }
     }

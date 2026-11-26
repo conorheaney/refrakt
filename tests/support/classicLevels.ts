@@ -2,7 +2,7 @@ import type { LevelDef } from '../../src/content/levels';
 
 /**
  * TEST DATA: the twenty levels of the original code-defined Space (1-10) and Forest (11-20) campaigns, kept so
- * the simulation tests have known layouts and bosses on levels 5 and 10 of each world. The game never loads
+ * the simulation tests have known layouts. The game never loads
  * these; it plays world files only (public/worlds).
  */
 export const CLASSIC_LEVELS: readonly LevelDef[] = [
@@ -87,19 +87,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
       '.1.1.1.1.1.1.',
       '2.2.2.2.2.2.2',
     ],
-    boss: {
-      name: 'THE WARDEN',
-      hp: 22,
-      radius: 1.8,
-      y: 7.6,
-      sway: 9,
-      swaySpeed: 0.6,
-      fireInterval: 2.8,
-      volley: 1,
-      shotSpeed: 7,
-      summonInterval: 0,
-      points: 5000,
-    },
   },
   {
     name: 'PHASE SHIFT',
@@ -183,19 +170,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
       '.G.G.G.G.G.G.',
       '1.1.1.1.1.1.1',
     ],
-    boss: {
-      name: 'THE SINGULARITY',
-      hp: 38,
-      radius: 1.9,
-      y: 7.7,
-      sway: 9.5,
-      swaySpeed: 0.75,
-      fireInterval: 2.4,
-      volley: 2,
-      shotSpeed: 8,
-      summonInterval: 9,
-      points: 15000,
-    },
   },
 
   // ------------------------------------------------------------ World 2: Forest (levels 11-20)
@@ -279,19 +253,6 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
       '.1.1.1.1.1.1.',
       '2.1.2.1.2.1.2',
     ],
-    boss: {
-      name: 'THE ELDER OAK',
-      hp: 28,
-      radius: 1.8,
-      y: 7.6,
-      sway: 9,
-      swaySpeed: 0.65,
-      fireInterval: 2.7,
-      volley: 1,
-      shotSpeed: 7.5,
-      summonInterval: 12,
-      points: 8000,
-    },
   },
   {
     name: "WILL-O'-WISP",
@@ -374,18 +335,5 @@ export const CLASSIC_LEVELS: readonly LevelDef[] = [
       '.G.1.G.1.G.1.',
       '1.2.1.2.1.2.1',
     ],
-    boss: {
-      name: 'HEART OF THE FOREST',
-      hp: 44,
-      radius: 1.9,
-      y: 7.7,
-      sway: 9.5,
-      swaySpeed: 0.8,
-      fireInterval: 2.3,
-      volley: 2,
-      shotSpeed: 8.5,
-      summonInterval: 8,
-      points: 20000,
-    },
   },
 ];

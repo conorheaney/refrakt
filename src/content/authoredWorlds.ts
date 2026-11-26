@@ -120,29 +120,6 @@ export function validateWorld(value: unknown): AuthoredWorld {
     if (!Array.isArray(level.rows) || !level.rows.every((row) => typeof row === 'string'))
       throw new Error(`Level ${i + 1}: invalid rows.`);
     parseLevel(level as unknown as LevelDef, i);
-    if (level.boss !== undefined) {
-      const boss = record(level.boss);
-      name(boss.name);
-      const limits: Record<string, [number, number]> = {
-        hp: [1, 1000],
-        radius: [0.1, 3],
-        y: [0, 9],
-        sway: [0, 10],
-        swaySpeed: [0, 5],
-        fireInterval: [0.1, 60],
-        volley: [1, 10],
-        shotSpeed: [0.1, 30],
-        summonInterval: [0, 60],
-        points: [0, 100000],
-      };
-      for (const [key, [min, max]] of Object.entries(limits)) {
-        const n = boss[key];
-        if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max)
-          throw new Error(`Level ${i + 1}: invalid boss ${key}.`);
-      }
-      if (!Number.isInteger(boss.volley) || !Number.isInteger(boss.hp))
-        throw new Error('Boss HP and volley must be integers.');
-    }
   });
   const result = structuredClone(data) as unknown as AuthoredWorld;
   // Older files name a built-in wall shape ('rect' or a traced 'outline'); walls now always come from the drawn
@@ -150,6 +127,8 @@ export function validateWorld(value: unknown): AuthoredWorld {
   const legacy = result.world as WorldDef & { boundary?: unknown; outline?: unknown };
   delete legacy.boundary;
   delete legacy.outline;
+  // Bosses were removed from the game; older files may still carry one per level.
+  for (const level of result.levels) delete (level as LevelDef & { boss?: unknown }).boss;
   return result;
 }
 
@@ -180,9 +159,7 @@ export function playProblems(data: AuthoredWorld): string {
 }
 
 export function unfinishedLevels(data: AuthoredWorld): number[] {
-  return data.levels.flatMap((level, i) =>
-    level.boss || level.rows.some((row) => /[123XPG]/.test(row)) ? [] : [i + 1],
-  );
+  return data.levels.flatMap((level, i) => (level.rows.some((row) => /[123XPG]/.test(row)) ? [] : [i + 1]));
 }
 
 export interface LibraryResult {
