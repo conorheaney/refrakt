@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (CI deferred)
+**Last updated:** 2026-11-26 (strict indexing dropped)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -43,7 +43,7 @@ are given below where they matter.
 | Q8 | Comment contradicts the Refrakt hit-stop | **Fixed** | `f61fa46`: the freeze is kept, the paddle no longer lurches afterwards, and the comment is corrected |
 | Q9 | No formatter or linter | **Done** | `978acd7`: Prettier. Then oxlint with type-aware rules (`no-floating-promises`, `no-misused-promises`): `npm run lint`. `typescript-eslint` doesn't support TypeScript 7 yet; oxlint's type checker (`oxlint-tsgolint`) is built on it |
 | Q10 | `Game`, `UI`, `AudioDirector` untested | Open | Depends on S5 and S7 |
-| Q11 | Tooling: no CI, unchecked indexing, slow tests | **Partly done** | **CI deferred by decision**: checks run locally instead (formatting, lint and type-check after each change; tests, world-store checks, build and the editor browser test before major commits). A plan is ready if wanted: one GitHub Actions workflow on Ubuntu/Node 24, with the browser test as a parallel job. **Slow tests: no longer needed**: the suite now takes ~17 s, down from 49 s, after the collision work. **Strict indexing** (`noUncheckedIndexedAccess`): open |
+| Q11 | Tooling: no CI, unchecked indexing, slow tests | **Closed** | **CI deferred by decision**: checks run locally instead (formatting, lint and type-check after each change; tests, world-store checks, build and the editor browser test before major commits). A plan is ready if wanted: one GitHub Actions workflow on Ubuntu/Node 24, with the browser test as a parallel job. **Slow tests: no longer needed**: the suite now takes ~17 s, down from 49 s, after the collision work. **Strict indexing** (`noUncheckedIndexedAccess`): **dropped by decision**. Enabling it raises 1,004 type errors, nearly all array reads in loops whose bounds already guarantee the index, so the fixes would mostly be `!` noise in hot code. The lookups that use outside numbers are already checked at runtime: `Campaign.level()` throws, `worldAt` clamps, `?level=` is range-checked and world files are validated on load |
 | Q12 | Editor undo can use a lot of memory | Open | |
 
 Regression tests for the fixed bugs are in `tests/bugfixes.test.ts`. The drawn-area boundary is tested in
@@ -127,9 +127,8 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 ## Suggested order for what's left
 
-1. Q11: stricter indexing (`noUncheckedIndexedAccess`) (medium). CI is deferred; see the Q11 row.
-2. S5, S7, Q6 and Q10: make `Game` testable, then test the state machine (medium).
-3. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
-4. S6: a typed view-to-audio event bus (small).
-5. P6, Q12 and P7: per-world asset loading, editor undo memory, reflection (medium).
-6. P4 and P8: only if profiling shows them.
+1. S5, S7, Q6 and Q10: make `Game` testable, then test the state machine (medium).
+2. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
+3. S6: a typed view-to-audio event bus (small).
+4. P6, Q12 and P7: per-world asset loading, editor undo memory, reflection (medium).
+5. P4 and P8: only if profiling shows them.
