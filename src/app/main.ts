@@ -5,6 +5,7 @@ import { authoredEntry, readLibrary, validateWorld, type AuthoredWorld } from '.
 import { Campaign } from '../content/campaign';
 import * as THREE from 'three';
 import { buildCampaign, loadFileWorlds } from '../content/fileWorlds';
+import { parseLaunchOptions } from './launchOptions';
 
 function fatal(root: HTMLElement | null, message: string): void {
   if (!root) return;
@@ -24,8 +25,9 @@ async function boot(): Promise<void> {
   try {
     if (!(canvas instanceof HTMLCanvasElement) || !uiRoot)
       throw new Error('Page is missing the game canvas or UI root.');
+    const options = parseLaunchOptions(location.search);
     let campaign: Campaign;
-    if (new URLSearchParams(location.search).has('editorPreview')) {
+    if (options.editorPreview) {
       // The editor's test play: just the world being edited.
       const preview = validateWorld(JSON.parse(sessionStorage.getItem('refrakt.editor-preview') ?? 'null'));
       campaign = new Campaign([authoredEntry(preview)]);
@@ -57,7 +59,7 @@ async function boot(): Promise<void> {
         }
       }),
     );
-    new Game(canvas, uiRoot, campaign, assets, backgrounds).start();
+    new Game(canvas, uiRoot, campaign, options, assets, backgrounds).start();
   } catch (err) {
     console.error(err);
     fatal(uiRoot, err instanceof Error ? err.message : String(err));

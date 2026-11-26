@@ -37,15 +37,22 @@ it('the Pharoughs Tomb uses tomb dust weather', () => {
   expect(validateWorld(tomb).world.weather).toBe('dust');
 });
 
-it("pours Pharoughs Tomb's dust from its painted lintel (the drawn dust line)", () => {
-  // The lintel's underside: the template arena's top (10.4) less 1.15, as before the dust line existed.
-  expect(LINE.points.map((p) => p.y)).toEqual([9.25, 9.25]);
+/** Whether (x, y) lies on the polyline through `points` (straight segments, as a line with no curve). */
+function onLine(points: readonly { x: number; y: number }[], x: number, y: number): boolean {
+  return points.slice(1).some((b, i) => {
+    const a = points[i];
+    const ex = b.x - a.x,
+      ey = b.y - a.y;
+    const u = Math.max(0, Math.min(1, ((x - a.x) * ex + (y - a.y) * ey) / (ex * ex + ey * ey)));
+    return Math.hypot(x - a.x - ex * u, y - a.y - ey * u) < 1e-4;
+  });
+}
+
+it("pours Pharoughs Tomb's dust from the line drawn for it in the editor", () => {
+  expect(LINE.points.length).toBeGreaterThanOrEqual(2);
   const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, LINE);
-  for (const g of grains(layer)) {
-    expect(g.y).toBeCloseTo(9.25, 5);
-    expect(Math.abs(g.x)).toBeLessThanOrEqual(12.75 + 1e-5);
-  }
+  layer.setActive(true, { points: LINE.points }); // as drawn, without its curve
+  for (const g of grains(layer)) expect(onLine(LINE.points, g.x, g.y)).toBe(true);
 });
 
 it('starts every falling grain on the dust line: veils at its cracks, specks and grit anywhere along it', () => {

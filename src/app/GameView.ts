@@ -43,12 +43,6 @@ import { BAND_Y, PADDLE_POWERS } from '../gameplay/entities/PaddlePowers';
 const CELEBRATE_HUES: readonly number[] = [0.07, 0.6, 0.93];
 
 /**
- * Optional `?debugArena` (debug): draws the walls the ball bounces off (the world's drawn ball area, drain left
- * out) over the scene, so they can be checked against the scenery.
- */
-const DEBUG_ARENA = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debugArena');
-
-/**
  * Presentation layer. Mirrors simulation state into the Three.js scene each
  * frame (with interpolation) and turns simulation events into VFX. It never
  * mutates the World.
@@ -104,6 +98,11 @@ export class GameView {
     gl: THREE.WebGLRenderer,
     assets: ForestAssets,
     private readonly backgrounds: ReadonlyMap<number, THREE.Texture> = new Map(),
+    /**
+     * `debugArena` (`?debugArena`, see app/launchOptions.ts): draws the walls the ball bounces off (the world's drawn
+     * ball area, drain left out) over the scene, so they can be checked against the scenery.
+     */
+    private readonly options: { readonly debugArena?: boolean } = {},
   ) {
     const scene = this.scene;
     const glow = createGlowTexture();
@@ -335,7 +334,7 @@ export class GameView {
       }
       const area = campaign.worldAt(index).playAreas.ball;
       // Collision guides are opt-in diagnostics. The editor owns its editable SVG guides separately.
-      if (DEBUG_ARENA) {
+      if (this.options.debugArena) {
         this.backdropOutline = new THREE.Group();
         const points = areaSegments(area, area.drainEdge)
           .filter((segment) => !segment.drain)

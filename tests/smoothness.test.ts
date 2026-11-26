@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { FIELD, FOREST_ART, FOREST_FIELD, PADDLE, SIM } from '../src/gameplay/config';
 import { lerp } from '../src/engine/core/math';
-import { FixedStepper, stepFraction } from '../src/engine/core/Time';
+import { FixedStepper } from '../src/engine/core/Time';
 import { CameraRig } from '../src/gameplay/CameraRig';
 import { World, type StepInput } from '../src/gameplay/World';
+import { PointerDriver } from '../src/gameplay/PointerDriver';
 import { CLASSIC } from './support/worlds';
 
 /** Deterministic frame-time generator: a nominal refresh rate with +/- jitter, like real rAF timestamps. */
@@ -19,37 +20,32 @@ function frameTimes(hz: number, jitter: number, count: number): number[] {
 }
 
 /**
- * Mirrors Game.simulate/tick for pointer control: the pointer is sampled once per frame and each fixed
- * step gets the pointer position at its own time within the frame. Returns the rendered (interpolated)
- * paddle X after every frame.
+ * Drives the paddle with a pointer the way Game does (Game.simulate and Game.tick): the pointer is sampled once
+ * per frame and the real PointerDriver gives each fixed step its target. The paddle is first parked at the
+ * pointer's starting position. Returns the rendered (interpolated) paddle X after every frame.
  */
-function renderPointerSweep(dts: number[], speed: number, startX: number): { xs: number[]; t: number[] } {
+function pointerRun(dts: number[], target: (t: number) => number): number[] {
   const world = new World(CLASSIC);
   world.newGame(1);
   const stepper = new FixedStepper(SIM.step, SIM.maxStepsPerFrame);
-  const input: StepInput = { targetX: startX, axis: 0, action: false };
-  // Park the paddle at the start position first.
+  const input: StepInput = { targetX: target(0), axis: 0, action: false };
   for (let i = 0; i < 240; i++) world.step(SIM.step, input);
+  const pointer = new PointerDriver();
   let time = 0;
-  let from: number | null = null;
-  let to: number | null = null;
   const xs: number[] = [];
-  const ts: number[] = [];
   for (const dt of dts) {
     time += dt;
-    const target = startX + speed * time;
-    from = to ?? target;
-    to = target;
-    const carry = stepper.pending;
-    let k = 0;
+    pointer.sample(target(time), world.paddle.x, false);
+    pointer.beginFrame(dt, stepper.pending);
     const alpha = stepper.advance(dt, (step) => {
-      input.targetX = lerp(from as number, to as number, stepFraction(k++, step, carry, dt));
+      input.targetX = pointer.target(step);
+      pointer.beforeStep(world.paddle);
       world.step(step, input);
+      pointer.afterStep(world.paddle);
     });
     xs.push(lerp(world.paddle.px, world.paddle.x, alpha));
-    ts.push(time);
   }
-  return { xs, t: ts };
+  return xs;
 }
 
 describe('paddle smoothness', () => {
@@ -61,7 +57,7 @@ describe('paddle smoothness', () => {
     it(`renders a steady pointer sweep at ${hz} Hz without stalls or jumps`, () => {
       const speed = 12; // field units per second, well under PADDLE.pointerSpeed
       const dts = frameTimes(hz, jitter, Math.round(hz * 1.5));
-      const { xs } = renderPointerSweep(dts, speed, -10);
+      const xs = pointerRun(dts, (t) => -10 + speed * t);
       for (let i = 10; i < xs.length; i++) {
         const v = (xs[i] - xs[i - 1]) / dts[i];
         // Monotonic, and the per-frame speed stays within 3% of the pointer's speed (frame-to-frame
@@ -75,39 +71,13 @@ describe('paddle smoothness', () => {
 });
 
 describe('paddle responsiveness at direction changes', () => {
-  /** Mirrors Game's pointer path; returns rendered paddle X per frame for a pointer path target(t). */
-  function render(dts: number[], target: (t: number) => number): number[] {
-    const world = new World(CLASSIC);
-    world.newGame(1);
-    const stepper = new FixedStepper(SIM.step, SIM.maxStepsPerFrame);
-    const input: StepInput = { targetX: target(0), axis: 0, action: false };
-    for (let i = 0; i < 240; i++) world.step(SIM.step, input);
-    let time = 0;
-    let from: number | null = null;
-    let to: number | null = null;
-    const xs: number[] = [];
-    for (const dt of dts) {
-      time += dt;
-      from = to ?? target(time);
-      to = target(time);
-      const carry = stepper.pending;
-      let k = 0;
-      const alpha = stepper.advance(dt, (step) => {
-        input.targetX = lerp(from as number, to as number, stepFraction(k++, step, carry, dt));
-        world.step(step, input);
-      });
-      xs.push(lerp(world.paddle.px, world.paddle.x, alpha));
-    }
-    return xs;
-  }
-
   for (const hz of [60, 144]) {
     it(`a sharp mouse reversal moves the paddle back within one frame, without overshoot, at ${hz} Hz`, () => {
       const dts = frameTimes(hz, 0.06, hz);
       // Right at 15 u/s until 0.5 s, then straight back left at 15 u/s.
       const turn = 0.5;
       const target = (t: number): number => (t < turn ? -5 + 15 * t : -5 + 15 * turn - 15 * (t - turn));
-      const xs = render(dts, target);
+      const xs = pointerRun(dts, target);
       let t = 0;
       let turnFrame = -1;
       for (let i = 0; i < dts.length; i++) {

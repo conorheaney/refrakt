@@ -7,38 +7,32 @@ import { PADDLE, PLAYER, REFRAKT, SIM } from '../gameplay/config';
 import { POWERUPS } from '../gameplay/powerups/powerUps';
 import { PowerUpKind } from '../gameplay/types';
 import type { Campaign } from '../content/campaign';
-import { lerp } from '../engine/core/math';
 import { StateMachine } from '../engine/core/StateMachine';
 import { Storage, type Settings } from './Storage';
-import { FixedStepper, stepFraction, TimeFx } from '../engine/core/Time';
+import { FixedStepper, TimeFx } from '../engine/core/Time';
 import { Input } from '../engine/input/Input';
 import { GameView } from './GameView';
 import { QUALITY_PROFILES, Renderer } from '../engine/render/Renderer';
 import { STAGES_PER_WORLD } from '../content/worlds';
 import type { ForestAssets } from '../themes/scenery/forest/assets';
 import { World, type StepInput } from '../gameplay/World';
+import { PointerDriver } from '../gameplay/PointerDriver';
+import type { LaunchOptions } from './launchOptions';
 import { layoutStage } from '../engine/Stage';
 import { UI, type UiAction } from './UI';
 
-/** Field units of shove (snake bite, scarab landing) pointer offset worn away per field unit the mouse moves. */
-const POINTER_OFFSET_WEAR = 0.5;
-
 type GameState = 'menu' | 'loadout' | 'playing' | 'paused' | 'transition' | 'gameover' | 'victory';
 
-/** Optional `?level=N` (1-based) starts a run on that exact level; handy for practice and QA. */
-function startLevelFromUrl(campaign: Campaign): number | null {
-  const params = new URLSearchParams(window.location.search);
-  if (params.has('editorPreview')) {
+/** The level a run starts on when the launch options name one (?level, or the editor's test play), else null. */
+function startLevelFromOptions(options: LaunchOptions, campaign: Campaign): number | null {
+  if (options.editorPreview) {
     // The previewed world is the whole campaign (see main.ts).
-    const stage = Number(params.get('stage'));
-    return Number.isInteger(stage) && stage >= 0 && stage < STAGES_PER_WORLD && stage < campaign.levelCount ? stage : 0;
+    const { stage } = options.editorPreview;
+    return stage < STAGES_PER_WORLD && stage < campaign.levelCount ? stage : 0;
   }
-  const raw = Number(new URLSearchParams(window.location.search).get('level'));
-  return Number.isInteger(raw) && raw >= 1 && raw <= campaign.levelCount ? raw - 1 : null;
+  const level = options.level;
+  return level !== null && level >= 1 && level <= campaign.levelCount ? level - 1 : null;
 }
-
-/** Optional `?autopilot` lets the attract-mode AI play a real run (HUD, scoring, lives); for QA captures. */
-const AUTOPILOT = new URLSearchParams(window.location.search).has('autopilot');
 
 function randomSeed(): number {
   return (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
@@ -77,20 +71,13 @@ export class Game {
   /** World selected on the main menu. */
   private startWorld = 0;
   private runEnd: number;
-  /** Pointer target (field X) at the previous and current display frame; see tick(). */
-  private pointerFrom: number | null = null;
-  private pointerTo: number | null = null;
+  /** Turns the mouse or touch pointer into the paddle's target for each step (gameplay/PointerDriver.ts). */
+  private readonly pointer = new PointerDriver();
   /**
-   * Field units added to the pointer's position after a snake bite or a scarab landing shoves the paddle (a
-   * page can't move the real cursor), so the paddle stays where it was pushed instead of snapping back to a resting
-   * cursor. Mouse movement wears it away (POINTER_OFFSET_WEAR) until paddle and cursor line up again.
+   * A state change asked for from inside the simulation (level cleared, game over): applied once the frame's
+   * steps have run (see frame), so the rest of them never run under a state that has already been left.
    */
-  private pointerOffset = 0;
-  private lastRawPointer: number | null = null;
-  /** Per-frame bookkeeping used to time-place each fixed step within the frame. */
-  private frameSimDt = 0;
-  private frameCarry = 0;
-  private frameStep = 0;
+  private pendingState: GameState | null = null;
   /** The player's last confirmed power-up loadout this session (pre-selected next time); null before the first. */
   private lastLoadout: readonly PowerUpKind[] | null = null;
 
@@ -98,6 +85,7 @@ export class Game {
     canvas: HTMLCanvasElement,
     uiRoot: HTMLElement,
     private readonly campaign: Campaign,
+    private readonly options: LaunchOptions,
     assets: ForestAssets,
     backgrounds: ReadonlyMap<number, THREE.Texture> = new Map(),
   ) {
@@ -106,14 +94,12 @@ export class Game {
     this.stage = canvas.parentElement ?? document.body;
     this.uiRoot = uiRoot;
     this.renderer = new Renderer(canvas);
-    this.view = new GameView(this.world, this.renderer.gl, assets, backgrounds);
+    this.view = new GameView(this.world, this.renderer.gl, assets, backgrounds, { debugArena: options.debugArena });
     this.renderer.attach(this.view.scene, this.view.rig.camera);
     this.audio.addSamples(SAMPLE_URLS);
     this.director = new AudioDirector(this.audio, this.world.events);
     this.view.onThunder = (delay, strength) => this.director.thunder(delay, strength);
-    this.world.events.on('lifeLost', () => {
-      this.pointerOffset = 0;
-    });
+    this.world.events.on('lifeLost', () => this.pointer.clearOffset());
     this.view.onWeather = (weather) => this.director.setWeather(weather);
     this.view.onSnowFrame = (realDt, simDt, gust) => this.director.snowFrame(realDt, simDt, gust);
     this.view.onDustFrame = (realDt, simDt) => this.director.dustFrame(realDt, simDt);
@@ -151,7 +137,7 @@ export class Game {
 
   start(): void {
     this.fsm.transition('menu');
-    if (new URLSearchParams(window.location.search).has('editorPreview')) this.startGame();
+    if (this.options.editorPreview) this.startGame();
     this.running = true;
     this.lastTime = performance.now();
     requestAnimationFrame(this.frame);
@@ -168,6 +154,7 @@ export class Game {
     try {
       this.music.update();
       this.fsm.update(realDt);
+      this.applyPendingState();
       // The world's camera (Space product shot or the flat forest view) may have changed with the level.
       this.renderer.setCamera(this.view.rig.camera);
       const refrakt = this.view.refraktScreen;
@@ -201,58 +188,45 @@ export class Game {
   /** Advances the simulation by real time (after time effects) and refreshes the view. */
   private simulate(realDt: number): void {
     const simDt = this.timeFx.apply(realDt);
-    if (!this.world.demo && !AUTOPILOT) {
+    if (this.playerSteers) {
       const input = this.input;
       this.stepInput.axis = input.axis;
-      const raw = input.pointerActive ? this.view.rig.pointerToFieldX(input.pointerX, input.pointerY) : null;
-      if (raw === null) this.pointerOffset = 0;
-      else if (this.timeFx.frozen) {
-        // A hit-stop holds the paddle still while the cursor keeps moving: aim at the paddle, and let the
-        // difference wear off with mouse movement afterwards (as after a shove) instead of lurching to the cursor.
-        this.pointerOffset = this.world.paddle.x - raw;
-      } else if (this.pointerOffset !== 0 && this.lastRawPointer !== null) {
-        const left = Math.abs(this.pointerOffset) - Math.abs(raw - this.lastRawPointer) * POINTER_OFFSET_WEAR;
-        this.pointerOffset = left > 0 ? Math.sign(this.pointerOffset) * left : 0;
-      }
-      this.lastRawPointer = raw;
-      const target = raw === null ? null : raw + this.pointerOffset;
-      this.pointerFrom = target === null ? null : (this.pointerTo ?? target);
-      this.pointerTo = target;
+      const pointerX = input.pointerActive ? this.view.rig.pointerToFieldX(input.pointerX, input.pointerY) : null;
+      this.pointer.sample(pointerX, this.world.paddle.x, this.timeFx.frozen);
       if (input.consumeAction()) this.stepInput.action = true;
     }
-    this.frameSimDt = simDt;
-    this.frameCarry = this.stepper.pending;
-    this.frameStep = 0;
+    this.pointer.beginFrame(simDt, this.stepper.pending);
     this.alpha = this.stepper.advance(simDt, this.tick);
     // During a hit-stop the effects keep moving on real time; only the game itself holds still.
     this.view.update(realDt, simDt, this.alpha, this.timeFx.frozen ? realDt : simDt);
   }
 
+  /** True while the player steers (keyboard or pointer): not in the menu's attract mode or under ?autopilot. */
+  private get playerSteers(): boolean {
+    return !this.world.demo && !this.options.autopilot;
+  }
+
   private readonly tick = (step: number): void => {
-    if (this.world.demo || AUTOPILOT) {
-      this.driveDemo();
-    } else if (this.pointerFrom !== null && this.pointerTo !== null) {
-      // The pointer is sampled once per display frame, but a frame runs a varying number of fixed steps.
-      // Feed each step the pointer position at that step's own time within the frame, so the paddle moves
-      // evenly in simulation time and the interpolated render is smooth (instead of jumping to the target
-      // on the first step of some frames and lagging on others).
-      const f = stepFraction(this.frameStep, step, this.frameCarry, this.frameSimDt);
-      this.stepInput.targetX = lerp(this.pointerFrom, this.pointerTo, f);
-    } else {
-      this.stepInput.targetX = null;
-    }
-    this.frameStep++;
-    // While a snake's shove or an icicle's push plays out, the pointer doesn't steer (World.updatePaddle), so
-    // every bit the paddle moves is the push's, as far as the walls let it go: carry that into the pointer
-    // offset so the paddle stays where it was pushed. (An icicle's slide is consumed only while it pushes.)
-    const paddle = this.world.paddle;
-    const before = paddle.x;
-    const shoving = paddle.shove !== 0;
-    const slide = paddle.slide;
+    const steers = this.playerSteers;
+    if (steers) this.stepInput.targetX = this.pointer.target(step);
+    else this.driveDemo();
+    if (steers) this.pointer.beforeStep(this.world.paddle);
     this.world.step(step, this.stepInput);
-    if ((shoving || paddle.slide !== slide) && !this.world.demo && !AUTOPILOT) this.pointerOffset += paddle.x - before;
+    if (steers) this.pointer.afterStep(this.world.paddle);
     this.stepInput.action = false;
   };
+
+  /** Switches to `state` once the frame's simulation steps are done (see pendingState). */
+  private requestState(state: GameState): void {
+    this.pendingState = state;
+  }
+
+  private applyPendingState(): void {
+    const state = this.pendingState;
+    if (state === null) return;
+    this.pendingState = null;
+    this.fsm.transition(state);
+  }
 
   /** Attract-mode autopilot: track the most threatening ball with a little wobble. */
   private driveDemo(): void {
@@ -268,7 +242,7 @@ export class Game {
       }
     }
     this.stepInput.axis = 0;
-    this.stepInput.action = AUTOPILOT && !world.demo && world.balls.items.some((b) => b.active && b.stuck);
+    this.stepInput.action = this.options.autopilot && !world.demo && world.balls.items.some((b) => b.active && b.stuck);
     // Wobble scales with the paddle so the autopilot still lands most balls on the narrower paddle.
     const wobble = PADDLE.width * 0.25;
     this.stepInput.targetX =
@@ -412,13 +386,10 @@ export class Game {
     this.stepper.reset();
     this.input.consumeAction();
     this.stepInput.action = false;
-    this.pointerFrom = this.pointerTo = null;
-    this.pointerOffset = 0;
-    this.lastRawPointer = null;
-    const start = startLevelFromUrl(this.campaign) ?? this.startWorld * STAGES_PER_WORLD;
-    this.runEnd = new URLSearchParams(window.location.search).has('editorPreview')
-      ? start + 1
-      : this.campaign.runEndLevel(start);
+    this.pointer.reset();
+    this.pendingState = null;
+    const start = startLevelFromOptions(this.options, this.campaign) ?? this.startWorld * STAGES_PER_WORLD;
+    this.runEnd = this.options.editorPreview ? start + 1 : this.campaign.runEndLevel(start);
     world.newGame(randomSeed(), start);
     this.beginLevel();
   }
@@ -436,7 +407,7 @@ export class Game {
 
   /** A level has just been loaded: open the power-up picker (the QA autopilot skips it and allows every kind). */
   private beginLevel(): void {
-    if (AUTOPILOT) {
+    if (this.options.autopilot) {
       this.world.setLoadout(null);
       this.showLevelBanner();
       this.fsm.transition('playing');
@@ -453,9 +424,7 @@ export class Game {
     // The confirming click or key must not also launch the ball or move the paddle.
     this.input.reset();
     this.stepInput.action = false;
-    this.pointerFrom = this.pointerTo = null;
-    this.pointerOffset = 0;
-    this.lastRawPointer = null;
+    this.pointer.reset();
     this.showLevelBanner();
     this.fsm.transition('playing');
   }
@@ -520,11 +489,11 @@ export class Game {
         `BONUS +${bonus.toLocaleString()}`,
         2.2,
       );
-      this.fsm.transition('transition');
+      this.requestState('transition');
     });
 
     ev.on('gameOver', () => {
-      if (!world.demo) this.fsm.transition('gameover');
+      if (!world.demo) this.requestState('gameover');
     });
 
     // No full-screen flashes, and hit-stop freezes only for Refrakt's light show (refraktStarted below): a

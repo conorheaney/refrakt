@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (dust origin line)
+**Last updated:** 2026-11-26 (PointerDriver, launch options, deferred state changes)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -20,9 +20,9 @@ are given below where they matter.
 | S2 | `World.ts` god object; power-ups scattered | **Done** | `e926974`: `BallPhysics`, `BrickField`, `PowerUpSystem`, `BossSystem` behind `WorldContext`; power-ups in one table (`src/gameplay/powerups/powerUps.ts`) |
 | S3 | No common hazard interface | **Done** | `e926974`: `HazardSystem`; `World.hazards` renamed `World.snakes` |
 | S4 | Two implementations of ball vs polygon arena | **Done** | `bca75b0`: one `PolygonBoundary` (`src/gameplay/arena/boundary.ts`); every world uses its drawn areas, no fallbacks |
-| S5 | `Game` mixes composition root and game-feel logic | Open | Still true. The test in `tests/smoothness.test.ts` still copies `Game`'s pointer logic |
+| S5 | `Game` mixes composition root and game-feel logic | **Done** | Pointer control moved into `PointerDriver` (`src/gameplay/PointerDriver.ts`); `tests/smoothness.test.ts` now drives the real class instead of a copy. See the `PaddleDriver` follow-up below |
 | S6 | Ad-hoc view-to-audio callbacks | Open | |
-| S7 | Launch options parsed in many places | Open | Fewer flags now (`?boundary=` removed), but still parsed at module level in `Game.ts` and `GameView.ts` |
+| S7 | Launch options parsed in many places | **Done** | `parseLaunchOptions` (`src/app/launchOptions.ts`) reads the URL once in `main.ts`; `Game` and `GameView` take the options |
 | S8 | Per-world arena settings ignored | **Done** | `bca75b0`: walls and paddle lane from the drawn areas. Then: flying scarabs, debris, floor bursts, confetti and popups use the drawn area and paddle lane. Tomb dust: `44b0eec` wrongly moved its origin from the painted lintel to 1.15 below the ball area's top (1.4 units too low in Pharoughs Tomb); it now pours from an explicit dust line drawn in the editor, and Pharoughs Tomb's line restores the lintel height. What still reads the template arena is listed under follow-ups |
 | P1 | Drawn ball area slow and allocating | **Done** | `bca75b0`: see measurements below |
 | P2 | Paddle-lane spans rebuilt every step | **Done** | Spans are cached per level and rebuilt only when the paddle's width changes (Expand) |
@@ -38,7 +38,7 @@ are given below where they matter.
 | Q3 | Multiball does nothing with a Magnet-held ball | **Fixed** | `f61fa46` |
 | Q4 | Icicle push cancelled for mouse and touch players | **Fixed** (confirmed: the push was cancelled completely) | `f61fa46` |
 | Q5 | Escaped ball never recovered | **Fixed** | `f61fa46` (escape counts as a lost ball); `bca75b0` (balls slipping into a wall are pushed back) |
-| Q6 | State transitions fire inside a simulation step | Open | |
+| Q6 | State transitions fire inside a simulation step | **Done** | `levelCleared` and `gameOver` request their state change; `Game.frame` applies it after the frame's steps (at most one frame later) |
 | Q7 | Pause and visibility gaps | Open | |
 | Q8 | Comment contradicts the Refrakt hit-stop | **Fixed** | `f61fa46`: the freeze is kept, the paddle no longer lurches afterwards, and the comment is corrected |
 | Q9 | No formatter or linter | **Done** | `978acd7`: Prettier. Then oxlint with type-aware rules (`no-floating-promises`, `no-misused-promises`): `npm run lint`. `typescript-eslint` doesn't support TypeScript 7 yet; oxlint's type checker (`oxlint-tsgolint`) is built on it |
@@ -85,6 +85,12 @@ Sanctuary and Jungle Ruins, which have the most complex areas.
 | `src/gameplay/entities/EntityViews.ts` | the paddle's contact shadow offset; the barrier beam's initial length | Relative to the paddle; the beam length is overwritten every frame from the barrier's real span |
 | `src/app/audio/AudioDirector.ts:21` | left/right sound panning scale | A fixed stereo scale; makes no audible difference |
 
+**PaddleDriver (decided to revisit after Q10).** `PointerDriver` covers only mouse and touch. The keyboard goes
+straight into the step input, and the autopilot and menu demo (`Game.driveDemo`) aim the paddle themselves. A
+wider `PaddleDriver` owning all three (pointer, keyboard, autopilot) would put "who controls the paddle" in one
+place and let tests drive the paddle through one object. It was kept narrow for the S5 commit; reconsider once
+the `Game` state-machine tests (Q10) exist to prove the merge changes nothing.
+
 **Other notes**
 - Older browser drafts without areas get the editor's starting shapes when opened. That marks them as changed,
   so each needs saving once to keep the shapes.
@@ -127,7 +133,7 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 ## Suggested order for what's left
 
-1. S5, S7, Q6 and Q10: make `Game` testable, then test the state machine (medium).
+1. Q10: test `Game`'s state machine with a fake clock and stand-in renderer and audio (medium). Then reconsider `PaddleDriver` (see follow-ups).
 2. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
 3. S6: a typed view-to-audio event bus (small).
 4. P6, Q12 and P7: per-world asset loading, editor undo memory, reflection (medium).
