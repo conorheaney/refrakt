@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (strict indexing dropped)
+**Last updated:** 2026-11-26 (dust origin line)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -23,7 +23,7 @@ are given below where they matter.
 | S5 | `Game` mixes composition root and game-feel logic | Open | Still true. The test in `tests/smoothness.test.ts` still copies `Game`'s pointer logic |
 | S6 | Ad-hoc view-to-audio callbacks | Open | |
 | S7 | Launch options parsed in many places | Open | Fewer flags now (`?boundary=` removed), but still parsed at module level in `Game.ts` and `GameView.ts` |
-| S8 | Per-world arena settings ignored | **Done** | `bca75b0`: walls and paddle lane from the drawn areas. Then: flying scarabs, debris, floor bursts, confetti, popups and tomb dust use the drawn area and paddle lane. What still reads the template arena is listed under follow-ups |
+| S8 | Per-world arena settings ignored | **Done** | `bca75b0`: walls and paddle lane from the drawn areas. Then: flying scarabs, debris, floor bursts, confetti and popups use the drawn area and paddle lane. Tomb dust: `44b0eec` wrongly moved its origin from the painted lintel to 1.15 below the ball area's top (1.4 units too low in Pharoughs Tomb); it now pours from an explicit dust line drawn in the editor, and Pharoughs Tomb's line restores the lintel height. What still reads the template arena is listed under follow-ups |
 | P1 | Drawn ball area slow and allocating | **Done** | `bca75b0`: see measurements below |
 | P2 | Paddle-lane spans rebuilt every step | **Done** | Spans are cached per level and rebuilt only when the paddle's width changes (Expand) |
 | P3 | Scarab routes rebuilt every step and frame | **Done** | Each nest's route is worked out at load, and its walk-in route once per floor height |

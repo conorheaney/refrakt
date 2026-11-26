@@ -12,6 +12,8 @@ import {
   withBackground,
 } from '../src/content/authoredWorlds';
 import { buildCampaign } from '../src/content/fileWorlds';
+import { defaultDustLine, validateDustLine } from '../src/content/dustLine';
+import { worldEntry } from '../src/content/campaign';
 import { GRID } from '../src/gameplay/config';
 import { WORLD_TEMPLATES as WORLDS } from '../src/content/worlds';
 import { World } from '../src/gameplay/World';
@@ -157,5 +159,48 @@ describe('authored world files and persistence', () => {
     expect(campaign.mainWorldCount).toBe(2);
     expect(campaign.runEndLevel(0)).toBe(20);
     expect(campaign.runEndLevel(10)).toBe(20);
+  });
+
+  it('needs a dust line to play a world with tomb dust, and validates it', () => {
+    const data = createWorld('dusty');
+    data.levels = data.levels.map((level) => ({ ...level, rows: ['1............'] }));
+    expect(isPlayable(data)).toBe(true);
+    data.world = { ...data.world, weather: 'dust' };
+    expect(isPlayable(data)).toBe(false);
+    expect(playProblems(data)).toBe('no dust line drawn');
+    expect(() => worldEntry(data.world, data.levels, data.playAreas as never)).toThrow('dust line');
+    // New dust worlds start with a straight line just under the top of the ball area.
+    data.dustLine = defaultDustLine(data.playAreas!.ball!);
+    expect(data.dustLine.points).toEqual([
+      { x: -12.5, y: 10.4 - 1.15 },
+      { x: 12.5, y: 10.4 - 1.15 },
+    ]);
+    expect(isPlayable(data)).toBe(true);
+    expect(validateWorld(data).dustLine).toEqual(data.dustLine);
+    expect(buildCampaign([data]).worlds[0].dustLine).toEqual(data.dustLine);
+    // A line is 2-8 points within the scene, curved by 0 to 3.
+    expect(() => validateDustLine({ points: [{ x: 0, y: 9 }] })).toThrow('2-8 points');
+    expect(() =>
+      validateDustLine({
+        points: [
+          { x: 0, y: 9 },
+          { x: 40, y: 9 },
+        ],
+      }),
+    ).toThrow('within the scene');
+    expect(() =>
+      validateDustLine({
+        points: [
+          { x: 0, y: 9 },
+          { x: 4, y: 9 },
+        ],
+        radius: 5,
+      }),
+    ).toThrow('curve');
+    expect(() => validateWorld({ ...data, dustLine: 'lintel' })).toThrow('Invalid dust line');
+    // Other weather doesn't need one.
+    const rainy = { ...data, world: { ...data.world, weather: 'rain' as const } };
+    delete rainy.dustLine;
+    expect(isPlayable(rainy)).toBe(true);
   });
 });

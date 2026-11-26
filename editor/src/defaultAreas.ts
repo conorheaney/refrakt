@@ -1,4 +1,5 @@
 import type { AuthoredWorld } from '../../src/content/authoredWorlds';
+import { defaultDustLine } from '../../src/content/dustLine';
 import { FOREST_OUTLINE } from '../../src/content/outlines/forest';
 import {
   defaultBallArea,
@@ -41,18 +42,25 @@ export function defaultArea(
 }
 
 /**
- * `data` with any missing area filled in from its default, and whether anything was added. Every world in the
- * editor has both areas, as the game needs them to play it (older drafts may lack them).
+ * `data` with anything it needs to be played filled in from its defaults (missing ball or paddle area; a dust
+ * line for a world with tomb dust), and whether anything was added. Every world in the editor has these, as the
+ * game needs them to play it (older drafts may lack them).
  */
 export function withAreas(data: AuthoredWorld): { world: AuthoredWorld; added: boolean } {
+  let world = data;
+  let added = false;
   const ball = data.playAreas?.ball;
   const paddle = data.playAreas?.paddle;
-  if (ball && paddle) return { world: data, added: false };
-  return {
-    world: {
-      ...data,
+  if (!ball || !paddle) {
+    world = {
+      ...world,
       playAreas: { ball: ball ?? defaultArea(data, 'ball'), paddle: paddle ?? defaultArea(data, 'paddle') },
-    },
-    added: true,
-  };
+    };
+    added = true;
+  }
+  if (world.world.weather === 'dust' && !world.dustLine) {
+    world = { ...world, dustLine: defaultDustLine(world.playAreas!.ball!) };
+    added = true;
+  }
+  return { world, added };
 }

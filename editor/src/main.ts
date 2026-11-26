@@ -17,6 +17,8 @@ import { AreaEditor } from './AreaEditor';
 import { SnakeEditor } from './SnakeEditor';
 import { IcicleEditor } from './IcicleEditor';
 import { ScarabEditor } from './ScarabEditor';
+import { DustEditor, dustLineOrDefault } from './DustEditor';
+import type { DustLine } from '../../src/content/dustLine';
 import type { HazardDef } from '../../src/gameplay/hazards/hazards';
 import { EditorScene } from './Scene';
 import { listWorldFiles, saveWorldFile, type WorldFile } from './WorldFiles';
@@ -52,6 +54,7 @@ let areas: AreaEditor | undefined;
 let snakes: SnakeEditor | undefined;
 let icicles: IcicleEditor | undefined;
 let scarabs: ScarabEditor | undefined;
+let dust: DustEditor | undefined;
 const paletteButtons: HTMLButtonElement[] = [];
 
 function status(message: string, error = false): void {
@@ -171,6 +174,17 @@ function refreshLayers(): void {
   snakes?.refresh();
   icicles?.refresh();
   scarabs?.refresh();
+  dust?.refresh();
+}
+/** Applies the world's dust line, with undo. */
+function commitDust(line: DustLine): void {
+  snapshot();
+  data.dustLine = structuredClone(line);
+  render();
+}
+/** Shows a dust line mid-edit in the scene without touching the world or its undo history. */
+function previewDust(line: DustLine | undefined): void {
+  scene?.sync(line ? { ...data, dustLine: line } : data, selected);
 }
 /** Replaces the world's hazards (snakes, icicles, scarab nests; undefined: none), with undo. */
 function commitHazards(hazards: HazardDef[] | undefined): void {
@@ -322,6 +336,8 @@ el('weather').addEventListener('change', () => {
   snapshot();
   const { weather: _clear, ...world } = data.world;
   data.world = isWeather(value) ? { ...world, weather: value } : world;
+  // Tomb dust needs a line to pour from: start one under the top of the ball area (kept if switched off again).
+  if (value === 'dust' && !data.dustLine) data.dustLine = dustLineOrDefault(data);
   render();
 });
 // Music preview: audition the world's soundtrack live in any part (menu, level, boss) at any intensity, or
@@ -678,6 +694,7 @@ areas = new AreaEditor(scene, () => data, commitArea, status);
 snakes = new SnakeEditor(scene, () => data, commitHazards, previewHazards, status);
 icicles = new IcicleEditor(scene, () => data, commitHazards, previewHazards, status);
 scarabs = new ScarabEditor(scene, () => data, commitHazards, previewHazards, status);
+dust = new DustEditor(scene, () => data, commitDust, previewDust, status);
 areas.onModeChange = refreshLayers;
 render();
 // Opens on the most recently saved world in the game folder (a new one if there are none).

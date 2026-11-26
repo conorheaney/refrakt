@@ -318,7 +318,7 @@ export class GameView {
       const weather = def.weather;
       this.rain.setActive(weather === 'rain');
       this.snow.setActive(weather === 'snow');
-      this.dust.setActive(weather === 'dust', world.boundary.bounds);
+      this.dust.setActive(weather === 'dust', campaign.worldAt(index).dustLine);
       // With scarab nests, the dust storms come only with the scarabs (the tombGate event below).
       this.dust.autoRumble = world.scarabs.nests.length === 0;
       this.onWeather(weather);

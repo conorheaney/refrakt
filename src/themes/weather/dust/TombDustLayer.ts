@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FRONT_FADE, weatherDepth } from '../weatherDepth';
-import type { ArenaBounds } from '../../../gameplay/arena/boundary';
+import type { DustLine } from '../../../content/dustLine';
+import { roundedPath } from '../../../engine/core/paths';
 
 /**
  * Where the light comes from in the Pharoughs Tomb painting, in pixels of the 1600 x 900 artwork (y down).
@@ -18,8 +19,11 @@ const ART = {
   torchRight: [1540, 305],
 } as const;
 
-/** The cracks the rumble shakes dust from are in the underside of the painted lintel, this far below the field top. */
-const CEILING_BELOW_TOP = 1.15;
+/** Depth of the falling dust (z, behind the bricks): it spreads from -2.5 to -0.7 around this. The editor draws the dust line here. */
+export const DUST_Z = -1.6;
+
+/** Share of the falling grains that pour in veils from the dust line's cracks (the rest are specks and grit). */
+const VEIL_SHARE = 0.62;
 
 /** Floating dust: a slow cloud of motes that only really shows in the light. */
 const MOTES = 1500;
@@ -200,12 +204,10 @@ void main() {
 
 const DUST_VERTEX = /* glsl */ `
 ${ART_GLSL}
-uniform float uTop;
 uniform float uTime;
 uniform float uOn;
 uniform float uOff;
 uniform float uScale;
-uniform float uHalfWidth;
 attribute float aRand;
 attribute float aPhase;
 attribute float aSift;
@@ -232,26 +234,27 @@ void main() {
   float size;
   float alpha;
   vec3 color = mix(vec3(0.55, 0.38, 0.18), vec3(0.86, 0.66, 0.4), aPhase);
-  if (aRand < 0.62) {
+  // position.xy is where the grain leaves the world's dust line (its crack, for a veil); see setActive.
+  if (aRand < ${VEIL_SHARE.toFixed(2)}) {
     // Each crack pours on its own rhythm, so the veils start and stop unevenly.
     float pour = step(0.35, sin(born * (2.0 + 2.0 * hash(aSift)) + aSift * 5.0) * 0.5 + 0.5);
-    x = (hash(aSift + 0.5) * 2.0 - 1.0) * uHalfWidth + (aPhase - 0.5) * (0.08 + 0.12 * age);
+    x = position.x + (aPhase - 0.5) * (0.08 + 0.12 * age);
     fall = 0.8 * age + 0.5 * 5.5 * age * age;
     size = 0.035;
     alpha = 0.75 * pour;
   } else if (aRand < 0.9) {
-    x = position.x * uHalfWidth + sin(age * 1.7 + aPhase * 6.0) * 0.15;
+    x = position.x + sin(age * 1.7 + aPhase * 6.0) * 0.15;
     fall = 1.6 * age + 0.5 * 1.2 * age * age;
     size = 0.03;
     alpha = 0.5;
   } else {
-    x = position.x * uHalfWidth;
+    x = position.x;
     fall = 0.5 * 14.0 * age * age;
     size = 0.06 + 0.05 * aPhase;
     alpha = 0.95;
     color = vec3(0.45, 0.3, 0.16);
   }
-  vec3 p = vec3(x, uTop - fall, position.z);
+  vec3 p = vec3(x, position.y - fall, position.z);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   vec4 clip = projectionMatrix * mv;
   float lit = beamLight(artPx(clip.xy / clip.w * 0.5 + 0.5));
@@ -290,6 +293,11 @@ export class TombDustLayer {
   private readonly glow: THREE.Mesh;
   private readonly motes: THREE.Points;
   private readonly ceilingDust: THREE.Points;
+  /** Per falling grain: start position (x, y on the dust line; z depth), kind (aRand) and crack (aSift). */
+  private readonly dustPos = new Float32Array(RUMBLE.dust * 3);
+  private readonly dustPosAttr = new THREE.BufferAttribute(this.dustPos, 3);
+  private readonly dustRand = new Float32Array(RUMBLE.dust);
+  private readonly dustSift = new Float32Array(RUMBLE.dust);
   private readonly art = {
     uArtRepeat: { value: new THREE.Vector2(1, 1) },
     uArtOffset: { value: new THREE.Vector2(0, 0) },
@@ -309,12 +317,10 @@ export class TombDustLayer {
   };
   private readonly dustUniforms = {
     ...this.art,
-    uTop: { value: 9.2 },
     uTime: { value: 0 },
     uOn: { value: NEVER },
     uOff: { value: NEVER },
     uScale: { value: 600 },
-    uHalfWidth: { value: 12.5 },
     uOpacity: { value: LOOK.ceilingDust },
   };
 
@@ -405,20 +411,20 @@ export class TombDustLayer {
     this.motes.frustumCulled = false;
     this.motes.renderOrder = 10;
 
-    const dPos = new Float32Array(RUMBLE.dust * 3);
-    const dRand = new Float32Array(RUMBLE.dust);
+    const dPos = this.dustPos;
+    const dRand = this.dustRand;
     const dPhase = new Float32Array(RUMBLE.dust);
-    const dSift = new Float32Array(RUMBLE.dust);
+    const dSift = this.dustSift;
     for (let i = 0; i < RUMBLE.dust; i++) {
       dSift[i] = Math.floor(Math.random() * RUMBLE.sifts);
-      // Spread along the lintel (-1 to 1, times the world's half width in the shader).
-      // Behind the bricks (z = 0, half-depth 0.44), so it never hides them or the ball.
-      dPos.set([Math.random() * 2 - 1, 0, -2.5 + Math.random() * 1.8], i * 3);
+      // x and y: where on the world's dust line it starts (setActive). z: behind the bricks (z = 0, half-depth
+      // 0.44), so it never hides them or the ball.
+      dPos.set([0, 0, DUST_Z + (Math.random() - 0.5) * 1.8], i * 3);
       dRand[i] = Math.random();
       dPhase[i] = Math.random();
     }
     const dustGeometry = new THREE.BufferGeometry();
-    dustGeometry.setAttribute('position', new THREE.BufferAttribute(dPos, 3));
+    dustGeometry.setAttribute('position', this.dustPosAttr);
     dustGeometry.setAttribute('aRand', new THREE.BufferAttribute(dRand, 1));
     dustGeometry.setAttribute('aPhase', new THREE.BufferAttribute(dPhase, 1));
     dustGeometry.setAttribute('aSift', new THREE.BufferAttribute(dSift, 1));
@@ -444,11 +450,15 @@ export class TombDustLayer {
     return this.group.visible;
   }
 
-  /** Shown or hidden with the world; it changes only between worlds, behind the level transition. */
-  /** `arena`: the extent of the world's ball area, which the dust fills. */
-  setActive(on: boolean, arena: ArenaBounds): void {
-    this.dustUniforms.uTop.value = arena.top - CEILING_BELOW_TOP;
-    this.dustUniforms.uHalfWidth.value = Math.max(-arena.left, arena.right) - 1.5;
+  /**
+   * Shown or hidden with the world; it changes only between worlds, behind the level transition. `line` is the
+   * world's dust line (content/dustLine.ts), which every dust world has: the rumble's dust pours from it.
+   */
+  setActive(on: boolean, line: DustLine | undefined): void {
+    if (on) {
+      if (!line) throw new Error('A world with tomb dust needs a dust line.');
+      this.placeOnLine(line);
+    }
     if (on && !this.group.visible) {
       this.untilRumble = between(RUMBLE.firstMin, RUMBLE.firstMax);
       this.untilFlare = between(FLARE.firstMin, FLARE.firstMax);
@@ -463,6 +473,35 @@ export class TombDustLayer {
       this.flare = 0;
     }
     this.group.visible = on;
+  }
+
+  /**
+   * Puts every falling grain's start on the dust line: the cracks (one per sift) at random places along it,
+   * each veil grain at its crack, and specks and grit anywhere along it.
+   */
+  private placeOnLine(line: DustLine): void {
+    const path = roundedPath(line.points, false, line.radius ?? 0);
+    const lengths = [0];
+    for (let i = 1; i < path.length; i++) {
+      lengths.push(lengths[i - 1] + Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y));
+    }
+    const total = lengths[lengths.length - 1];
+    /** The point a fraction `f` (0-1) of the way along the line. */
+    const at = (f: number): { x: number; y: number } => {
+      const d = f * total;
+      let i = 1;
+      while (i < path.length - 1 && lengths[i] < d) i++;
+      const span = lengths[i] - lengths[i - 1] || 1;
+      const t = Math.min(1, Math.max(0, (d - lengths[i - 1]) / span));
+      return { x: path[i - 1].x + (path[i].x - path[i - 1].x) * t, y: path[i - 1].y + (path[i].y - path[i - 1].y) * t };
+    };
+    const cracks = Array.from({ length: RUMBLE.sifts }, () => at(Math.random()));
+    for (let i = 0; i < RUMBLE.dust; i++) {
+      const p = this.dustRand[i] < VEIL_SHARE ? cracks[this.dustSift[i]] : at(Math.random());
+      this.dustPos[i * 3] = p.x;
+      this.dustPos[i * 3 + 1] = p.y;
+    }
+    this.dustPosAttr.needsUpdate = true;
   }
 
   /** Keeps point sizes in world units for the current viewport (as ParticleSystem.setViewport). */

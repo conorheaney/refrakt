@@ -11,6 +11,7 @@ import { validateHazards, type HazardDef } from '../gameplay/hazards/hazards';
 import { parseLevel, type LevelDef } from './levels';
 import { isWeather, STAGES_PER_WORLD, WORLD_TEMPLATES, type WorldDef, type WorldId } from './worlds';
 import { worldEntry, type WorldEntry } from './campaign';
+import { validateDustLine, type DustLine } from './dustLine';
 
 /** Editor/library envelope only. WorldDef, LevelDef and their row alphabet are unchanged. */
 export interface AuthoredWorld {
@@ -25,6 +26,8 @@ export interface AuthoredWorld {
   playAreas?: PlayAreas;
   /** Enemies active in every level of this world (gameplay/hazards/hazards.ts). */
   hazards?: HazardDef[];
+  /** Where tomb dust pours from (content/dustLine.ts); a world with dust weather needs one to be played. */
+  dustLine?: DustLine;
 }
 
 export const LIBRARY_KEY = 'refrakt.authored-worlds';
@@ -106,6 +109,7 @@ export function validateWorld(value: unknown): AuthoredWorld {
       findPaddleLane(validateArea(areas.paddle), background.paddleExpandedWidth, PADDLE.halfH);
   }
   if (data.hazards !== undefined) validateHazards(data.hazards);
+  if (data.dustLine !== undefined) validateDustLine(data.dustLine);
   if (!Array.isArray(data.levels) || data.levels.length !== STAGES_PER_WORLD)
     throw new Error('A world must contain exactly 10 levels.');
   data.levels.forEach((value: unknown, i: number) => {
@@ -155,8 +159,14 @@ export function missingAreas(data: Pick<AuthoredWorld, 'playAreas'>): ('ball' | 
 }
 
 /** Ready to play: every level has something to break and both areas are drawn. */
+/** True when the world has tomb dust weather but no line for the dust to pour from. */
+export function missingDustLine(data: Pick<AuthoredWorld, 'world' | 'dustLine'>): boolean {
+  return data.world.weather === 'dust' && !data.dustLine;
+}
+
+/** Ready to play: every level has something to break, both areas are drawn, and a dust world has its dust line. */
 export function isPlayable(data: AuthoredWorld): boolean {
-  return unfinishedLevels(data).length === 0 && missingAreas(data).length === 0;
+  return unfinishedLevels(data).length === 0 && missingAreas(data).length === 0 && !missingDustLine(data);
 }
 
 /** Why a world can't be played yet, as one line for status messages (empty when it can). */
@@ -165,6 +175,7 @@ export function playProblems(data: AuthoredWorld): string {
   const levels = unfinishedLevels(data);
   if (levels.length) problems.push(`unfinished levels: ${levels.join(', ')}`);
   for (const area of missingAreas(data)) problems.push(`no ${area} area drawn`);
+  if (missingDustLine(data)) problems.push('no dust line drawn');
   return problems.join('; ');
 }
 
@@ -220,7 +231,7 @@ export function authoredEntry(data: AuthoredWorld, firstLevel = 0): WorldEntry {
     data.world,
     data.levels,
     { ball, paddle },
-    { hazards: data.hazards, background: data.backgroundImage },
+    { hazards: data.hazards, background: data.backgroundImage, dustLine: data.dustLine },
     firstLevel,
   );
 }
