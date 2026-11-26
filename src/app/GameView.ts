@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { DROP } from '../gameplay/config';
 import { POWERUPS } from '../gameplay/powerups/powerUps';
-import type { WeatherId, WorldId } from '../content/worlds';
+import type { WorldId } from '../content/worlds';
 import { areaSegments } from '../gameplay/arena/playAreas';
 import { clamp, damp, lerp } from '../engine/core/math';
 import { BrickKind, PowerUpKind, type Brick } from '../gameplay/types';
@@ -39,6 +39,8 @@ import { ScarabSystem } from '../gameplay/hazards/scarabs/scarabs';
 import { createGlowTexture } from '../engine/render/textures';
 import { RefraktFx } from '../gameplay/refrakt/RefraktFx';
 import { BAND_Y, PADDLE_POWERS } from '../gameplay/entities/PaddlePowers';
+import { EventBus } from '../engine/core/EventBus';
+import type { ViewEvents } from './viewEvents';
 
 const CELEBRATE_HUES: readonly number[] = [0.07, 0.6, 0.93];
 
@@ -93,6 +95,12 @@ export class GameView {
   private celebrate = 0;
   private celebrateTimer = 0;
 
+  /** What the view tells the rest of the game (the weather and what it does on screen); AudioDirector listens. */
+  readonly events = new EventBus<ViewEvents>();
+  /** Payloads for the per-frame events, reused every frame (see ViewEvents). */
+  private readonly snowFrame: ViewEvents['snowFrame'] = { realDt: 0, simDt: 0, gust: 0 };
+  private readonly dustFrame: ViewEvents['dustFrame'] = { realDt: 0, simDt: 0 };
+
   constructor(
     private readonly world: World,
     gl: THREE.WebGLRenderer,
@@ -110,8 +118,10 @@ export class GameView {
     this.rain = new RainLayer(scene);
     this.snow = new SnowLayer(scene);
     this.dust = new TombDustLayer(scene);
-    this.dust.onRumble = (...args) => this.onRumble(...args);
-    this.dust.onFlare = (side, strength) => this.onTorchFlare(side, strength);
+    this.rain.onThunder = (delay, strength) => this.events.emit('thunder', { delay, strength });
+    this.dust.onRumble = (strength, lead, rise, hold, fall) =>
+      this.events.emit('rumble', { strength, lead, rise, hold, fall });
+    this.dust.onFlare = (side, strength) => this.events.emit('torchFlare', { side, strength });
     this.bricks = new BrickView(scene, {
       textures: assets.forge,
       armorGeometry: createForgeArmorGeometry,
@@ -164,27 +174,6 @@ export class GameView {
   get refraktScreen(): { readonly screenGlow: number; readonly chroma: number; readonly hue: number } {
     return this.refrakt;
   }
-
-  /** Called on each lightning strike in a rainy world, for the thunder (see RainLayer.onThunder). */
-  set onThunder(fn: (delay: number, strength: number) => void) {
-    this.rain.onThunder = fn;
-  }
-
-  /** Called when a level loads, with its world's weather (for the weather sound). */
-  onWeather: (weather: WeatherId | undefined) => void = () => {};
-
-  /**
-   * Called every frame with the snow's current gust strength (0-1, always 0 outside snowy worlds), so the
-   * wind sound can follow the wind on screen.
-   */
-  onSnowFrame: (realDt: number, simDt: number, gust: number) => void = () => {};
-
-  /** Tomb dust (themes/weather/dust/TombDustLayer.ts): called every frame while it is showing, for the torch crackles. */
-  onDustFrame: (realDt: number, simDt: number) => void = () => {};
-  /** Tomb dust: as a rumble is coming (strength 0-1; see TombDustLayer.onRumble for the timing). */
-  onRumble: (strength: number, lead: number, rise: number, hold: number, fall: number) => void = () => {};
-  /** Tomb dust: as a torch flares (side -1 left, 1 right, 0 both; strength 0-1). */
-  onTorchFlare: (side: -1 | 0 | 1, strength: number) => void = () => {};
 
   /** Switches what differs between worlds: the scenery, the arena's width and the camera framing. */
   setWorld(id: WorldId): void {
@@ -320,7 +309,7 @@ export class GameView {
       this.dust.setActive(weather === 'dust', campaign.worldAt(index).dustLine);
       // With scarab nests, the dust storms come only with the scarabs (the tombGate event below).
       this.dust.autoRumble = world.scarabs.nests.length === 0;
-      this.onWeather(weather);
+      this.events.emit('weatherChanged', { weather });
       if (this.backdropOutline) {
         this.scene.remove(this.backdropOutline);
         this.backdropOutline.traverse((object) => {
@@ -743,7 +732,13 @@ export class GameView {
     this.rain.update(realDt, simDt);
     this.env.setLightning(this.rain.flash);
     this.snow.update(realDt);
-    if (this.snow.active) this.onSnowFrame(realDt, simDt, this.snow.gust);
+    if (this.snow.active) {
+      const frame = this.snowFrame;
+      frame.realDt = realDt;
+      frame.simDt = simDt;
+      frame.gust = this.snow.gust;
+      this.events.emit('snowFrame', frame);
+    }
     this.dust.setStirrers(
       this.balls.hasFocus ? { x: this.balls.focusX, y: this.balls.focusY } : null,
       paddleX,
@@ -754,7 +749,10 @@ export class GameView {
     const dusty = this.dust.active;
     this.env.setTorches(dusty ? this.dust.torches.x : 0, dusty ? this.dust.torches.y : 0, this.dust.flare);
     if (dusty) {
-      this.onDustFrame(realDt, simDt);
+      const frame = this.dustFrame;
+      frame.realDt = realDt;
+      frame.simDt = simDt;
+      this.events.emit('dustFrame', frame);
       // A rumble keeps a light shake going while it lasts (none with reduced motion).
       if (this.dust.rumble > 0.05 && !reducedMotion()) this.rig.holdTrauma(0.42 * this.dust.rumble * this.intensity);
     }

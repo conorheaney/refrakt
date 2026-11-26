@@ -52,13 +52,7 @@ export class Game {
     this.view = new GameView(this.world, this.renderer.gl, assets, backgrounds, { debugArena: options.debugArena });
     this.renderer.attach(this.view.scene, this.view.rig.camera);
     this.audio.addSamples(SAMPLE_URLS);
-    this.director = new AudioDirector(this.audio, this.world.events);
-    this.view.onThunder = (delay, strength) => this.director.thunder(delay, strength);
-    this.view.onWeather = (weather) => this.director.setWeather(weather);
-    this.view.onSnowFrame = (realDt, simDt, gust) => this.director.snowFrame(realDt, simDt, gust);
-    this.view.onDustFrame = (realDt, simDt) => this.director.dustFrame(realDt, simDt);
-    this.view.onRumble = (...args) => this.director.rumble(...args);
-    this.view.onTorchFlare = (side, strength) => this.director.torchFlare(side, strength);
+    this.director = new AudioDirector(this.audio, this.world.events, this.view.events);
 
     this.ui = new UI(uiRoot, this.settings, campaign, {
       onAction: (action) => this.flow.onUiAction(action),

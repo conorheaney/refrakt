@@ -1,6 +1,7 @@
 import { FIELD, POWER_WARN } from '../../gameplay/config';
 import type { EventBus } from '../../engine/core/EventBus';
 import type { GameEvents } from '../../gameplay/events';
+import type { ViewEvents } from '../viewEvents';
 import { BrickKind } from '../../gameplay/types';
 import type { WeatherId } from '../../content/worlds';
 import type { AudioEngine } from '../../engine/audio/AudioEngine';
@@ -71,34 +72,27 @@ export class AudioDirector {
   }
 
   /**
-   * Called when a level loads: rainy worlds play a loop of heavy rain on the ambience bus, snowy ones a
-   * synthesised winter wind (themes/weather/snow/SnowAmbience.ts).
+   * A level loaded (weatherChanged): rainy worlds play a loop of heavy rain on the ambience bus, snowy ones a
+   * synthesised winter wind (themes/weather/snow/SnowAmbience.ts), tomb dust its room tone.
    */
-  setWeather(weather: WeatherId | undefined): void {
+  private setWeather(weather: WeatherId | undefined): void {
     this.raining = weather === 'rain';
     this.snowing = weather === 'snow';
     this.dusty = weather === 'dust';
     this.updateWeather();
   }
 
-  /** Every frame in the tomb: the room tone and torch crackles. */
-  dustFrame(realDt: number, simDt: number): void {
-    this.tomb.update(realDt, simDt);
-  }
-
-  /** The tomb shifting (TombDustLayer.onRumble). */
-  rumble(strength: number, lead: number, rise: number, hold: number, fall: number): void {
-    this.tomb.rumble(strength, lead, rise, hold, fall);
-  }
-
-  /** A wall torch flaring (TombDustLayer.onFlare). */
-  torchFlare(side: -1 | 0 | 1, strength: number): void {
-    this.tomb.flare(side, strength);
-  }
-
-  /** Every frame in a snowy world: the wind follows the gusts on screen (SnowLayer.gust). */
-  snowFrame(realDt: number, simDt: number, gust: number): void {
-    this.snow.update(realDt, simDt, gust);
+  /** The view's weather events (app/viewEvents.ts): the weather loops, the tomb's sounds, the wind, thunder. */
+  private listenToView(view: EventBus<ViewEvents>): void {
+    view.on('weatherChanged', ({ weather }) => this.setWeather(weather));
+    // Every frame in the tomb: the room tone and torch crackles.
+    view.on('dustFrame', ({ realDt, simDt }) => this.tomb.update(realDt, simDt));
+    // The tomb shifting, and a wall torch flaring.
+    view.on('rumble', ({ strength, lead, rise, hold, fall }) => this.tomb.rumble(strength, lead, rise, hold, fall));
+    view.on('torchFlare', ({ side, strength }) => this.tomb.flare(side, strength));
+    // Every frame in a snowy world: the wind follows the gusts on screen.
+    view.on('snowFrame', ({ realDt, simDt, gust }) => this.snow.update(realDt, simDt, gust));
+    view.on('thunder', ({ delay, strength }) => this.thunder(delay, strength));
   }
 
   private updateWeather(): void {
@@ -115,9 +109,11 @@ export class AudioDirector {
   constructor(
     private readonly audio: AudioEngine,
     events: EventBus<GameEvents>,
+    view: EventBus<ViewEvents>,
   ) {
     this.snow = new SnowAmbience(audio);
     this.tomb = new TombAmbience(audio);
+    this.listenToView(view);
     events.on('ballLaunched', ({ x }) => {
       if (this.gate('launch', 0.05))
         audio.tone({ freq: 320, endFreq: 720, dur: 0.14, vol: 0.2, type: 'triangle', pan: panOf(x) });
@@ -623,7 +619,7 @@ export class AudioDirector {
    * crack and rumble together trip the master compressor, which ducks the music for a moment; that is
    * accepted as part of the storm.
    */
-  thunder(delay: number, strength: number): void {
+  private thunder(delay: number, strength: number): void {
     if (!this.gate('thunder', 1)) return;
     const audio = this.audio;
     const t = audio.context!.currentTime + delay;
