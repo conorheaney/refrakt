@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FRONT_FADE, weatherDepth } from '../weatherDepth';
 import type { DustLine } from '../../../content/dustLine';
 import { roundedPath } from '../../../engine/core/paths';
+import { reducedMotion } from '../../../engine/reducedMotion';
 
 /**
  * Where the light comes from in the Pharoughs Tomb painting, in pixels of the 1600 x 900 artwork (y down).
@@ -630,8 +631,4 @@ function smooth(t: number): number {
 
 function between(min: number, max: number): number {
   return min + Math.random() * (max - min);
-}
-
-function reducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

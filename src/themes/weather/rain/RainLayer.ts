@@ -4,6 +4,7 @@ import type { World } from '../../../gameplay/World';
 import type { ParticleSystem } from '../../../engine/render/ParticleSystem';
 import { PADDLE_HALF_D } from '../../../gameplay/entities/EntityViews';
 import { FRONT_FADE, weatherDepth } from '../weatherDepth';
+import { reducedMotion } from '../../../engine/reducedMotion';
 
 /** Splashes per world unit of exposed top surface width per second (paddle and uncovered bricks). */
 const SPLASH_RATE = 5;
@@ -263,7 +264,3 @@ const LIGHTNING = {
   /** How fast each flash fades. */
   decay: 0.2,
 } as const;
-
-function reducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-}

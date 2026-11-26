@@ -42,6 +42,7 @@ import { BAND_Y, PADDLE_POWERS } from '../gameplay/entities/PaddlePowers';
 import { EventBus } from '../engine/core/EventBus';
 import type { ViewEvents } from './viewEvents';
 import type { BackdropSource } from './backdrops';
+import { reducedMotion } from '../engine/reducedMotion';
 
 const CELEBRATE_HUES: readonly number[] = [0.07, 0.6, 0.93];
 
@@ -777,8 +778,4 @@ export class GameView {
     }
     this.rig.update(realDt);
   }
-}
-
-function reducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
