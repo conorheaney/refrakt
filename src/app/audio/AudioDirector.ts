@@ -1,12 +1,8 @@
 import { FIELD, POWER_WARN } from '../../gameplay/config';
 import type { EventBus } from '../../engine/core/EventBus';
 import type { GameEvents } from '../../gameplay/events';
-import type { ViewEvents } from '../viewEvents';
 import { BrickKind } from '../../gameplay/types';
-import type { WeatherId } from '../../content/worlds';
 import type { AudioEngine } from '../../engine/audio/AudioEngine';
-import { SnowAmbience } from '../../themes/weather/snow/SnowAmbience';
-import { TombAmbience } from '../../themes/weather/dust/TombAmbience';
 
 /** Share of the ambience volume that plays while the game is paused, so the pause screen is calm. */
 const PAUSE_AMBIENCE = 0.3;
@@ -25,10 +21,10 @@ function panOf(x: number): number {
   return Math.max(-0.6, Math.min(0.6, (x / FIELD.halfWidth) * 0.6));
 }
 
-/** Gain of the rain loop (before the ambience slider): a bed under the music, never over it. */
-const RAIN_LEVEL = 0.85;
-
-/** Maps simulation events to synthesised sound effects. */
+/**
+ * Maps simulation events to synthesised sound effects. The weather's sound is its own (gameplay/weather/), heard
+ * only while `enabled`.
+ */
 export class AudioDirector {
   private on = true;
   /** Refrakt is running (its hum should be playing unless sound is off or the game is paused). */
@@ -36,11 +32,6 @@ export class AudioDirector {
   private hushed = false;
   /** Bricks shattered in this Refrakt so far: each chimes one step higher. */
   private refraktStreak = 0;
-  private raining = false;
-  private snowing = false;
-  private dusty = false;
-  private readonly snow: SnowAmbience;
-  private readonly tomb: TombAmbience;
 
   /** Disabled during attract mode so the menu stays calm (this also quiets the weather). */
   get enabled(): boolean {
@@ -49,11 +40,9 @@ export class AudioDirector {
 
   set enabled(value: boolean) {
     this.on = value;
-    this.updateWeather();
     this.applyRefraktHum(1);
   }
 
-  /** The pause menu: the Refrakt hum waits silently while it is open. */
   /** While paused the Refrakt hum stops and the ambience (rain, snow, tomb dust) drops to PAUSE_AMBIENCE. */
   setPaused(paused: boolean): void {
     this.hushed = paused;
@@ -71,49 +60,12 @@ export class AudioDirector {
     this.audio.setLoop('refraktHum', level, fade, 'sfx');
   }
 
-  /**
-   * A level loaded (weatherChanged): rainy worlds play a loop of heavy rain on the ambience bus, snowy ones a
-   * synthesised winter wind (themes/weather/snow/SnowAmbience.ts), tomb dust its room tone.
-   */
-  private setWeather(weather: WeatherId | undefined): void {
-    this.raining = weather === 'rain';
-    this.snowing = weather === 'snow';
-    this.dusty = weather === 'dust';
-    this.updateWeather();
-  }
-
-  /** The view's weather events (app/viewEvents.ts): the weather loops, the tomb's sounds, the wind, thunder. */
-  private listenToView(view: EventBus<ViewEvents>): void {
-    view.on('weatherChanged', ({ weather }) => this.setWeather(weather));
-    // Every frame in the tomb: the room tone and torch crackles.
-    view.on('dustFrame', ({ realDt, simDt }) => this.tomb.update(realDt, simDt));
-    // The tomb shifting, and a wall torch flaring.
-    view.on('rumble', ({ strength, lead, rise, hold, fall }) => this.tomb.rumble(strength, lead, rise, hold, fall));
-    view.on('torchFlare', ({ side, strength }) => this.tomb.flare(side, strength));
-    // Every frame in a snowy world: the wind follows the gusts on screen.
-    view.on('snowFrame', ({ realDt, simDt, gust }) => this.snow.update(realDt, simDt, gust));
-    view.on('thunder', ({ delay, strength }) => this.thunder(delay, strength));
-  }
-
-  private updateWeather(): void {
-    this.updateRain();
-    this.snow.setActive(this.on && this.snowing);
-    this.tomb.setActive(this.on && this.dusty);
-  }
-
-  private updateRain(): void {
-    this.audio.setLoop('rainHeavy', this.on && this.raining ? RAIN_LEVEL : 0, this.on ? 2.5 : 1);
-  }
   private readonly lastPlayed = new Map<string, number>();
 
   constructor(
     private readonly audio: AudioEngine,
     events: EventBus<GameEvents>,
-    view: EventBus<ViewEvents>,
   ) {
-    this.snow = new SnowAmbience(audio);
-    this.tomb = new TombAmbience(audio);
-    this.listenToView(view);
     events.on('ballLaunched', ({ x }) => {
       if (this.gate('launch', 0.05))
         audio.tone({ freq: 320, endFreq: 720, dur: 0.14, vol: 0.2, type: 'triangle', pan: panOf(x) });
@@ -453,8 +405,6 @@ export class AudioDirector {
         });
       }
     };
-    // A storm coming in the tomb: the stone gate grinding open.
-    events.on('tombGate', () => this.tomb.stoneGate());
     events.on('scarabWarn', ({ x }) => {
       if (!this.gate('scarabWarn', 0.3)) return;
       const pan = panOf(x);
@@ -580,71 +530,6 @@ export class AudioDirector {
         audio.noise({ dur: 0.15, vol: 0.2, filter: 3000, pan });
       }
     });
-  }
-
-  /**
-   * Thunder for a lightning strike (themes/weather/rain/RainLayer.ts), starting `delay` seconds after the flash.
-   * `strength` 0-1 scales loudness. Every strike is a sharp crack (the close recording) with a long
-   * rolling rumble (one of the distant recordings) laid in just behind it, both slowed a little so they
-   * are deeper and longer, and a synthesised rumble swelling underneath that carries on after them. The
-   * crack and rumble together trip the master compressor, which ducks the music for a moment; that is
-   * accepted as part of the storm.
-   */
-  private thunder(delay: number, strength: number): void {
-    if (!this.gate('thunder', 1)) return;
-    const audio = this.audio;
-    const t = audio.context!.currentTime + delay;
-    // Kept near the centre: thunder panned far to one side sounds further away.
-    const pan = (Math.random() - 0.5) * 0.4;
-    const rate = 0.86 + Math.random() * 0.06;
-    const played = audio.sample('thunderClose', { vol: 1.5 * strength, pan, when: t, rate, bus: 'ambience' });
-    audio.sample(Math.random() < 0.5 ? 'thunderDistant1' : 'thunderDistant2', {
-      vol: 1.1 * strength,
-      pan: -pan,
-      when: t + 0.5,
-      rate: rate * 0.95,
-      bus: 'ambience',
-    });
-    // The long rolling tail, under the recordings or the synthesised fallback alike. Its top reaches
-    // about 300 Hz so small speakers and headphones still carry it, not only a subwoofer.
-    audio.swell({
-      source: 'noise',
-      filter: 320,
-      endFilter: 60,
-      vol: 0.5 * strength,
-      attack: 0.8,
-      hold: 2.5,
-      release: 5,
-      pan: -pan,
-      when: t + 0.3,
-      bus: 'ambience',
-    });
-    audio.swell({
-      source: 'noise',
-      filter: 220,
-      endFilter: 50,
-      vol: 0.4 * strength,
-      attack: 1.5,
-      hold: 2,
-      release: 6,
-      tremolo: { rate: 2.3, depth: 0.5 },
-      pan,
-      when: t + 1.2,
-      bus: 'ambience',
-    });
-    if (played) return;
-    audio.noise({ dur: 0.6, vol: 0.34 * strength, filter: 2600, endFilter: 300, pan, when: t, bus: 'ambience' });
-    audio.noise({ dur: 4.5, vol: 0.85 * strength, filter: 240, endFilter: 70, pan, when: t + 0.05, bus: 'ambience' });
-    audio.noise({
-      dur: 3.8,
-      vol: 0.6 * strength,
-      filter: 170,
-      endFilter: 55,
-      pan: -pan,
-      when: t + 0.4,
-      bus: 'ambience',
-    });
-    audio.noise({ dur: 3.2, vol: 0.4 * strength, filter: 130, endFilter: 45, pan, when: t + 1, bus: 'ambience' });
   }
 
   uiClick(): void {

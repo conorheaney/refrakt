@@ -1,7 +1,7 @@
 import type { MusicTrackId } from './musicTracks';
 import type { BallArea, PolygonArea } from '../gameplay/arena/playAreas';
 import type { HazardDef } from '../gameplay/hazards/hazards';
-import type { DustLine } from './dustLine';
+import { weatherProblem, type WeatherSettings } from '../gameplay/weather/settings';
 import { parseLevel, type LevelCell, type LevelDef } from './levels';
 import { levelNumber, STAGES_PER_WORLD, type WorldDef } from './worlds';
 
@@ -24,14 +24,14 @@ export interface WorldEntry {
   readonly hazards?: readonly HazardDef[];
   /** The world's scenery: an uploaded image (a data: URL). Without one the backdrop is plain dark. */
   readonly background?: string;
-  /** Where tomb dust pours from (content/dustLine.ts); every world with dust weather has one. */
-  readonly dustLine?: DustLine;
+  /** The air of the world (gameplay/weather/settings.ts): snow, rain, tomb dust. Absent means clear. */
+  readonly weather?: WeatherSettings;
 }
 
 export interface WorldExtras {
   readonly hazards?: readonly HazardDef[];
   readonly background?: string;
-  readonly dustLine?: DustLine;
+  readonly weather?: WeatherSettings;
 }
 
 /**
@@ -47,7 +47,8 @@ export function worldEntry(
 ): WorldEntry {
   if (levels.length !== STAGES_PER_WORLD) throw new Error(`A world must contain exactly ${STAGES_PER_WORLD} levels.`);
   if (!areas.ball || !areas.paddle) throw new Error(`${def.name}: draw a ball area and a paddle area before playing.`);
-  if (def.weather === 'dust' && !extras.dustLine) throw new Error(`${def.name}: draw a dust line before playing.`);
+  const weather = extras.weather && weatherProblem(extras.weather);
+  if (weather) throw new Error(`${def.name}: ${weather} (draw one before playing).`);
   return {
     def,
     levels,
@@ -55,7 +56,7 @@ export function worldEntry(
     playAreas: { ball: areas.ball, paddle: areas.paddle },
     ...(extras.hazards ? { hazards: extras.hazards } : {}),
     ...(extras.background ? { background: extras.background } : {}),
-    ...(extras.dustLine ? { dustLine: extras.dustLine } : {}),
+    ...(extras.weather ? { weather: extras.weather } : {}),
   };
 }
 
@@ -130,13 +131,13 @@ export class Campaign {
     return new Campaign(this.worlds.map((world, i) => (i === index ? entry : world)));
   }
 
-  /** This campaign with world `index`'s areas and extras (hazards, background) replaced. */
+  /** This campaign with world `index`'s areas and extras (hazards, background, weather) replaced. */
   withWorldPartsAt(index: number, parts: { playAreas?: WorldAreas } & WorldExtras): Campaign {
     const world = this.worlds[index];
     if (!world) throw new Error(`No world slot ${index}.`);
     const hazards = 'hazards' in parts ? parts.hazards : world.hazards;
     const background = 'background' in parts ? parts.background : world.background;
-    const dustLine = 'dustLine' in parts ? parts.dustLine : world.dustLine;
+    const weather = 'weather' in parts ? parts.weather : world.weather;
     return this.withWorldAt(index, {
       def: world.def,
       levels: world.levels,
@@ -144,7 +145,7 @@ export class Campaign {
       playAreas: parts.playAreas ?? world.playAreas,
       ...(hazards ? { hazards } : {}),
       ...(background ? { background } : {}),
-      ...(dustLine ? { dustLine } : {}),
+      ...(weather ? { weather } : {}),
     });
   }
 }

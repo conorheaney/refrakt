@@ -5,6 +5,7 @@ import type { HazardSystem } from './hazards/hazards';
 import { SnakeSystem } from './hazards/snakes/snakes';
 import { IcicleSystem } from './hazards/icicles/icicles';
 import { ScarabSystem } from './hazards/scarabs/scarabs';
+import { WeatherClock } from './weather/WeatherClock';
 import {
   areaContour,
   clampToSpans,
@@ -80,6 +81,8 @@ export class World implements WorldContext {
   readonly rng = new Random(1);
   /** Hazards draw from their own stream, so adding enemies to a world never changes its power-up rolls. */
   private readonly hazardRng = new Random(2);
+  /** As does the weather, so giving a world weather never changes its hazards or power-ups. */
+  private readonly weatherRng = new Random(3);
 
   readonly ballPhysics = new BallPhysics(this);
   readonly brickField = new BrickField(this, GRID);
@@ -95,6 +98,8 @@ export class World implements WorldContext {
    * the simulation: they share hazardRng, so reordering changes every seeded run.
    */
   readonly hazardSystems: readonly HazardSystem[] = [this.snakes, this.icicles, this.scarabs];
+  /** When the current world's weather storms, and the hazards its storms bring (gameplay/weather/WeatherClock.ts). */
+  readonly weather = new WeatherClock(this.weatherRng, this.events, this.hazardSystems);
 
   readonly bricks: readonly Brick[] = this.brickField.bricks;
   readonly drops: Pool<Drop> = this.powerUps.drops;
@@ -150,7 +155,7 @@ export class World implements WorldContext {
   private spansWidth = Number.NaN;
   /** The worlds and levels this game plays (see setCampaign). */
   private campaignValue: Campaign;
-  /** The current level's world: its name, soundtrack and weather. */
+  /** The current level's world: its name and soundtrack. */
   private worldDefValue: WorldDef;
   private respawnTimer = 0;
 
@@ -176,7 +181,7 @@ export class World implements WorldContext {
     this.campaignValue = campaign;
   }
 
-  /** The current level's world: its name, soundtrack and weather. */
+  /** The current level's world: its name and soundtrack. */
   get worldDef(): WorldDef {
     return this.worldDefValue;
   }
@@ -222,6 +227,7 @@ export class World implements WorldContext {
   newGame(seed: number, startLevel = 0): void {
     this.rng.seed(seed);
     this.hazardRng.seed(seed ^ 0x5a17e);
+    this.weatherRng.seed(seed ^ 0x3e7a1);
     this.score = 0;
     this.lives = PLAYER.lives;
     this.time = 0;
@@ -253,6 +259,7 @@ export class World implements WorldContext {
     this.paddle.x = this.paddle.px = clampToSpans(this.paddle.x, this.currentPaddleSpans());
     this.clearTransient();
     const difficulty = (levelIndex % STAGES_PER_WORLD) / (STAGES_PER_WORLD - 1);
+    this.weather.load(entry.weather, difficulty);
     for (const system of this.hazardSystems) system.load(entry.hazards, difficulty, this.boundary.bounds);
     this.powerUps.startLevel();
     this.brickField.load(campaign.levelCells(levelIndex), this.time);
@@ -285,6 +292,7 @@ export class World implements WorldContext {
     this.powerUps.updateLasers(dt);
     this.powerUps.updateDrops(dt);
     const live = this.phase === 'live';
+    this.weather.update(dt, live);
     for (const system of this.hazardSystems) this.score += system.update(dt, this.paddle, this.balls.items, live);
     this.checkCleared();
   }
@@ -351,6 +359,7 @@ export class World implements WorldContext {
   loseLife(): void {
     this.setCombo(0);
     this.clearTransient();
+    this.weather.reset();
     if (!this.demo) this.lives--;
     this.events.emit('lifeLost', { lives: this.lives });
     if (this.lives <= 0) {

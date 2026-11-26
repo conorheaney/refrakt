@@ -1,4 +1,5 @@
 import type { Brick, DamageCause, PowerUpKind } from './types';
+import type { WeatherKind } from './weather/weathers';
 
 /** Everything the simulation announces. Views, audio and flow control subscribe; the sim never calls them. */
 export interface GameEvents {
@@ -30,6 +31,8 @@ export interface GameEvents {
   lifeLost: { lives: number };
   gameOver: { score: number };
   levelCleared: { index: number; bonus: number };
+  /** The world's weather storms (gameplay/weather/WeatherClock.ts): a gust, a lightning strike, the tomb shaking. */
+  weatherStorm: { kind: WeatherKind };
   /** A wall snake starts its warning; (x, y) is its den. */
   snakeWarn: { x: number; y: number };
   snakeStrike: { x: number; y: number };
@@ -46,8 +49,6 @@ export interface GameEvents {
   paddleStruck: { x: number; y: number };
   /** A scarab nest stirs before its swarm; (x, y) is the foot of its cover's inner edge. */
   scarabWarn: { x: number; y: number };
-  /** A storm is coming: a stone gate starts grinding open, and `duration` seconds later the dust storm blows in and the scarabs come with it. */
-  tombGate: { duration: number };
   /** One scarab sets off from its nest; (x, y) is the nest. */
   scarabEmerge: { x: number; y: number };
   /** A scarab climbed onto the paddle; (x, y) is where it clings. */

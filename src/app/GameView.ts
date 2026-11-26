@@ -20,9 +20,11 @@ import {
 } from '../gameplay/entities/EntityViews';
 import { Environment } from '../themes/scenery/Environment';
 import { ParticleSystem } from '../engine/render/ParticleSystem';
-import { RainLayer } from '../themes/weather/rain/RainLayer';
-import { SnowLayer } from '../themes/weather/snow/SnowLayer';
-import { TombDustLayer } from '../themes/weather/dust/TombDustLayer';
+import type { Weather, WeatherFrame } from '../gameplay/weather/Weather';
+import type { WeatherKind } from '../gameplay/weather/weathers';
+import { WEATHER_TYPES } from '../gameplay/weather/weatherTypes';
+import type { WeatherSettings } from '../gameplay/weather/settings';
+import type { AudioEngine } from '../engine/audio/AudioEngine';
 import { IcicleView } from '../gameplay/hazards/icicles/IcicleView';
 import { SnakesView } from '../gameplay/hazards/snakes/SnakeView';
 import { ScarabView, SCARAB_Z } from '../gameplay/hazards/scarabs/ScarabView';
@@ -30,8 +32,6 @@ import { ScarabSystem } from '../gameplay/hazards/scarabs/scarabs';
 import { createGlowTexture } from '../engine/render/textures';
 import { RefraktFx } from '../gameplay/refrakt/RefraktFx';
 import { BAND_Y, PADDLE_POWERS } from '../gameplay/entities/PaddlePowers';
-import { EventBus } from '../engine/core/EventBus';
-import type { ViewEvents } from './viewEvents';
 import type { BackdropSource } from './backdrops';
 import { reducedMotion } from '../engine/reducedMotion';
 
@@ -65,9 +65,11 @@ export class GameView {
   /** Coloured dust blended over the scene (a crushed scarab's red puff). */
   private readonly dustPuffs = new ParticleSystem(400, 'dust');
   private readonly debris = new DebrisSystem(420);
-  private readonly rain: RainLayer;
-  private readonly snow: SnowLayer;
-  private readonly dust: TombDustLayer;
+  /** Every kind of weather, made up front (each adds its lights to the scene for good), and the level's (null: clear). */
+  private readonly weathers = new Map<WeatherKind, Weather>();
+  private weather: Weather | null = null;
+  private readonly weatherFrame: WeatherFrame;
+  private readonly ballFocus = { x: 0, y: 0 };
   private readonly icicles: IcicleView;
   private readonly scarabs: ScarabView;
   private readonly iceBlue = new THREE.Color(0.75, 0.9, 1);
@@ -84,32 +86,38 @@ export class GameView {
   private celebrate = 0;
   private celebrateTimer = 0;
 
-  /** What the view tells the rest of the game (the weather and what it does on screen); AudioDirector listens. */
-  readonly events = new EventBus<ViewEvents>();
-  /** Payloads for the per-frame events, reused every frame (see ViewEvents). */
-  private readonly snowFrame: ViewEvents['snowFrame'] = { realDt: 0, simDt: 0, gust: 0 };
-  private readonly dustFrame: ViewEvents['dustFrame'] = { realDt: 0, simDt: 0 };
-
   constructor(
     private readonly world: World,
     gl: THREE.WebGLRenderer,
     private readonly backdrops: BackdropSource,
     /**
      * `debugArena` (`?debugArena`, see app/launchOptions.ts): draws the walls the ball bounces off (the world's drawn
-     * ball area, drain left out) over the scene, so they can be checked against the scenery.
+     * ball area, drain left out) over the scene, so they can be checked against the scenery. `audio` is what the
+     * weather plays through (none in the editor), and `weatherSound` whether it may be heard right now.
      */
-    private readonly options: { readonly debugArena?: boolean } = {},
+    private readonly options: {
+      readonly debugArena?: boolean;
+      readonly audio?: AudioEngine;
+      readonly weatherSound?: () => boolean;
+    } = {},
   ) {
     const scene = this.scene;
     const glow = createGlowTexture();
     this.env = new Environment(scene, gl);
-    this.rain = new RainLayer(scene);
-    this.snow = new SnowLayer(scene);
-    this.dust = new TombDustLayer(scene);
-    this.rain.onThunder = (delay, strength) => this.events.emit('thunder', { delay, strength });
-    this.dust.onRumble = (strength, lead, rise, hold, fall) =>
-      this.events.emit('rumble', { strength, lead, rise, hold, fall });
-    this.dust.onFlare = (side, strength) => this.events.emit('torchFlare', { side, strength });
+    const weatherSound = options.weatherSound ?? (() => true);
+    const context = {
+      scene,
+      camera: this.rig.camera,
+      particles: this.particles,
+      audio: options.audio,
+      soundOn: weatherSound,
+      shake: (level: number) => {
+        if (!reducedMotion()) this.rig.holdTrauma(level * this.intensity);
+      },
+    };
+    for (const [kind, type] of Object.entries(WEATHER_TYPES) as [WeatherKind, (typeof WEATHER_TYPES)[WeatherKind]][])
+      this.weathers.set(kind, new type(context));
+    this.weatherFrame = { realDt: 0, simDt: 0, world, ball: null, paddleX: 0 };
     this.bricks = new BrickView(scene);
     this.balls = new BallsView(scene);
     this.paddle = new PaddleView(scene);
@@ -164,9 +172,7 @@ export class GameView {
     this.env.resizeBackdrop(aspect);
     this.particles.setViewport(bufferHeight, this.rig.fov);
     this.dustPuffs.setViewport(bufferHeight, this.rig.fov);
-    this.snow.setViewport(bufferHeight, this.rig.fov);
-    this.dust.setViewport(bufferHeight, this.rig.fov);
-    this.dust.setAspect(aspect);
+    for (const weather of this.weathers.values()) weather.setViewport(bufferHeight, this.rig.fov, aspect);
   }
 
   /** Small camera sway for rare, significant events only (no zoom punch or colour fringing). */
@@ -253,6 +259,14 @@ export class GameView {
   });
   private backdropRequest = 0;
 
+  /** The level's weather (it changes only behind a level transition); `settings` undefined: clear. */
+  private setWeather(settings: WeatherSettings | undefined): void {
+    const next = settings ? this.weathers.get(settings.kind)! : null;
+    if (next !== this.weather) this.weather?.stop();
+    this.weather = next;
+    if (next && settings) next.start(settings);
+  }
+
   private showBackdrop(worldIndex: number): void {
     const request = ++this.backdropRequest;
     const backdrop = this.backdrops.get(worldIndex);
@@ -276,15 +290,8 @@ export class GameView {
     ev.on('levelLoaded', ({ index }) => {
       this.refrakt.clear();
       const campaign = world.campaign;
-      const def = campaign.worldDefAt(index);
       this.showBackdrop(campaign.worldIndexOf(index));
-      const weather = def.weather;
-      this.rain.setActive(weather === 'rain');
-      this.snow.setActive(weather === 'snow');
-      this.dust.setActive(weather === 'dust', campaign.worldAt(index).dustLine);
-      // With scarab nests, the dust storms come only with the scarabs (the tombGate event below).
-      this.dust.autoRumble = world.scarabs.nests.length === 0;
-      this.events.emit('weatherChanged', { weather });
+      this.setWeather(campaign.worldAt(index).weather);
       if (this.backdropOutline) {
         this.scene.remove(this.backdropOutline);
         this.backdropOutline.traverse((object) => {
@@ -531,7 +538,8 @@ export class GameView {
         );
       }
     };
-    ev.on('tombGate', ({ duration }) => this.dust.storm(duration));
+    // The weather storms when the simulation says so (gameplay/weather/WeatherClock.ts).
+    ev.on('weatherStorm', () => this.weather?.storm());
     ev.on('scarabCling', ({ x, y }) => {
       sandPuff(x, y, 6, 1.2);
     });
@@ -649,8 +657,6 @@ export class GameView {
       }
     }
 
-    this.rain.splash(simDt, world, this.particles);
-    this.snow.spindrift(simDt, world, this.particles);
     this.icicleDust(simDt);
     this.particles.update(fxDt);
     this.dustPuffs.update(fxDt);
@@ -672,32 +678,15 @@ export class GameView {
     if (refraktOn) light.color.setHSL(this.balls.refraktHue, 0.9, 0.6);
     else light.color.copy(this.ballLightFire);
 
-    this.rain.update(realDt, simDt);
-    this.env.setLightning(this.rain.flash);
-    this.snow.update(realDt);
-    if (this.snow.active) {
-      const frame = this.snowFrame;
+    if (this.weather) {
+      const frame = this.weatherFrame;
       frame.realDt = realDt;
       frame.simDt = simDt;
-      frame.gust = this.snow.gust;
-      this.events.emit('snowFrame', frame);
-    }
-    this.dust.setStirrers(
-      this.balls.hasFocus ? { x: this.balls.focusX, y: this.balls.focusY } : null,
-      lerp(world.paddle.px, world.paddle.x, alpha),
-      world.paddle.y,
-      world.paddle.width / 2,
-    );
-    this.dust.update(realDt, simDt);
-    const dusty = this.dust.active;
-    this.env.setTorches(dusty ? this.dust.torches.x : 0, dusty ? this.dust.torches.y : 0, this.dust.flare);
-    if (dusty) {
-      const frame = this.dustFrame;
-      frame.realDt = realDt;
-      frame.simDt = simDt;
-      this.events.emit('dustFrame', frame);
-      // A rumble keeps a light shake going while it lasts (none with reduced motion).
-      if (this.dust.rumble > 0.05 && !reducedMotion()) this.rig.holdTrauma(0.42 * this.dust.rumble * this.intensity);
+      frame.ball = this.balls.hasFocus
+        ? Object.assign(this.ballFocus, { x: this.balls.focusX, y: this.balls.focusY })
+        : null;
+      frame.paddleX = lerp(world.paddle.px, world.paddle.x, alpha);
+      this.weather.update(frame);
     }
     this.rig.update(realDt);
   }

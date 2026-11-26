@@ -1,128 +1,116 @@
-import * as THREE from 'three';
 import { expect, it } from 'vitest';
 import tomb from '../public/worlds/Pharoughs-Tomb.json';
 import { validateWorld } from '../src/content/authoredWorlds';
-import { isWeather } from '../src/content/worlds';
-import { envelope, TombDustLayer } from '../src/themes/weather/dust/TombDustLayer';
+import { envelope } from '../src/gameplay/weather/Weather';
+import { TombDust } from '../src/gameplay/weather/dust/TombDust';
+import { DT, onLine, settings, weatherHarness } from './support/weather';
 
-/** Pharoughs Tomb's dust line: the rumble's dust pours from it. */
-const LINE = validateWorld(tomb).dustLine!;
+/** Pharoughs Tomb's weather: its dust pours from the line drawn for it in the editor. */
+const TOMB = validateWorld(tomb).weather!;
+const LINE = TOMB.paths[0].points;
 
-/** The start positions of the layer's falling grains, and which are veils (from a crack) rather than specks or grit. */
-function grains(layer: TombDustLayer): { x: number; y: number; veil: boolean }[] {
-  const { dustPos, dustRand } = layer as unknown as { dustPos: Float32Array; dustRand: Float32Array };
-  return Array.from(dustRand, (r, i) => ({ x: dustPos[i * 3], y: dustPos[i * 3 + 1], veil: r < 0.62 }));
+function dusty() {
+  const h = weatherHarness('dust');
+  h.weather.start(TOMB);
+  return h;
 }
 
-const DT = 1 / 60;
-
-function run(layer: TombDustLayer, seconds: number, simulating = true) {
-  const rumbles: number[] = [];
-  const flares: [number, number][] = [];
-  let maxFlare = 0;
-  let maxRumble = 0;
-  let t = 0;
-  layer.onRumble = () => rumbles.push(t);
-  layer.onFlare = () => flares.push([t, layer.rumble]);
-  for (; t < seconds; t += DT) {
-    layer.update(DT, simulating ? DT : 0);
-    maxFlare = Math.max(maxFlare, layer.flare);
-    maxRumble = Math.max(maxRumble, layer.rumble);
-  }
-  return { rumbles, flares, maxFlare, maxRumble };
-}
-
-it('the Pharoughs Tomb uses tomb dust weather', () => {
-  expect(isWeather('dust')).toBe(true);
-  expect(validateWorld(tomb).world.weather).toBe('dust');
+it('the Pharoughs Tomb has tomb dust, and each storm brings its scarabs', () => {
+  expect(TOMB.kind).toBe('dust');
+  expect(TOMB.releases).toEqual(['scarabs']);
+  expect(LINE.length).toBeGreaterThanOrEqual(2);
 });
 
-/** Whether (x, y) lies on the polyline through `points` (straight segments, as a line with no curve). */
-function onLine(points: readonly { x: number; y: number }[], x: number, y: number): boolean {
-  return points.slice(1).some((b, i) => {
-    const a = points[i];
-    const ex = b.x - a.x,
-      ey = b.y - a.y;
-    const u = Math.max(0, Math.min(1, ((x - a.x) * ex + (y - a.y) * ey) / (ex * ex + ey * ey)));
-    return Math.hypot(x - a.x - ex * u, y - a.y - ey * u) < 1e-4;
-  });
-}
-
-it("pours Pharoughs Tomb's dust from the line drawn for it in the editor", () => {
-  expect(LINE.points.length).toBeGreaterThanOrEqual(2);
-  const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, { points: LINE.points }); // as drawn, without its curve
-  for (const g of grains(layer)) expect(onLine(LINE.points, g.x, g.y)).toBe(true);
+it("pours Pharoughs Tomb's dust from the line drawn for it", () => {
+  const { weather } = weatherHarness('dust');
+  weather.start({ ...TOMB, paths: [{ points: LINE }] }); // as drawn, without its curve
+  for (const g of weather.grains()) expect(onLine(LINE, g.x, g.y)).toBe(true);
 });
 
-it('starts every falling grain on the dust line: veils at its cracks, specks and grit anywhere along it', () => {
-  // A bent line: up from the left, across, and down to the right.
-  const line = {
-    points: [
-      { x: -10, y: 6 },
-      { x: -6, y: 9 },
-      { x: 6, y: 9 },
-      { x: 10, y: 6 },
-    ],
-  };
-  const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, line);
-  const onSegment = (x: number, y: number): boolean =>
-    line.points.slice(1).some((b, i) => {
-      const a = line.points[i];
-      const ex = b.x - a.x,
-        ey = b.y - a.y;
-      const u = Math.max(0, Math.min(1, ((x - a.x) * ex + (y - a.y) * ey) / (ex * ex + ey * ey)));
-      return Math.hypot(x - a.x - ex * u, y - a.y - ey * u) < 1e-4;
-    });
-  const all = grains(layer);
-  for (const g of all) expect(onSegment(g.x, g.y)).toBe(true);
-  // The veils come from at most 26 places (the cracks); the specks and grit are spread all along.
+it('starts every falling grain on its lines: veils at the cracks, specks and grit anywhere along them', () => {
+  // A bent line: up from the left, across, and down to the right; and a short second one.
+  const bent = [
+    { x: -10, y: 6 },
+    { x: -6, y: 9 },
+    { x: 6, y: 9 },
+    { x: 10, y: 6 },
+  ];
+  const short = [
+    { x: 14, y: 4 },
+    { x: 18, y: 4 },
+  ];
+  const { weather } = weatherHarness('dust');
+  weather.start(settings('dust', [{ points: bent }, { points: short }]));
+  const all = weather.grains();
+  for (const g of all) expect(onLine(bent, g.x, g.y) || onLine(short, g.x, g.y)).toBe(true);
+  // The veils come from at most 26 places (the cracks); the specks and grit are spread all along both lines.
   expect(new Set(all.filter((g) => g.veil).map((g) => `${g.x},${g.y}`)).size).toBeLessThanOrEqual(26);
   const loose = all.filter((g) => !g.veil);
   expect(Math.min(...loose.map((g) => g.x))).toBeLessThan(-9.5);
-  expect(Math.max(...loose.map((g) => g.x))).toBeGreaterThan(9.5);
   expect(loose.some((g) => g.y > 8.9)).toBe(true);
-  expect(loose.some((g) => g.y < 7)).toBe(true);
+  expect(loose.some((g) => g.x > 17.5)).toBe(true);
 });
 
-it('needs a dust line to show tomb dust', () => {
-  const layer = new TombDustLayer(new THREE.Scene());
-  expect(() => layer.setActive(true, undefined)).toThrow('dust line');
-  expect(() => layer.setActive(false, undefined)).not.toThrow();
+it('starts a new tomb dust line just under the top of the ball area', () => {
+  const ball = {
+    points: [
+      { x: -14, y: -9 },
+      { x: 14, y: -9 },
+      { x: 14, y: 10.4 },
+      { x: -14, y: 10.4 },
+    ],
+  };
+  expect(TombDust.info.defaultPaths(ball as never)).toEqual([
+    {
+      points: [
+        { x: -12.5, y: 10.4 - 1.15 },
+        { x: 12.5, y: 10.4 - 1.15 },
+      ],
+    },
+  ]);
 });
 
-it('rumbles 8-12 seconds after entering the tomb, then every 20-40 seconds', () => {
-  const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, LINE);
-  const { rumbles, maxRumble } = run(layer, 300);
-  expect(rumbles[0]).toBeGreaterThanOrEqual(8);
-  expect(rumbles[0]).toBeLessThanOrEqual(12.1);
-  for (let i = 1; i < rumbles.length; i++) {
-    const gap = rumbles[i] - rumbles[i - 1];
-    expect(gap).toBeGreaterThanOrEqual(20);
-    expect(gap).toBeLessThanOrEqual(40.1);
-  }
-  expect(maxRumble).toBeGreaterThan(0.5);
-  expect(maxRumble).toBeLessThanOrEqual(1);
+it('on a storm grinds the stone gate, then a moment later shakes and pours its dust', () => {
+  const { weather, audio, shakes, run } = dusty();
+  run(2);
+  expect(weather.rumble).toBe(0);
+  weather.storm();
+  expect(audio.samples).toContain('stoneGate');
+  const rumble: number[] = [];
+  run(9, true, () => rumble.push(weather.rumble));
+  const first = rumble.findIndex((r) => r > 0);
+  expect(first * DT).toBeGreaterThan(0.9);
+  expect(first * DT).toBeLessThan(1.2);
+  expect(Math.max(...rumble)).toBeGreaterThan(0.8);
+  expect(Math.max(...rumble)).toBeLessThanOrEqual(1);
+  expect(rumble[rumble.length - 1]).toBe(0);
+  expect(shakes.length).toBeGreaterThan(0);
 });
 
-it('flares the torches regularly, never during a rumble', () => {
-  const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, LINE);
-  const { flares, maxFlare } = run(layer, 600);
+it('flares the torches now and then, never while a storm is under way', () => {
+  const { weather, run } = dusty();
+  const flares: [number, number][] = [];
+  let stormy = 0;
+  let last = 0;
+  let t = 0;
+  run(600, true, () => {
+    t += DT;
+    // A storm every 30 seconds.
+    if (Math.floor(t / 30) !== Math.floor((t - DT) / 30)) weather.storm();
+    if (weather.flare > 0 && last === 0) flares.push([t, stormy]);
+    stormy = weather.rumble;
+    last = weather.flare;
+  });
   expect(flares.length).toBeGreaterThan(10);
   for (const [, rumble] of flares) expect(rumble).toBe(0);
-  expect(maxFlare).toBeGreaterThan(0.3);
-  expect(maxFlare).toBeLessThanOrEqual(1);
+  expect(weather.torches.x).toBeGreaterThan(0.3);
 });
 
-it('starts no rumble or flare while the game is paused', () => {
-  const layer = new TombDustLayer(new THREE.Scene());
-  layer.setActive(true, LINE);
-  const { rumbles, flares } = run(layer, 120, false);
-  expect(rumbles).toHaveLength(0);
-  expect(flares).toHaveLength(0);
+it('starts no flare while the game is paused', () => {
+  const { weather, run } = dusty();
+  let flared = false;
+  run(120, false, () => (flared ||= weather.flare > 0));
+  expect(flared).toBe(false);
 });
 
 it('swells, holds and dies away', () => {

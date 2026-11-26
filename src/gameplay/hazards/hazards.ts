@@ -12,10 +12,23 @@ import type { ArenaBounds } from '../arena/boundary';
 export type HazardKind = 'snake' | 'icicle' | 'icicles' | 'scarabs';
 
 /**
+ * Hazards a weather's storms can bring with them (WeatherSettings.releases): instead of coming on their own
+ * timer, they come out each time a storm hits (see HazardSystem.release).
+ */
+export const RELEASABLE_HAZARDS = ['scarabs'] as const;
+export type ReleasableHazard = (typeof RELEASABLE_HAZARDS)[number];
+
+/**
  * What World needs from each kind of hazard: it loads, resets and steps every system in its `hazardSystems` list
  * the same way, so a new kind of enemy is one more system there (plus its definition and validation here).
  */
 export interface HazardSystem {
+  /** The kind a weather storm can release, for a system that supports it (see `cued` and `release`). */
+  readonly releasable?: ReleasableHazard;
+  /** Set before each load: true when the world's storms bring this hazard, so it keeps no timer of its own. */
+  cued?: boolean;
+  /** A storm hit: come out now (ignored while already out). */
+  release?(): void;
   /**
    * Takes the world's hazards (every kind; each system keeps its own) for a level; `difficulty` is 0 on a world's
    * first level, 1 on its tenth; `arena` is the extent of the world's drawn ball area.

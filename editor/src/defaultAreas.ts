@@ -1,5 +1,5 @@
 import type { AuthoredWorld } from '../../src/content/authoredWorlds';
-import { defaultDustLine } from '../../src/content/dustLine';
+import { WEATHERS } from '../../src/gameplay/weather/weathers';
 import { FIELD } from '../../src/gameplay/config';
 import {
   defaultBallArea,
@@ -16,8 +16,8 @@ export function defaultArea(mode: 'ball' | 'paddle'): PolygonArea {
 }
 
 /**
- * `data` with anything it needs to be played filled in from its defaults (missing ball or paddle area; a dust
- * line for a world with tomb dust), and whether anything was added. Every world in the editor has these, as the
+ * `data` with anything it needs to be played filled in from its defaults (missing ball or paddle area; the lines
+ * its weather comes from), and whether anything was added. Every world in the editor has these, as the
  * game needs them to play it (older drafts may lack them).
  */
 export function withAreas(data: AuthoredWorld): { world: AuthoredWorld; added: boolean } {
@@ -32,8 +32,9 @@ export function withAreas(data: AuthoredWorld): { world: AuthoredWorld; added: b
     };
     added = true;
   }
-  if (world.world.weather === 'dust' && !world.dustLine) {
-    world = { ...world, dustLine: defaultDustLine(world.playAreas!.ball!) };
+  const weather = world.weather;
+  if (weather && weather.paths.length < WEATHERS[weather.kind].paths.min) {
+    world = { ...world, weather: { ...weather, paths: WEATHERS[weather.kind].defaultPaths(world.playAreas!.ball!) } };
     added = true;
   }
   return { world, added };

@@ -8,7 +8,7 @@
     <main id="arena" aria-label="Scene editor">
       <canvas id="scene" aria-label="Original Refrakt scene"></canvas>
       <div id="grid" role="group" aria-label="Brick layout, 13 columns and 12 rows"></div>
-      <svg id="areas" aria-label="Play area drawing surface"><g id="area-lines"></g><g id="area-handles"></g><g id="snake-layer"></g><g id="icicle-layer"></g><g id="scarab-layer"></g><g id="dust-layer"></g></svg>
+      <svg id="areas" aria-label="Play area drawing surface"><g id="area-lines"></g><g id="area-handles"></g><g id="snake-layer"></g><g id="icicle-layer"></g><g id="scarab-layer"></g><g id="weather-layer"></g></svg>
     </main>
     <header class="hud-panel">
       <a class="brand" href="../">REFRAKT <span>WORLD EDITOR</span></a>
@@ -19,7 +19,7 @@
       <div class="actions"><button id="new">New</button><button id="import">Import</button><button id="export">Export</button><button id="save" class="primary">Save world</button><button id="test" class="primary">▶ Test level</button><a id="close-editor" class="close-editor" href="../" title="Close the editor and go back to the game" aria-label="Close the editor">✕</a></div>
     </header>
     <nav class="layer-bar hud-panel" aria-label="Layer">
-      <button id="mode-level" aria-pressed="false">Level</button><button id="mode-blocks" aria-pressed="true">Blocks</button><span class="sep"></span><button id="mode-ball" aria-pressed="false">Ball area</button><button id="mode-paddle" aria-pressed="false">Paddle area</button><span class="sep"></span><button id="mode-snakes" aria-pressed="false">Snakes</button><button id="mode-icicles" aria-pressed="false">Icicles</button><button id="mode-scarabs" aria-pressed="false">Scarab nests</button><button id="mode-dust" aria-pressed="false">Dust</button>
+      <button id="mode-level" aria-pressed="false">Level</button><button id="mode-blocks" aria-pressed="true">Blocks</button><span class="sep"></span><button id="mode-ball" aria-pressed="false">Ball area</button><button id="mode-paddle" aria-pressed="false">Paddle area</button><span class="sep"></span><button id="mode-snakes" aria-pressed="false">Snakes</button><button id="mode-icicles" aria-pressed="false">Icicles</button><button id="mode-scarabs" aria-pressed="false">Scarab nests</button><button id="mode-weather" aria-pressed="false">Weather</button>
       <span class="sep"></span><button id="guides-toggle" aria-pressed="true" title="Show the brick grid's guides">Guides</button><button id="hud-toggle" aria-pressed="false" title="Hide the editor to see the scene (H)">Hide · H</button>
     </nav>
     <section id="level-tools" class="hud-panel layer-panel">
@@ -72,13 +72,19 @@
       <p class="hint">Draw the entry point (large: where scarabs appear, behind the scenery), then the path they walk in along; the hollow last point is where they reach the floor.</p>
       <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
     </section>
-    <section id="dust-tools" class="hud-panel layer-panel" hidden>
-      <h2>Dust</h2>
-      <p class="hint" id="dust-summary"></p>
-      <div class="actions"><button id="dust-draw">Draw line</button><button id="dust-reset">Reset</button></div>
-      <label>Curve <span id="dust-curve-value"></span><input id="dust-curve" type="range" /></label>
-      <p class="hint">When the tomb rumbles, dust and grit pour from this line: draw it along the underside of the scenery (a lintel, an arch). Worlds with tomb dust need one to be played.</p>
-      <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
+    <section id="weather-tools" class="hud-panel layer-panel" hidden>
+      <h2>Weather</h2>
+      <label>Weather<select id="weather"><option value="">Clear</option></select></label>
+      <p class="hint" id="weather-summary"></p>
+      <div id="weather-settings">
+        <div class="actions"><button id="weather-draw">Add line</button><button id="weather-delete">Delete selected</button><button id="weather-reset">Use default</button></div>
+        <label>Curve <span id="weather-curve-value"></span><input id="weather-curve" type="range" /></label>
+        <p class="hint" id="weather-hint"></p>
+        <div class="storm-every" role="group" aria-label="Seconds between storms">Storms every <input id="weather-every-min" type="number" aria-label="Shortest wait, seconds" /> to <input id="weather-every-max" type="number" aria-label="Longest wait, seconds" /> s</div>
+        <p class="hint">On the first level; they come up to a third sooner by the tenth, and only while the ball is in play.</p>
+        <div id="weather-releases"></div>
+        <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
+      </div>
     </section>
     <div id="status-bar" class="hud-panel">
       <button id="undo" disabled title="Undo (Ctrl+Z)">Undo</button><button id="redo" disabled title="Redo (Ctrl+Shift+Z)">Redo</button>
@@ -96,7 +102,6 @@
         <section>
           <h3>Settings</h3>
           <label>Name<input id="world-name" maxlength="80" autocomplete="off" /></label>
-          <label>Weather<select id="weather"><option value="">Clear</option></select></label>
           <label class="upload">Scene background<input id="background-file" type="file" accept="image/png,image/jpeg,image/webp" /></label>
           <button id="remove-background" hidden>Remove background</button><p class="hint" id="background-info"></p>
         </section>

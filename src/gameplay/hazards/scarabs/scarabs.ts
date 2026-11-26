@@ -13,7 +13,8 @@ import type { ArenaBounds } from '../../arena/boundary';
  * floor, recovers, turns round and tries again. They never let the paddle run into them on the floor: brought
  * too close, one springs up onto it (or, with no room on it, scuttles off or leaps over it). Once on, they
  * cling (shoving the paddle on the way they were going as they land) and weigh one end down (bending its bounces) until a returned ball crushes them, the only way one dies.
- * They only come with a storm (a stone gate grinding open, then the dust blowing in; see startStorm). While
+ * They only come in a swarm (see startStorm): on their own timer, or each time the world's weather storms when it
+ * brings them (WeatherSettings.releases; see release). While
  * the paddle is full only the nearest on each side keeps trying to get on; the rest run off and swirl about
  * out in the scene, coming back as places come free.
  */
@@ -130,11 +131,14 @@ export function paddleSlope(p: Paddle): number {
 
 /** Runs a world's scarab nests. Owned by World; deterministic for a given seed. */
 export class ScarabSystem implements HazardSystem {
+  readonly releasable = 'scarabs';
+  /** True while the world's weather brings the swarms (WeatherClock): no timer of their own then. */
+  cued = false;
   readonly nests: Nest[] = [];
   /** A fixed pool: SCARAB.maxActive scarabs, `active` when out of their nest. */
   readonly items: Scarab[] = [];
   private difficulty = 0;
-  /** Seconds until the next storm (counting down only while every nest is quiet and the ball is in play). */
+  /** Seconds until the next swarm on their own timer (counting down only while every nest is quiet, the ball is in play and no weather brings them). */
   private untilStorm = 0;
   /** See-saw clock (radians) while scarabs ride the paddle, and which way its first lurch went. */
   private teeter = 0;
@@ -263,7 +267,7 @@ export class ScarabSystem implements HazardSystem {
     let points = 0;
     // Between storms every nest is quiet; the next storm comes when its wait is up.
     const stormy = this.nests.some((n) => n.state !== 'idle');
-    if (!stormy && live) {
+    if (!stormy && live && !this.cued) {
       this.untilStorm -= dt;
       if (this.untilStorm <= 0) this.startStorm();
     }
@@ -284,7 +288,7 @@ export class ScarabSystem implements HazardSystem {
       n.timer -= dt;
       if (n.timer > 0) continue;
       if (n.state === 'warn') {
-        // The gate is open and the dust blows in: out they come.
+        // The stirring is over: out they come.
         this.enter(n, 'release', 0);
       } else if (n.state === 'release') {
         if (n.pending > 0 && this.spawn(i)) n.pending--;
@@ -369,10 +373,16 @@ export class ScarabSystem implements HazardSystem {
     return Math.max(-1, Math.min(1, bias + this.teeterDir * this.scaled(SCARAB.teeterSwing) * Math.sin(this.teeter)));
   }
 
+  /** A weather storm hit (WeatherClock): the swarm comes now, unless one is already on its way. */
+  release(): void {
+    if (this.nests.length === 0 || this.nests.some((n) => n.state !== 'idle')) return;
+    this.startStorm();
+  }
+
   /**
-   * A storm: the swarm for this level (SCARAB.swarm, as many as there is room for) is shared out between the
-   * nests, which stir together while the gate grinds open (SCARAB.grind, the tombGate event); then the dust
-   * blows in and they come out (see update).
+   * A swarm: the swarm for this level (SCARAB.swarm, as many as there is room for) is shared out between the
+   * nests, which stir together for SCARAB.grind (with tomb dust, while the stone gate grinds open); then they
+   * come out (see update).
    */
   private startStorm(): void {
     const room = SCARAB.maxActive - this.activeCount;
@@ -389,7 +399,6 @@ export class ScarabSystem implements HazardSystem {
       const foot = ScarabSystem.foot(n);
       this.events.emit('scarabWarn', { x: foot.x, y: foot.y });
     }
-    this.events.emit('tombGate', { duration: SCARAB.grind });
   }
 
   /** The next in line for a full paddle: the nearest on the floor on each side of it. */

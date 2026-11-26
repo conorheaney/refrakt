@@ -2,8 +2,7 @@
   "key": "jungle-ruins",
   "world": {
     "name": "Jungle Ruins",
-    "music": "jungle",
-    "weather": "rain"
+    "music": "jungle"
   },
   "levels": [
     {
@@ -444,5 +443,26 @@
         }
       ]
     }
-  ]
+  ],
+  "weather": {
+    "kind": "rain",
+    "paths": [
+      {
+        "points": [
+          {
+            "x": -20,
+            "y": 12.3
+          },
+          {
+            "x": 20,
+            "y": 12.3
+          }
+        ]
+      }
+    ],
+    "every": [
+      18,
+      38
+    ]
+  }
 }

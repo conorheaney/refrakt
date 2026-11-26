@@ -70,16 +70,6 @@ it('stores the chosen track in a world and keeps it through validation', () => {
   expect(MUSIC_TRACKS.map((track) => track.id)).toEqual(['space', 'forest', 'jungle', 'crystal', 'desert']);
 });
 
-it('stores weather in a world and keeps it through validation', () => {
-  const data = createWorld('weather-test');
-  expect(data.world.weather).toBeUndefined();
-  data.world = { ...data.world, weather: 'rain' };
-  expect(validateWorld(data).world.weather).toBe('rain');
-  expect(() => validateWorld({ ...data, world: { ...data.world, weather: 'hail' } })).toThrow('Unsupported weather');
-  expect(validateWorld(jungleRuins).world.weather).toBe('rain');
-  expect(validateWorld(verdantHollow).world.weather).toBeUndefined();
-});
-
 it('gives the forest, jungle and tomb campaigns their own tracks', () => {
   expect(validateWorld(verdantHollow).world.music).toBe('forest');
   expect(validateWorld(jungleRuins).world.music).toBe('jungle');

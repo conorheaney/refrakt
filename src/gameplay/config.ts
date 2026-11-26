@@ -205,9 +205,10 @@ export const SNAKE = {
  */
 export const SCARAB = {
   /**
-   * Scarabs only come with a storm: a stone gate starts grinding open (the nests stir), and `grind` seconds
-   * into it the dust storm blows in and the swarm comes out with it, the grinding carrying on under them. Seconds between storms, first level
-   * to tenth (between waitMin and waitMax), with `firstDelay` more before a level's first.
+   * Scarabs come in swarms: the nests stir for `grind` seconds, then the swarm comes out (with tomb dust, the
+   * stone gate grinds open over the stir and the dust pours as they come). When the world's weather brings them,
+   * each of its storms starts one (gameplay/weather/WeatherClock.ts); otherwise they keep their own timer: seconds
+   * between swarms, first level to tenth (between waitMin and waitMax), with `firstDelay` more before a level's first.
    */
   firstDelay: 3,
   waitMin: [14, 9],

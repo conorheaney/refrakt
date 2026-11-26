@@ -14,7 +14,7 @@ declare global {
  *   engine    generic code with no game knowledge (core utilities, renderer, audio engine, input)
  *   content   world and level data and loading      } one tier: worlds name gameplay types, and the rules run
  *   gameplay  rules, tuning and each element's view } a content Campaign
- *   themes    scenery and weather a world can select
+ *   themes    the scenery every world shares
  *   app       puts everything together (Game, GameView, HUD, audio director, entry point)
  */
 const RANK: Record<string, number> = { engine: 0, content: 1, gameplay: 1, themes: 2, app: 3 };

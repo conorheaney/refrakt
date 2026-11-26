@@ -11,14 +11,13 @@ import { withAreas } from './defaultAreas';
 import { UNDO_LIMIT, undoSnapshot } from './undoSnapshot';
 import { GRID } from '../../src/gameplay/config';
 import type { LevelDef } from '../../src/content/levels';
-import { isWeather, WEATHER } from '../../src/content/worlds';
 import type { PlayAreas, PolygonArea } from '../../src/gameplay/arena/playAreas';
 import { AreaEditor } from './AreaEditor';
 import { SnakeEditor } from './SnakeEditor';
 import { IcicleEditor } from './IcicleEditor';
 import { ScarabEditor } from './ScarabEditor';
-import { DustEditor, dustLineOrDefault } from './DustEditor';
-import type { DustLine } from '../../src/content/dustLine';
+import { WeatherEditor } from './WeatherEditor';
+import type { WeatherSettings } from '../../src/gameplay/weather/settings';
 import type { HazardDef } from '../../src/gameplay/hazards/hazards';
 import { EditorScene } from './Scene';
 import { listWorldFiles, saveWorldFile, type WorldFile } from './WorldFiles';
@@ -52,7 +51,7 @@ let areas: AreaEditor | undefined;
 let snakes: SnakeEditor | undefined;
 let icicles: IcicleEditor | undefined;
 let scarabs: ScarabEditor | undefined;
-let dust: DustEditor | undefined;
+let weather: WeatherEditor | undefined;
 const paletteButtons: HTMLButtonElement[] = [];
 
 function status(message: string, error = false): void {
@@ -169,17 +168,19 @@ function refreshLayers(): void {
   snakes?.refresh();
   icicles?.refresh();
   scarabs?.refresh();
-  dust?.refresh();
+  weather?.refresh();
 }
-/** Applies the world's dust line, with undo. */
-function commitDust(line: DustLine): void {
+/** Applies the world's weather (undefined: clear), with undo. */
+function commitWeather(settings: WeatherSettings | undefined, message: string): void {
   snapshot();
-  data.dustLine = structuredClone(line);
+  if (settings) data.weather = structuredClone(settings);
+  else delete data.weather;
   render();
+  status(message);
 }
-/** Shows a dust line mid-edit in the scene without touching the world or its undo history. */
-function previewDust(line: DustLine | undefined): void {
-  scene?.sync(line ? { ...data, dustLine: line } : data, selected);
+/** Shows weather mid-edit in the scene without touching the world or its undo history. */
+function previewWeather(settings: WeatherSettings | undefined): void {
+  scene?.sync({ ...data, weather: settings }, selected);
 }
 /** Replaces the world's hazards (snakes, icicles, scarab nests; undefined: none), with undo. */
 function commitHazards(hazards: HazardDef[] | undefined): void {
@@ -204,7 +205,6 @@ function render(): void {
   el<HTMLInputElement>('world-name').value = data.world.name;
   el<HTMLSelectElement>('music').value = data.world.music ?? 'space';
   if (music) music.track = data.world.music ?? 'space';
-  el<HTMLSelectElement>('weather').value = data.world.weather ?? '';
   el<HTMLInputElement>('level-name').value = data.levels[selected].name;
   el('remove-background').hidden = !data.backgroundImage;
   el('background-info').textContent = data.backgroundImage
@@ -310,16 +310,6 @@ el('music').addEventListener('change', () => {
   if (!isMusicTrack(value)) return;
   snapshot();
   data.world = { ...data.world, music: value };
-  render();
-});
-for (const item of WEATHER) el<HTMLSelectElement>('weather').add(new Option(item.label, item.id));
-el('weather').addEventListener('change', () => {
-  const value = el<HTMLSelectElement>('weather').value;
-  snapshot();
-  const { weather: _clear, ...world } = data.world;
-  data.world = isWeather(value) ? { ...world, weather: value } : world;
-  // Tomb dust needs a line to pour from: start one under the top of the ball area (kept if switched off again).
-  if (value === 'dust' && !data.dustLine) data.dustLine = dustLineOrDefault(data);
   render();
 });
 // Music preview: audition the world's soundtrack live in any part (menu or level) at any intensity, or
@@ -663,7 +653,7 @@ areas = new AreaEditor(scene, () => data, commitArea, status);
 snakes = new SnakeEditor(scene, () => data, commitHazards, previewHazards, status);
 icicles = new IcicleEditor(scene, () => data, commitHazards, previewHazards, status);
 scarabs = new ScarabEditor(scene, () => data, commitHazards, previewHazards, status);
-dust = new DustEditor(scene, () => data, commitDust, previewDust, status);
+weather = new WeatherEditor(scene, () => data, commitWeather, previewWeather, status);
 areas.onModeChange = refreshLayers;
 render();
 // Opens on the most recently saved world in the game folder (a new one if there are none).

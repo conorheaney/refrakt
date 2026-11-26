@@ -46,13 +46,16 @@ export class Game {
     const backdrops = new BackdropCache((worldIndex) => this.world.campaign.worlds[worldIndex]?.background);
     this.view = new GameView(this.world, this.renderer.gl, backdrops, {
       debugArena: options.debugArena,
+      // The weather plays its own sound, quiet on the menu's demo like the rest (AudioDirector.enabled).
+      audio: this.audio,
+      weatherSound: () => this.director.enabled,
     });
     this.renderer.attach(this.view.scene, this.view.rig.camera);
     this.audio.addSamples(SAMPLE_URLS);
     this.audio.want(CORE_SAMPLES);
-    // Each world's weather and hazard sounds load when one of its levels does (the menu demo's too).
+    // Each world's hazard sounds load when one of its levels does (the menu demo's too); its weather loads its own.
     this.world.events.on('levelLoaded', ({ index }) => this.audio.want(worldSamples(campaign.worldAt(index))));
-    this.director = new AudioDirector(this.audio, this.world.events, this.view.events);
+    this.director = new AudioDirector(this.audio, this.world.events);
 
     this.ui = new UI(uiRoot, this.settings, campaign, {
       onAction: (action) => this.flow.onUiAction(action),

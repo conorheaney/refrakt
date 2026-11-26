@@ -11,7 +11,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible { 
 button.primary { background: #a5e7de; color: #13282e; border-color: #a5e7de; font-weight: 650; }
 button[aria-pressed=true] { border-color: #a5e7de; background: #386065d9; }
 .hud-panel { position: fixed; z-index: 5; background: linear-gradient(135deg,#081321e6,#0e1a2bc9); border: 1px solid #84b8d94d; box-shadow: 0 6px 24px #0003; backdrop-filter: blur(12px); border-radius: 9px; }
-header { top: 10px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 10px 16px; }
+/* As tall as the game's HUD bar (82 of the 1920-wide stage, under its side bays), pinned edge to edge with only a bottom border. */
+:root { --bar-h: max(44px, min(calc(100vw * 82 / 1920), calc(100vh * 16 / 9 * 82 / 1920))); }
+header.hud-panel { top: 0; left: 0; right: 0; height: var(--bar-h); display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 0 16px; border-width: 0 0 1px; border-radius: 0; }
 .brand { font-size: 19px; font-weight: 800; letter-spacing: .2em; color: white; text-decoration: none; }
 .brand span { display: block; font-size: 8px; color: #a3c2d4; letter-spacing: .25em; margin-top: 2px; }
 .actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -35,15 +37,17 @@ input[type=range] { accent-color: #a5e7de; padding: 0; }
 .hint { color: #a8bfd0; font-size: 11px; line-height: 1.65; }
 .game-link { font-size: 12px; color: #a5e7de; }
 /* Layers: one thing at a time. The bar picks it; only its panel (and its overlays) show. */
-.layer-bar { left: 14px; top: 82px; padding: 6px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; max-width: calc(100vw - 28px); }
+.layer-bar { left: 14px; top: calc(var(--bar-h) + 16px); padding: 6px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; max-width: calc(100vw - 28px); }
 .layer-bar button { padding: 6px 9px; font-size: 10px; }
 .layer-bar .sep { width: 1px; align-self: stretch; background: #84b8d94d; margin: 0 3px; }
-.layer-panel { top: 132px; left: 14px; width: 252px; padding: 14px 16px; max-height: calc(100vh - 210px); overflow: auto; }
+.layer-panel { top: calc(var(--bar-h) + 66px); left: 14px; width: 252px; padding: 14px 16px; max-height: calc(100vh - var(--bar-h) - 144px); overflow: auto; }
 .layer-panel .actions { gap: 5px; }
 .layer-panel button { font-size: 10px; }
 .layer-panel label { margin: 11px 0; }
 .layer-panel label:has(input[type=range]) { flex-direction: row; flex-wrap: wrap; align-items: center; }
 .layer-panel details { margin-top: 8px; }
+.storm-every { display: flex; align-items: center; gap: 6px; margin: 11px 0 0; font-size: 11px; color: #bad1e0; }
+.storm-every input { width: 56px; padding: 5px 6px; }
 .layer-panel summary { cursor: pointer; font-size: 11px; color: #a5e7de; }
 body:not([data-mode=level]) #level-tools,body:not([data-mode=blocks]) #block-tools { display: none; }
 #snake-reach-value { color: #ffe08a; }
@@ -135,5 +139,5 @@ dialog::backdrop { background: #000b; }
 @media(max-width:760px) { .dialog-body { grid-template-columns: 1fr; } }
 .preview-bar { height: 48px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
 iframe { width: 100%; height: calc(100% - 52px); border: 0; }
-@media(max-width:900px) { header { gap: 8px; padding: 8px; } .brand { font-size: 14px; } button { font-size: 10px; padding: 6px 8px; } .level-picker select { width: 150px; } .layer-panel { width: 210px; } }
-@media(max-width:600px) { header { flex-wrap: wrap; } header .brand span { display:none; } header .actions { gap:3px; } .layer-bar { top:100px; left:8px; } .layer-panel { top:146px; left:8px; max-height:calc(100vh - 230px); } #status-bar { left:8px; right:8px; } #dirty { display:none; } }
+@media(max-width:900px) { header.hud-panel { gap: 8px; padding: 0 8px; } .brand { font-size: 14px; } button { font-size: 10px; padding: 6px 8px; } .level-picker select { width: 150px; } .layer-panel { width: 210px; } }
+@media(max-width:600px) { header.hud-panel { flex-wrap: wrap; height: auto; min-height: var(--bar-h); padding: 6px 8px; } header .brand span { display:none; } header .actions { gap:3px; } .layer-bar { top:100px; left:8px; } .layer-panel { top:146px; left:8px; max-height:calc(100vh - 230px); } #status-bar { left:8px; right:8px; } #dirty { display:none; } }

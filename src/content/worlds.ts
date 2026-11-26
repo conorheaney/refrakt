@@ -1,16 +1,5 @@
 import type { MusicTrackId } from './musicTracks';
 
-/** Weather a world can choose (WorldDef.weather). */
-export type WeatherId = 'rain' | 'snow' | 'dust';
-export const WEATHER: readonly { id: WeatherId; label: string }[] = [
-  { id: 'rain', label: 'Rain' },
-  { id: 'snow', label: 'Snow' },
-  { id: 'dust', label: 'Tomb dust' },
-];
-export function isWeather(value: unknown): value is WeatherId {
-  return WEATHER.some((item) => item.id === value);
-}
-
 /**
  * A world is a run of ten levels sharing one scenery (an uploaded background image) and arena (walls and paddle
  * lane drawn in the editor). Bricks, ball, paddle, camera and HUD are the same in every world.
@@ -20,8 +9,6 @@ export interface WorldDef {
   readonly name: string;
   /** Soundtrack played in this world (app/audio/Music.ts). Absent means 'space'. */
   readonly music?: MusicTrackId;
-  /** Weather drawn over the scenery (themes/weather/rain/RainLayer.ts, SnowLayer.ts, TombDustLayer.ts). Absent means clear. */
-  readonly weather?: WeatherId;
 }
 
 /** Levels per world. */

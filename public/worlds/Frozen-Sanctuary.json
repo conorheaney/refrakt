@@ -2,7 +2,6 @@
   "key": "2f8b8217-7129-4b91-b15c-de33b78ee8db",
   "world": {
     "name": "Frozen Sanctuary",
-    "weather": "snow",
     "music": "crystal"
   },
   "levels": [
@@ -373,5 +372,26 @@
       "maxLength": 1.9,
       "seed": 1
     }
-  ]
+  ],
+  "weather": {
+    "kind": "snow",
+    "paths": [
+      {
+        "points": [
+          {
+            "x": -20,
+            "y": 12.3
+          },
+          {
+            "x": 20,
+            "y": 12.3
+          }
+        ]
+      }
+    ],
+    "every": [
+      24,
+      40
+    ]
+  }
 }

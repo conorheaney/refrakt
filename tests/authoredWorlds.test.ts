@@ -11,7 +11,8 @@ import {
   validateWorld,
 } from '../src/content/authoredWorlds';
 import { buildCampaign } from '../src/content/fileWorlds';
-import { defaultDustLine, validateDustLine } from '../src/content/dustLine';
+import { validateWeather, type WeatherSettings } from '../src/gameplay/weather/settings';
+import tomb from '../public/worlds/Pharoughs-Tomb.json';
 import { worldEntry } from '../src/content/campaign';
 import { FIELD, GRID } from '../src/gameplay/config';
 import { World } from '../src/gameplay/World';
@@ -164,46 +165,74 @@ describe('authored world files and persistence', () => {
     expect(campaign.runEndLevel(10)).toBe(20);
   });
 
-  it('needs a dust line to play a world with tomb dust, and validates it', () => {
-    const data = createWorld('dusty');
+  it("needs its weather's lines to be played, and validates them", () => {
+    const data = createWorld('snowy');
     data.levels = data.levels.map((level) => ({ ...level, rows: ['1............'] }));
     expect(isPlayable(data)).toBe(true);
-    data.world = { ...data.world, weather: 'dust' };
+    const snow: WeatherSettings = { kind: 'snow', paths: [], every: [24, 40] };
+    data.weather = snow;
     expect(isPlayable(data)).toBe(false);
-    expect(playProblems(data)).toBe('no dust line drawn');
-    expect(() => worldEntry(data.world, data.levels, data.playAreas as never)).toThrow('dust line');
-    // New dust worlds start with a straight line just under the top of the ball area.
-    data.dustLine = defaultDustLine(data.playAreas!.ball!);
-    expect(data.dustLine.points).toEqual([
-      { x: -12.5, y: 10.4 - 1.15 },
-      { x: 12.5, y: 10.4 - 1.15 },
-    ]);
+    expect(playProblems(data)).toBe('no snow line drawn');
+    expect(() => worldEntry(data.world, data.levels, data.playAreas as never, { weather: data.weather })).toThrow(
+      'no snow line drawn',
+    );
+    const line = {
+      points: [
+        { x: -6, y: 11 },
+        { x: 6, y: 11 },
+      ],
+    };
+    data.weather = { ...snow, paths: [line], releases: ['scarabs'] };
     expect(isPlayable(data)).toBe(true);
-    expect(validateWorld(data).dustLine).toEqual(data.dustLine);
-    expect(buildCampaign([data]).worlds[0].dustLine).toEqual(data.dustLine);
-    // A line is 2-8 points within the scene, curved by 0 to 3.
-    expect(() => validateDustLine({ points: [{ x: 0, y: 9 }] })).toThrow('2-8 points');
-    expect(() =>
-      validateDustLine({
-        points: [
-          { x: 0, y: 9 },
-          { x: 40, y: 9 },
+    expect(validateWorld(data).weather).toEqual(data.weather);
+    expect(buildCampaign([data]).worlds[0].weather).toEqual(data.weather);
+    // A line is 2-8 points within the scene, curved by 0 to 3; storms come every 3-300 seconds.
+    const bad = (change: Record<string, unknown>) => () => validateWeather({ ...data.weather, ...change });
+    expect(bad({ kind: 'hail' })).toThrow('Unsupported weather');
+    expect(bad({ paths: [{ points: [{ x: 0, y: 9 }] }] })).toThrow('2-8 points');
+    expect(
+      bad({
+        paths: [
+          {
+            points: [
+              { x: 0, y: 9 },
+              { x: 40, y: 9 },
+            ],
+          },
         ],
       }),
     ).toThrow('within the scene');
-    expect(() =>
-      validateDustLine({
-        points: [
-          { x: 0, y: 9 },
-          { x: 4, y: 9 },
-        ],
-        radius: 5,
-      }),
-    ).toThrow('curve');
-    expect(() => validateWorld({ ...data, dustLine: 'lintel' })).toThrow('Invalid dust line');
-    // Other weather doesn't need one.
-    const rainy = { ...data, world: { ...data.world, weather: 'rain' as const } };
-    delete rainy.dustLine;
-    expect(isPlayable(rainy)).toBe(true);
+    expect(bad({ paths: [{ ...line, radius: 5 }] })).toThrow('curve');
+    expect(bad({ paths: Array.from({ length: 7 }, () => line) })).toThrow('at most 6');
+    expect(bad({ every: [30, 20] })).toThrow('every');
+    expect(bad({ every: [1, 20] })).toThrow('every');
+    expect(bad({ releases: ['snake'] })).toThrow('hazard');
+    expect(() => validateWorld({ ...data, weather: 'snow' })).toThrow('Invalid weather');
+  });
+
+  it('reads weather as older files saved it: a name on the world, and the tomb dust line beside it', () => {
+    const data = createWorld('old');
+    const old = (world: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+      validateWorld({ ...data, world: { ...data.world, ...world }, ...extra });
+    const rain = old({ weather: 'rain' });
+    expect(rain.weather?.kind).toBe('rain');
+    expect(rain.weather?.paths.length).toBe(1);
+    expect((rain.world as unknown as Record<string, unknown>).weather).toBeUndefined();
+    expect(() => old({ weather: 'hail' })).toThrow('Unsupported weather');
+    const lintel = {
+      points: [
+        { x: -10, y: 11 },
+        { x: 10, y: 11 },
+      ],
+    };
+    const nest = { kind: 'scarabs', x: -16, y: -9.2 };
+    const dust = old({ weather: 'dust' }, { dustLine: lintel, hazards: [nest] });
+    expect(dust.weather).toEqual({ kind: 'dust', paths: [lintel], every: [14, 22], releases: ['scarabs'] });
+    expect((dust as unknown as Record<string, unknown>).dustLine).toBeUndefined();
+    // Without nests the tomb storms on its own; without a line it gets the usual one.
+    expect(old({ weather: 'dust' }).weather).toMatchObject({ kind: 'dust', every: [20, 40] });
+    expect(old({ weather: 'dust' }).weather?.releases).toBeUndefined();
+    // The shipped tomb, as it is saved now, keeps its line and its scarab storms.
+    expect(validateWorld(tomb).weather).toMatchObject({ kind: 'dust', releases: ['scarabs'] });
   });
 });

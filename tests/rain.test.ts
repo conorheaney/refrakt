@@ -1,85 +1,84 @@
-import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { RainLayer } from '../src/themes/weather/rain/RainLayer';
+import { Rain } from '../src/gameplay/weather/rain/Rain';
+import { DT, onLine, settings, weatherHarness } from './support/weather';
 
-const DT = 1 / 60;
+const LINE = [
+  { x: -8, y: 9 },
+  { x: 8, y: 11 },
+];
 
-/** Runs the layer for `seconds` and records each frame's flash level and every thunder call. */
-function run(rain: RainLayer, seconds: number, simulating = true): { flashes: number[]; thunder: [number, number][] } {
-  const flashes: number[] = [];
-  const thunder: [number, number][] = [];
-  rain.onThunder = (delay, strength) => thunder.push([delay, strength]);
-  for (let t = 0; t < seconds; t += DT) {
-    rain.update(DT, simulating ? DT : 0);
-    flashes.push(rain.flash);
-  }
-  return { flashes, thunder };
+function raining() {
+  const h = weatherHarness('rain');
+  h.weather.start(settings('rain', [{ points: LINE }]));
+  return h;
 }
 
-it('strikes soon after entering a rainy world, then every 18-38 seconds, with thunder after each flash', () => {
-  const rain = new RainLayer(new THREE.Scene());
-  rain.setActive(true);
-  // Record the time of each strike (its thunder call) over several minutes.
-  const strikes: number[] = [];
-  const calls: [number, number][] = [];
-  const flashes: number[] = [];
-  let now = 0;
-  rain.onThunder = (delay, strength) => {
-    strikes.push(now);
-    calls.push([delay, strength]);
-  };
-  for (let i = 0; i < 300 / DT; i++) {
-    now = (i + 1) * DT;
-    rain.update(DT, DT);
-    flashes.push(rain.flash);
+it('falls from its lines, more of it from longer ones', () => {
+  const { weather } = raining();
+  expect(weather.drops).toBeGreaterThan(100);
+  for (let i = 0; i < weather.drops; i++) {
+    const { x, y } = weather.drop(i);
+    expect(onLine(LINE, x, y)).toBe(true);
   }
-  expect(strikes[0]).toBeGreaterThanOrEqual(5 - DT);
-  expect(strikes[0]).toBeLessThanOrEqual(10 + DT);
-  for (let i = 1; i < strikes.length; i++) {
-    expect(strikes[i] - strikes[i - 1]).toBeGreaterThanOrEqual(18 - DT);
-    expect(strikes[i] - strikes[i - 1]).toBeLessThanOrEqual(38 + DT);
-  }
+  const short = weatherHarness('rain').weather;
+  short.start(
+    settings('rain', [
+      {
+        points: [
+          { x: 0, y: 9 },
+          { x: 4, y: 9 },
+        ],
+      },
+    ]),
+  );
+  expect(short.drops).toBeLessThan(weather.drops / 2);
+});
+
+it('starts from the top of the scene by default, and plays its loop while it may be heard', () => {
+  const { weather, audio, state, run } = weatherHarness('rain');
+  weather.start(settings('rain', Rain.info.defaultPaths(undefined as never)));
+  expect(audio.wanted).toEqual(new Set(Object.keys(Rain.samples)));
+  run(DT);
+  expect(audio.loops.get('rainHeavy')).toBeGreaterThan(0);
+  state.soundOn = false;
+  run(DT);
+  expect(audio.loops.get('rainHeavy')).toBe(0);
+  state.soundOn = true;
+  run(DT);
+  weather.stop();
+  expect(audio.loops.get('rainHeavy')).toBe(0);
+});
+
+it('strikes lightning on each storm: a flash and a weaker one, then thunder', () => {
+  const { weather, audio, run } = raining();
+  run(1);
+  expect(weather.flash).toBe(0);
+  const before = audio.samples.length;
+  weather.storm();
+  const flashes: number[] = [0];
+  run(3, true, () => flashes.push(weather.flash));
   expect(Math.max(...flashes)).toBeGreaterThan(0.5);
   expect(Math.max(...flashes)).toBeLessThanOrEqual(1.6);
-  for (const [delay, strength] of calls) {
-    expect(delay).toBeGreaterThan(0.25);
-    expect(strength).toBeGreaterThan(0.5);
-  }
-  // Each flash is over well before the next strike.
-  const firstFrame = Math.round(strikes[0] / DT);
-  expect(flashes[firstFrame + Math.round(3 / DT)]).toBe(0);
+  // Two flashes, at least 0.35 s apart (well under three in any one second).
+  const starts = flashes.flatMap((f, i) => (i > 0 && f - flashes[i - 1] > 0.1 ? [i * DT] : []));
+  expect(starts).toHaveLength(2);
+  expect(starts[1] - starts[0]).toBeGreaterThanOrEqual(0.3);
+  // Over within a couple of seconds.
+  expect(flashes[flashes.length - 1]).toBe(0);
+  expect(audio.samples.slice(before)).toContain('thunderClose');
 });
 
-it('never flashes more than three times in any one second', () => {
-  const rain = new RainLayer(new THREE.Scene());
-  rain.setActive(true);
-  const { flashes } = run(rain, 600);
-  // A flash starts on a frame where brightness jumps up sharply.
-  const starts: number[] = [];
-  flashes.forEach((f, i) => {
-    if (i > 0 && f - flashes[i - 1] > 0.1) starts.push(i * DT);
-  });
-  expect(starts.length).toBeGreaterThan(15);
-  for (let i = 3; i < starts.length; i++) expect(starts[i] - starts[i - 3]).toBeGreaterThan(1);
-});
-
-it('starts no lightning while the game is paused, and none at all without rain', () => {
-  const paused = new RainLayer(new THREE.Scene());
-  paused.setActive(true);
-  expect(run(paused, 60, false).thunder).toHaveLength(0);
-  const clear = new RainLayer(new THREE.Scene());
-  const { flashes, thunder } = run(clear, 60);
-  expect(thunder).toHaveLength(0);
-  expect(flashes.every((f) => f === 0)).toBe(true);
-});
-
-it('stops a flash immediately when leaving the rainy world', () => {
-  const rain = new RainLayer(new THREE.Scene());
-  rain.setActive(true);
-  for (let i = 0; i < 700 && rain.flash < 0.3; i++) rain.update(DT, DT);
-  expect(rain.flash).toBeGreaterThanOrEqual(0.3);
-  rain.setActive(false);
-  expect(rain.flash).toBe(0);
-  run(rain, 1);
-  expect(rain.flash).toBe(0);
+it('lights nothing while clear, and stops a flash at once when the world changes', () => {
+  const { weather, run, scene } = weatherHarness('rain');
+  weather.storm();
+  run(1);
+  expect(weather.flash).toBe(0);
+  weather.start(settings('rain', [{ points: LINE }]));
+  weather.storm();
+  run(0.1);
+  expect(weather.flash).toBeGreaterThan(0.3);
+  expect(scene.backgroundIntensity).toBeGreaterThan(1);
+  weather.stop();
+  expect(weather.flash).toBe(0);
+  expect(scene.backgroundIntensity).toBe(1);
 });

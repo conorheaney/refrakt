@@ -1,9 +1,6 @@
 import * as THREE from 'three';
 import { WALL_Z } from '../../gameplay/config';
 
-/** Wall-torch light per unit of flicker (Environment.setTorches): kept low so bricks keep their colours. */
-const TORCH_LIGHT = 90;
-
 /** A small emissive "studio" used to bake the reflection environment: warm left, cool right, softbox above. */
 function createStudioEnvScene(): THREE.Scene {
   const scene = new THREE.Scene();
@@ -59,13 +56,6 @@ export class Environment {
   private readonly coolFill = new THREE.DirectionalLight(0x6f9dff, 1.2);
   private readonly warmPool = new THREE.PointLight(0xff8a3c, 700, 34, 2);
   private readonly coolPool = new THREE.PointLight(0x3f7dff, 420, 30, 2);
-  /** Cold light from above for lightning (themes/weather/rain/RainLayer.ts). Always in the scene, dark until a strike. */
-  private readonly lightning = new THREE.DirectionalLight(0xd8e6ff, 0);
-  /** Warm light from the wall torches either side, for tomb dust (themes/weather/dust/TombDustLayer.ts). Dark elsewhere. */
-  private readonly torchLeft = new THREE.PointLight(0xff8a3a, 0, 34, 2);
-  private readonly torchRight = new THREE.PointLight(0xff8a3a, 0, 34, 2);
-  private lightningFlash = 0;
-  private torchFlare = 0;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -83,11 +73,6 @@ export class Environment {
       }
     });
     scene.background = this.background;
-    this.lightning.position.set(-8, 20, 14);
-    scene.add(this.lightning);
-    this.torchLeft.position.set(-17, 2.5, 3);
-    this.torchRight.position.set(17, 2.5, 3);
-    scene.add(this.torchLeft, this.torchRight);
     this.createLights(scene);
   }
 
@@ -113,31 +98,6 @@ export class Environment {
     this.uploadedBackground = texture;
     this.resizeBackdrop(this.backdropAspect);
     this.scene.background = texture ?? this.background;
-  }
-
-  /**
-   * A lightning flash, 0-1: brightens the uploaded backdrop and lights the playfield from above. Kept
-   * moderate so the ball still stands out at the peak of a flash.
-   */
-  setLightning(flash: number): void {
-    this.lightningFlash = flash;
-    this.lightning.intensity = flash * 3.8;
-    this.applyBackgroundIntensity();
-  }
-
-  /**
-   * The tomb's wall torches (themes/weather/dust/TombDustLayer.ts): `left` and `right` are each torch's light, about 0.4-1.4
-   * (0 turns them off), and `flare` 0-1 how bright a torch flare is, which also warms the backdrop a little.
-   */
-  setTorches(left: number, right: number, flare: number): void {
-    this.torchLeft.intensity = left * TORCH_LIGHT;
-    this.torchRight.intensity = right * TORCH_LIGHT;
-    this.torchFlare = flare;
-    this.applyBackgroundIntensity();
-  }
-
-  private applyBackgroundIntensity(): void {
-    this.scene.backgroundIntensity = 1 + this.lightningFlash * 1.15 + this.torchFlare * 0.05;
   }
 
   /** Cover the adaptive 16:9–4:3 stage without stretching the uploaded artwork. */

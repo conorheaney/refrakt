@@ -2,7 +2,6 @@
   "key": "4a2517ab-fb61-490b-bd75-0dc7a512accf",
   "world": {
     "name": "Pharoughs Tomb",
-    "weather": "dust",
     "music": "desert"
   },
   "levels": [
@@ -391,20 +390,32 @@
       ]
     }
   ],
-  "dustLine": {
-    "points": [
+  "weather": {
+    "kind": "dust",
+    "paths": [
       {
-        "x": -20.24,
-        "y": 12.02
-      },
-      {
-        "x": 14.45,
-        "y": 12.02
-      },
-      {
-        "x": 20.11,
-        "y": 12.06
+        "points": [
+          {
+            "x": -20.24,
+            "y": 12.02
+          },
+          {
+            "x": 14.45,
+            "y": 12.02
+          },
+          {
+            "x": 20.11,
+            "y": 12.06
+          }
+        ]
       }
+    ],
+    "every": [
+      14,
+      22
+    ],
+    "releases": [
+      "scarabs"
     ]
   }
 }

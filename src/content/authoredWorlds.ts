@@ -9,9 +9,9 @@ import {
 } from '../gameplay/arena/playAreas';
 import { validateHazards, type HazardDef } from '../gameplay/hazards/hazards';
 import { parseLevel, type LevelDef } from './levels';
-import { isWeather, STAGES_PER_WORLD, type WorldDef } from './worlds';
+import { STAGES_PER_WORLD, type WorldDef } from './worlds';
 import { worldEntry, type WorldEntry } from './campaign';
-import { validateDustLine, type DustLine } from './dustLine';
+import { upgradeWeather, validateWeather, weatherProblem, type WeatherSettings } from '../gameplay/weather/settings';
 
 /** Editor/library envelope only. WorldDef, LevelDef and their row alphabet are unchanged. */
 export interface AuthoredWorld {
@@ -24,8 +24,8 @@ export interface AuthoredWorld {
   playAreas?: PlayAreas;
   /** Enemies active in every level of this world (gameplay/hazards/hazards.ts). */
   hazards?: HazardDef[];
-  /** Where tomb dust pours from (content/dustLine.ts); a world with dust weather needs one to be played. */
-  dustLine?: DustLine;
+  /** The air of the world (gameplay/weather/settings.ts): snow, rain, tomb dust. Absent means clear. */
+  weather?: WeatherSettings;
 }
 
 export const LIBRARY_KEY = 'refrakt.authored-worlds';
@@ -67,7 +67,6 @@ export function validateWorld(value: unknown): AuthoredWorld {
   }
   const world = record(data.world);
   if (world.music !== undefined && !isMusicTrack(world.music)) throw new Error('Unsupported music track.');
-  if (world.weather !== undefined && !isWeather(world.weather)) throw new Error('Unsupported weather.');
   name(world.name);
   if (data.playAreas !== undefined) {
     const areas = record(data.playAreas);
@@ -75,7 +74,14 @@ export function validateWorld(value: unknown): AuthoredWorld {
     if (areas.paddle !== undefined) findPaddleLane(validateArea(areas.paddle), PADDLE.expandedWidth, PADDLE.halfH);
   }
   if (data.hazards !== undefined) validateHazards(data.hazards);
-  if (data.dustLine !== undefined) validateDustLine(data.dustLine);
+  // Older files named the weather on the world (`world.weather`), with tomb dust's line beside it (`dustLine`).
+  const ball = (data.playAreas as PlayAreas | undefined)?.ball ?? defaultBallArea(FIELD);
+  const weather =
+    data.weather !== undefined
+      ? validateWeather(data.weather)
+      : world.weather !== undefined
+        ? upgradeWeather(world.weather, data.dustLine, data.hazards as HazardDef[] | undefined, ball)
+        : undefined;
   if (!Array.isArray(data.levels) || data.levels.length !== STAGES_PER_WORLD)
     throw new Error('A world must contain exactly 10 levels.');
   data.levels.forEach((value: unknown, i: number) => {
@@ -86,6 +92,10 @@ export function validateWorld(value: unknown): AuthoredWorld {
     parseLevel(level as unknown as LevelDef, i);
   });
   const result = structuredClone(data) as unknown as AuthoredWorld;
+  delete (result.world as WorldDef & { weather?: unknown }).weather;
+  delete (result as AuthoredWorld & { dustLine?: unknown }).dustLine;
+  if (weather) result.weather = weather;
+  else delete result.weather;
   // Settings older files may still carry, for things the game no longer has: built-in scenery templates (and
   // the arena, grid and paddle sizes that came with them), built-in wall shapes, brick styles, campaign slots that replaced
   // a built-in world, per-level scenery hues and bosses. Every world now shares one arena and camera.
@@ -116,15 +126,9 @@ export function missingAreas(data: Pick<AuthoredWorld, 'playAreas'>): ('ball' | 
   return (['ball', 'paddle'] as const).filter((area) => !data.playAreas?.[area]);
 }
 
-/** Ready to play: every level has something to break and both areas are drawn. */
-/** True when the world has tomb dust weather but no line for the dust to pour from. */
-export function missingDustLine(data: Pick<AuthoredWorld, 'world' | 'dustLine'>): boolean {
-  return data.world.weather === 'dust' && !data.dustLine;
-}
-
-/** Ready to play: every level has something to break, both areas are drawn, and a dust world has its dust line. */
+/** Ready to play: every level has something to break, both areas are drawn, and its weather has its paths. */
 export function isPlayable(data: AuthoredWorld): boolean {
-  return unfinishedLevels(data).length === 0 && missingAreas(data).length === 0 && !missingDustLine(data);
+  return playProblems(data) === '';
 }
 
 /** Why a world can't be played yet, as one line for status messages (empty when it can). */
@@ -133,7 +137,8 @@ export function playProblems(data: AuthoredWorld): string {
   const levels = unfinishedLevels(data);
   if (levels.length) problems.push(`unfinished levels: ${levels.join(', ')}`);
   for (const area of missingAreas(data)) problems.push(`no ${area} area drawn`);
-  if (missingDustLine(data)) problems.push('no dust line drawn');
+  const weather = data.weather && weatherProblem(data.weather);
+  if (weather) problems.push(weather);
   return problems.join('; ');
 }
 
@@ -187,7 +192,7 @@ export function authoredEntry(data: AuthoredWorld, firstLevel = 0): WorldEntry {
     data.world,
     data.levels,
     { ball, paddle },
-    { hazards: data.hazards, background: data.backgroundImage, dustLine: data.dustLine },
+    { hazards: data.hazards, background: data.backgroundImage, weather: data.weather },
     firstLevel,
   );
 }
