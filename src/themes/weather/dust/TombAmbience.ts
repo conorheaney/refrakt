@@ -188,7 +188,7 @@ export class TombAmbience {
 
   /**
    * A huge stone gate grinding open as a storm begins (the tombGate event; the dust and scarabs follow about a
-   * second in, while it carries on): the recording (sfx/stone-gate.wav, mixed from three CC0 Freesound clips:
+   * second in, while it carries on): the recording (sfx/stone-gate.mp3, mixed from three CC0 Freesound clips:
    * see src/app/audio/SOUND_CREDITS.md), on the effects bus but softened, its harshest highs filtered off;
    * synthesised (gateSynth) only if it has not loaded.
    */
