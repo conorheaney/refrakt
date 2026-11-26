@@ -85,11 +85,12 @@ Sanctuary and Jungle Ruins, which have the most complex areas.
 | `src/gameplay/entities/EntityViews.ts` | the paddle's contact shadow offset; the barrier beam's initial length | Relative to the paddle; the beam length is overwritten every frame from the barrier's real span |
 | `src/app/audio/AudioDirector.ts:21` | left/right sound panning scale | A fixed stereo scale; makes no audible difference |
 
-**PaddleDriver (decided to revisit after Q10).** `PointerDriver` covers only mouse and touch. The keyboard goes
-straight into the step input, and the autopilot and menu demo (`Game.driveDemo`) aim the paddle themselves. A
-wider `PaddleDriver` owning all three (pointer, keyboard, autopilot) would put "who controls the paddle" in one
-place and let tests drive the paddle through one object. It was kept narrow for the S5 commit; reconsider once
-the `Game` state-machine tests (Q10) exist to prove the merge changes nothing.
+**PaddleDriver: done (2026-11-26).** `PaddleDriver` (`src/gameplay/PaddleDriver.ts`) now owns who moves the
+paddle and how: the keyboard, the mouse and touch pointer (through `PointerDriver`, kept as its pointer helper),
+and the autopilot for the menu demo and `?autopilot` (formerly `GameFlow.driveDemo`). `GameFlow` hands it each
+frame and asks it for each step's input. Checked against a fingerprint of the paddle's path, score and balls over
+43,211 frames (pointer at uneven frame rates, keyboard, demo, autopilot; Outer Space, Frozen Sanctuary and Jungle
+Ruins): identical before and after, and the fingerprint caught two deliberate breakages of the push handling.
 
 **Intermittent editor browser-test failure: solved (`d73a541`).** It failed about 1 run in 7 at the
 library step after a reload. Caught on the next loop: `Page.reload` returns before the old page is torn down,
@@ -138,6 +139,6 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 ## Suggested order for what's left
 
-Review items first (decided 2026-11-26), then the `PaddleDriver` idea.
+Review 001 is finished (2026-11-26), and `PaddleDriver` is done.
 
-1. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).
+1. A fresh review (002).

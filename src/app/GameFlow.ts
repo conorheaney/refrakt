@@ -1,4 +1,4 @@
-import { PADDLE, PLAYER, REFRAKT, SIM } from '../gameplay/config';
+import { PLAYER, REFRAKT, SIM } from '../gameplay/config';
 import { POWERUPS } from '../gameplay/powerups/powerUps';
 import type { PowerUpKind } from '../gameplay/types';
 import type { Campaign } from '../content/campaign';
@@ -6,8 +6,8 @@ import type { MusicTrackId } from '../content/musicTracks';
 import { STAGES_PER_WORLD } from '../content/worlds';
 import { StateMachine } from '../engine/core/StateMachine';
 import { FixedStepper, TimeFx } from '../engine/core/Time';
-import type { World, StepInput } from '../gameplay/World';
-import { PointerDriver } from '../gameplay/PointerDriver';
+import type { World } from '../gameplay/World';
+import { PaddleDriver } from '../gameplay/PaddleDriver';
 import type { CameraMode } from '../gameplay/CameraRig';
 import type { MusicMode } from './audio/Music';
 import type { LaunchOptions } from './launchOptions';
@@ -105,9 +105,8 @@ export class GameFlow {
   private readonly fsm = new StateMachine<GameState>();
   private readonly stepper = new FixedStepper(SIM.step, SIM.maxStepsPerFrame);
   private readonly timeFx = new TimeFx();
-  private readonly stepInput: StepInput = { targetX: null, axis: 0, action: false };
-  /** Turns the mouse or touch pointer into the paddle's target for each step (gameplay/PointerDriver.ts). */
-  private readonly pointer = new PointerDriver();
+  /** Who moves the paddle (the player or the autopilot), and each step's input from it (gameplay/PaddleDriver.ts). */
+  private readonly paddle: PaddleDriver;
   private readonly view: FlowView;
   private readonly ui: FlowUi;
   private readonly audio: FlowAudio;
@@ -147,7 +146,19 @@ export class GameFlow {
     this.seed = ports.seed ?? randomSeed;
     this.best = this.store.loadHighScore();
     this.runEnd = campaign.runEndLevel(0);
-    this.world.events.on('lifeLost', () => this.pointer.clearOffset());
+    const { input, view } = this;
+    this.paddle = new PaddleDriver(
+      world,
+      {
+        get axis() {
+          return input.axis;
+        },
+        pointerX: () => (input.pointerActive ? view.pointerToFieldX(input.pointerX, input.pointerY) : null),
+        consumeAction: () => input.consumeAction(),
+      },
+      options.autopilot,
+    );
+    this.world.events.on('lifeLost', () => this.paddle.lifeLost());
     this.bindWorldEvents();
     this.registerStates();
   }
@@ -196,8 +207,7 @@ export class GameFlow {
     this.lastLoadout = [...kinds];
     // The confirming click or key must not also launch the ball or move the paddle.
     this.input.reset();
-    this.stepInput.action = false;
-    this.pointer.reset();
+    this.paddle.reset();
     this.showLevelBanner();
     this.fsm.transition('playing');
   }
@@ -233,32 +243,15 @@ export class GameFlow {
   /** Advances the simulation by real time (after time effects) and refreshes the view. */
   private simulate(realDt: number): void {
     const simDt = this.timeFx.apply(realDt);
-    if (this.playerSteers) {
-      const input = this.input;
-      this.stepInput.axis = input.axis;
-      const pointerX = input.pointerActive ? this.view.pointerToFieldX(input.pointerX, input.pointerY) : null;
-      this.pointer.sample(pointerX, this.world.paddle.x, this.timeFx.frozen);
-      if (input.consumeAction()) this.stepInput.action = true;
-    }
-    this.pointer.beginFrame(simDt, this.stepper.pending);
+    this.paddle.frame(this.timeFx.frozen, simDt, this.stepper.pending);
     this.alpha = this.stepper.advance(simDt, this.tick);
     // During a hit-stop the effects keep moving on real time; only the game itself holds still.
     this.view.update(realDt, simDt, this.alpha, this.timeFx.frozen ? realDt : simDt);
   }
 
-  /** True while the player steers (keyboard or pointer): not in the menu's attract mode or under ?autopilot. */
-  private get playerSteers(): boolean {
-    return !this.world.demo && !this.options.autopilot;
-  }
-
   private readonly tick = (step: number): void => {
-    const steers = this.playerSteers;
-    if (steers) this.stepInput.targetX = this.pointer.target(step);
-    else this.driveDemo();
-    if (steers) this.pointer.beforeStep(this.world.paddle);
-    this.world.step(step, this.stepInput);
-    if (steers) this.pointer.afterStep(this.world.paddle);
-    this.stepInput.action = false;
+    this.world.step(step, this.paddle.input(step));
+    this.paddle.afterStep();
   };
 
   /** Switches to `state` once the frame's simulation steps are done (see pendingState). */
@@ -271,27 +264,6 @@ export class GameFlow {
     if (state === null) return;
     this.pendingState = null;
     this.fsm.transition(state);
-  }
-
-  /** Attract-mode autopilot: track the most threatening ball with a little wobble. */
-  private driveDemo(): void {
-    const world = this.world;
-    let target: number | null = null;
-    let lowest = Infinity;
-    for (const ball of world.balls.items) {
-      if (!ball.active || ball.stuck) continue;
-      const urgency = ball.dy < 0 ? ball.y : ball.y + 40;
-      if (urgency < lowest) {
-        lowest = urgency;
-        target = ball.x;
-      }
-    }
-    this.stepInput.axis = 0;
-    this.stepInput.action = this.options.autopilot && !world.demo && world.balls.items.some((b) => b.active && b.stuck);
-    // Wobble scales with the paddle so the autopilot still lands most balls on the narrower paddle.
-    const wobble = PADDLE.width * 0.25;
-    this.stepInput.targetX =
-      target === null ? Math.sin(world.time * 0.8) * 7 : target + Math.sin(world.time * 2.1) * wobble;
   }
 
   // ------------------------------------------------------------------ states
@@ -437,8 +409,7 @@ export class GameFlow {
     this.timeFx.reset();
     this.stepper.reset();
     this.input.consumeAction();
-    this.stepInput.action = false;
-    this.pointer.reset();
+    this.paddle.reset();
     this.pendingState = null;
     const start = startLevelFromOptions(this.options, this.campaign) ?? this.startWorld * STAGES_PER_WORLD;
     this.runEnd = this.options.editorPreview ? start + 1 : this.campaign.runEndLevel(start);

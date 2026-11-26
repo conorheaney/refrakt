@@ -19,7 +19,7 @@ export const POINTER_OFFSET_WEAR = 0.5;
  * - During a hit-stop the paddle holds still while the cursor keeps moving: the target stays on the paddle,
  *   and the difference wears off with pointer movement afterwards instead of the paddle lurching to the cursor.
  *
- * The keyboard and the autopilot drive the paddle directly (see Game), not through this.
+ * PaddleDriver (gameplay/PaddleDriver.ts) uses this for the pointer, alongside the keyboard and the autopilot.
  */
 export class PointerDriver {
   /** Pointer target (field X) at the previous and current display frame. */
