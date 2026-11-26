@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (GameFlow extracted)
+**Last updated:** 2026-11-26 (GameFlow tests)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -42,7 +42,7 @@ are given below where they matter.
 | Q7 | Pause and visibility gaps | Open | |
 | Q8 | Comment contradicts the Refrakt hit-stop | **Fixed** | `f61fa46`: the freeze is kept, the paddle no longer lurches afterwards, and the comment is corrected |
 | Q9 | No formatter or linter | **Done** | `978acd7`: Prettier. Then oxlint with type-aware rules (`no-floating-promises`, `no-misused-promises`): `npm run lint`. `typescript-eslint` doesn't support TypeScript 7 yet; oxlint's type checker (`oxlint-tsgolint`) is built on it |
-| Q10 | `Game`, `UI`, `AudioDirector` untested | Open | Depends on S5 and S7 |
+| Q10 | `Game`, `UI`, `AudioDirector` untested | **Partly done** | `Game`'s flow is tested through `GameFlow` (`tests/gameFlow.test.ts`, 15 tests with fakes: menu demo, picker, pause, transitions, victory, game over, editor test play, world choice, and the Q4/Q6/Q8 steering behaviours, each confirmed to fail when its fix is undone). `UI` (DOM) and `AudioDirector` remain untested |
 | Q11 | Tooling: no CI, unchecked indexing, slow tests | **Closed** | **CI deferred by decision**: checks run locally instead (formatting, lint and type-check after each change; tests, world-store checks, build and the editor browser test before major commits). A plan is ready if wanted: one GitHub Actions workflow on Ubuntu/Node 24, with the browser test as a parallel job. **Slow tests: no longer needed**: the suite now takes ~17 s, down from 49 s, after the collision work. **Strict indexing** (`noUncheckedIndexedAccess`): **dropped by decision**. Enabling it raises 1,004 type errors, nearly all array reads in loops whose bounds already guarantee the index, so the fixes would mostly be `!` noise in hot code. The lookups that use outside numbers are already checked at runtime: `Campaign.level()` throws, `worldAt` clamps, `?level=` is range-checked and world files are validated on load |
 | Q12 | Editor undo can use a lot of memory | Open | |
 
@@ -139,7 +139,7 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 ## Suggested order for what's left
 
-1. Q10: test `Game`'s state machine with a fake clock and stand-in renderer and audio (medium). Then reconsider `PaddleDriver` (see follow-ups).
+1. Reconsider `PaddleDriver` now that `GameFlow` is tested (see follow-ups); optionally test `AudioDirector`'s event-to-sound mapping (rest of Q10).
 2. Q7, P5 and P9: tab visibility, audio, resolution recovery, context loss (small to medium).
 3. S6: a typed view-to-audio event bus (small).
 4. P6, Q12 and P7: per-world asset loading, editor undo memory, reflection (medium).
