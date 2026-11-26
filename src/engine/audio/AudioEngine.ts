@@ -89,6 +89,9 @@ export class AudioEngine {
   private ambienceBus: GainNode | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private readonly sampleUrls = new Map<string, string>();
+  /** Clips asked for (want), loaded once the context exists; each is fetched only once. */
+  private readonly wanted = new Set<string>();
+  private readonly requested = new Set<string>();
   private readonly samples = new Map<string, AudioBuffer>();
   /** Seamless versions of looped samples, built on first use. */
   private readonly loopBuffers = new Map<string, AudioBuffer>();
@@ -177,21 +180,37 @@ export class AudioEngine {
     this.ambienceBus = ambienceBus;
     this.noiseBuffer = buffer;
     this.applyVolumes();
-    for (const [name, url] of this.sampleUrls) this.load(name, url);
+    for (const name of this.wanted) this.load(name);
     for (const name of this.loops.keys()) this.applyLoop(name);
   }
 
-  /** Registers recorded clips by name; they are fetched and decoded when the context is created. */
+  /** Registers recorded clips by name. Nothing is fetched until a clip is wanted (see want). */
   addSamples(urls: Record<string, string>): void {
-    for (const [name, url] of Object.entries(urls)) {
-      this.sampleUrls.set(name, url);
-      if (this.ctx) this.load(name, url);
+    for (const [name, url] of Object.entries(urls)) this.sampleUrls.set(name, url);
+  }
+
+  /**
+   * Asks for registered clips to be fetched and decoded: now if audio has started, else as soon as it does.
+   * Each clip is fetched once. Until a clip has loaded, sample() returns false (callers fall back to a
+   * synthesised sound) and a loop asked for with setLoop starts when it arrives.
+   */
+  want(names: Iterable<string>): void {
+    for (const name of names) {
+      this.wanted.add(name);
+      if (this.ctx) this.load(name);
     }
   }
 
-  private load(name: string, url: string): void {
+  /** Whether a clip has been fetched and decoded. */
+  hasSample(name: string): boolean {
+    return this.samples.has(name);
+  }
+
+  private load(name: string): void {
     const ctx = this.ctx;
-    if (!ctx || this.samples.has(name)) return;
+    const url = this.sampleUrls.get(name);
+    if (!ctx || !url || this.requested.has(name)) return;
+    this.requested.add(name);
     fetch(url)
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);

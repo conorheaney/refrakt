@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { AudioDirector } from './audio/AudioDirector';
 import { AudioEngine } from '../engine/audio/AudioEngine';
 import { Music } from './audio/Music';
-import { SAMPLE_URLS } from './audio/samples';
+import { CORE_SAMPLES, SAMPLE_URLS, worldSamples } from './audio/samples';
 import type { Campaign } from '../content/campaign';
 import { Storage, type Settings } from './Storage';
 import { Input } from '../engine/input/Input';
@@ -52,6 +52,9 @@ export class Game {
     this.view = new GameView(this.world, this.renderer.gl, assets, backgrounds, { debugArena: options.debugArena });
     this.renderer.attach(this.view.scene, this.view.rig.camera);
     this.audio.addSamples(SAMPLE_URLS);
+    this.audio.want(CORE_SAMPLES);
+    // Each world's weather and hazard sounds load when one of its levels does (the menu demo's too).
+    this.world.events.on('levelLoaded', ({ index }) => this.audio.want(worldSamples(campaign.worldAt(index))));
     this.director = new AudioDirector(this.audio, this.world.events, this.view.events);
 
     this.ui = new UI(uiRoot, this.settings, campaign, {
