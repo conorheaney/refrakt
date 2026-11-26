@@ -4,7 +4,7 @@ How the findings of [`bobs-code-review-001.md`](bobs-code-review-001.md) have be
 Keep this up to date as findings are worked on. The next review starts its "progress since the last review"
 section from here.
 
-**Last updated:** 2026-11-26 (PointerDriver, launch options, deferred state changes)
+**Last updated:** 2026-11-26 (GameFlow extracted)
 
 File and line references in the review itself point at commit `b71285a` and are now partly out of date:
 `World.ts` has been split into several systems and the boundary code has been rewritten. The current locations
@@ -20,7 +20,7 @@ are given below where they matter.
 | S2 | `World.ts` god object; power-ups scattered | **Done** | `e926974`: `BallPhysics`, `BrickField`, `PowerUpSystem`, `BossSystem` behind `WorldContext`; power-ups in one table (`src/gameplay/powerups/powerUps.ts`) |
 | S3 | No common hazard interface | **Done** | `e926974`: `HazardSystem`; `World.hazards` renamed `World.snakes` |
 | S4 | Two implementations of ball vs polygon arena | **Done** | `bca75b0`: one `PolygonBoundary` (`src/gameplay/arena/boundary.ts`); every world uses its drawn areas, no fallbacks |
-| S5 | `Game` mixes composition root and game-feel logic | **Done** | Pointer control moved into `PointerDriver` (`src/gameplay/PointerDriver.ts`); `tests/smoothness.test.ts` now drives the real class instead of a copy. See the `PaddleDriver` follow-up below |
+| S5 | `Game` mixes composition root and game-feel logic | **Done** | Pointer control moved into `PointerDriver` (`src/gameplay/PointerDriver.ts`); `tests/smoothness.test.ts` now drives the real class instead of a copy. Then the states, timing, steering and gameplay-event handling moved into `GameFlow` (`src/app/GameFlow.ts`), which reaches the view, HUD, sound, input and storage only through small interfaces; `Game` is now just the composition root and frame loop. See the `PaddleDriver` follow-up below |
 | S6 | Ad-hoc view-to-audio callbacks | Open | |
 | S7 | Launch options parsed in many places | **Done** | `parseLaunchOptions` (`src/app/launchOptions.ts`) reads the URL once in `main.ts`; `Game` and `GameView` take the options |
 | S8 | Per-world arena settings ignored | **Done** | `bca75b0`: walls and paddle lane from the drawn areas. Then: flying scarabs, debris, floor bursts, confetti and popups use the drawn area and paddle lane. Tomb dust: `44b0eec` wrongly moved its origin from the painted lintel to 1.15 below the ball area's top (1.4 units too low in Pharoughs Tomb); it now pours from an explicit dust line drawn in the editor, and Pharoughs Tomb's line restores the lintel height. What still reads the template arena is listed under follow-ups |
@@ -90,6 +90,12 @@ straight into the step input, and the autopilot and menu demo (`Game.driveDemo`)
 wider `PaddleDriver` owning all three (pointer, keyboard, autopilot) would put "who controls the paddle" in one
 place and let tests drive the paddle through one object. It was kept narrow for the S5 commit; reconsider once
 the `Game` state-machine tests (Q10) exist to prove the merge changes nothing.
+
+**Intermittent editor browser-test failure.** `editor/browser-smoke.mjs` has failed twice in about 14 runs
+with an `assert.equal` mismatch (after `8fe4c35` and again after the `GameFlow` extraction), then passed on
+every rerun, including 6 in a row; the failing assertion couldn't be caught. The test doesn't touch the code
+those commits changed, so it looks like a timing race in the test. If it recurs, run it in a loop
+saving each output (`.tmp/smoke-loop-*.txt`) to find which assertion and when.
 
 **Other notes**
 - Older browser drafts without areas get the editor's starting shapes when opened. That marks them as changed,
