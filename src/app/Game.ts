@@ -7,6 +7,7 @@ import type { Campaign } from '../content/campaign';
 import { Storage, type Settings } from './Storage';
 import { Input } from '../engine/input/Input';
 import { GameView } from './GameView';
+import { BackdropCache } from './backdrops';
 import { QUALITY_PROFILES, Renderer } from '../engine/render/Renderer';
 import type { ForestAssets } from '../themes/scenery/forest/assets';
 import { World } from '../gameplay/World';
@@ -43,13 +44,14 @@ export class Game {
     campaign: Campaign,
     options: LaunchOptions,
     assets: ForestAssets,
-    backgrounds: ReadonlyMap<number, THREE.Texture> = new Map(),
   ) {
     this.world = new World(campaign);
     this.stage = canvas.parentElement ?? document.body;
     this.uiRoot = uiRoot;
     this.renderer = new Renderer(canvas);
-    this.view = new GameView(this.world, this.renderer.gl, assets, backgrounds, { debugArena: options.debugArena });
+    // Each world's uploaded background is decoded when one of its levels first shows (see BackdropCache).
+    const backdrops = new BackdropCache((worldIndex) => this.world.campaign.worlds[worldIndex]?.background);
+    this.view = new GameView(this.world, this.renderer.gl, assets, backdrops, { debugArena: options.debugArena });
     this.renderer.attach(this.view.scene, this.view.rig.camera);
     this.audio.addSamples(SAMPLE_URLS);
     this.audio.want(CORE_SAMPLES);

@@ -29,8 +29,8 @@ are given below where they matter.
 | P3 | Scarab routes rebuilt every step and frame | **Done** | Each nest's route is worked out at load, and its walk-in route once per floor height |
 | P4 | Small per-frame allocations | Open | |
 | P5 | Resolution scaling never recovers | **Done** | `ResolutionGovernor` (`src/engine/render/ResolutionGovernor.ts`): steps back up after 4 windows at 57 fps or more, and stops stepping up if a raise is soon followed by a drop (no flip-flopping). Tested in `tests/resolutionGovernor.test.ts` |
-| P6 | All assets loaded and decoded at boot | Open | |
-| P7 | Floor reflection re-renders everything | Open | |
+| P6 | All assets loaded and decoded at boot | **Done** | `cc3a9b3`: recorded sounds load per world (the four Refrakt sounds when audio starts; weather and hazard sounds when one of a world's levels loads), not all 14 (5.5 MB) on the first click. `b1d17f1`: the Refrakt sounds and the stone gate are 192 kbps MP3s instead of WAVs (2.3 MB to 0.53 MB). Then: each world's uploaded background is decoded when the world is first shown, and only the world on screen keeps its texture on the GPU (`BackdropCache`, `src/app/backdrops.ts`; about 7.5 MB each, six worlds); plain dark shows for the moment it decodes. World files are validated once (`buildCampaign` no longer re-validates). The world files themselves (1.47 MB, mostly base64 images) still download at boot: splitting the images out is a world-format change, left for later |
+| P7 | Floor reflection re-renders everything | **Closed: not applicable** | The reflective floor is part of the built-in Space scenery, which is hidden whenever a world has an uploaded background. Six of the seven shipped worlds have one and Verdant Hollow uses the Forest scenery, so the second render never runs in the shipped game (only in an image-less Space world, such as a new one in the editor). Worth revisiting only if a shipped world goes back to the built-in Space scenery |
 | P8 | Brute-force brick checks | Open (low) | Only worth doing if multiball profiling shows it |
 | P9 | No dispose or context-loss handling | **Partly done** | WebGL context loss pauses the game and stops drawing; on restore the game resizes and redraws (checked in a real browser with `WEBGL_lose_context`). Listener cleanup / `dispose()` deliberately left out: one game per page, nothing needs it yet |
 | Q1 | `TrapGuard` never reset | **Fixed** | `f61fa46` |
@@ -140,6 +140,5 @@ one run). Absolute numbers vary between runs on this machine, so compare within 
 
 Review items first (decided 2026-11-26), then the `PaddleDriver` idea.
 
-1. P6 and P7: per-world asset loading, compressed audio, validating each world once, a lighter floor reflection (medium).
-2. P4 and P8: only if profiling shows them.
-3. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).
+1. P4 and P8: only if profiling shows them.
+2. After the review items: reconsider `PaddleDriver` (see follow-ups), then a fresh review (002).

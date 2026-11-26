@@ -56,17 +56,15 @@ export async function loadFileWorlds(base: URL, request: typeof fetch = fetch): 
  * that order, as the main campaign; then the other project files in manifest order; then browser saves whose
  * key no project file uses (a save's `replaces` is ignored). Worlds that can't be played yet (unfinished
  * levels, missing areas) are skipped. Throws when nothing is playable.
+ * Both lists come already validated (validateWorld, as loadFileWorlds and readLibrary do), so they are not checked again.
  */
 export function buildCampaign(files: readonly AuthoredWorld[], saved: readonly AuthoredWorld[] = []): Campaign {
-  const playableFiles = files.map((value) => validateWorld(value)).filter(isPlayable);
+  const playableFiles = files.filter(isPlayable);
   const main = (['space', 'forest'] as const)
     .map((slot) => playableFiles.find((world) => world.replaces === slot))
     .filter((world): world is AuthoredWorld => world !== undefined);
   const fileKeys = new Set(files.map((world) => world.key));
-  const playableSaves = saved
-    .filter((world) => !fileKeys.has(world.key))
-    .map((value) => validateWorld(value))
-    .filter(isPlayable);
+  const playableSaves = saved.filter((world) => !fileKeys.has(world.key)).filter(isPlayable);
   const ordered = [...main, ...playableFiles.filter((world) => !main.includes(world)), ...playableSaves];
   const entries: WorldEntry[] = [];
   for (const world of ordered) entries.push(authoredEntry(world, entries.length * STAGES_PER_WORLD));

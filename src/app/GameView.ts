@@ -41,6 +41,7 @@ import { RefraktFx } from '../gameplay/refrakt/RefraktFx';
 import { BAND_Y, PADDLE_POWERS } from '../gameplay/entities/PaddlePowers';
 import { EventBus } from '../engine/core/EventBus';
 import type { ViewEvents } from './viewEvents';
+import type { BackdropSource } from './backdrops';
 
 const CELEBRATE_HUES: readonly number[] = [0.07, 0.6, 0.93];
 
@@ -105,7 +106,7 @@ export class GameView {
     private readonly world: World,
     gl: THREE.WebGLRenderer,
     assets: ForestAssets,
-    private readonly backgrounds: ReadonlyMap<number, THREE.Texture> = new Map(),
+    private readonly backdrops: BackdropSource,
     /**
      * `debugArena` (`?debugArena`, see app/launchOptions.ts): draws the walls the ball bounces off (the world's drawn
      * ball area, drain left out) over the scene, so they can be checked against the scenery.
@@ -167,7 +168,6 @@ export class GameView {
     gl.compile(this.scene, this.rig.camera);
     for (const o of hidden) o.visible = false;
     this.env.prewarm(gl);
-    for (const texture of this.backgrounds.values()) gl.initTexture(texture);
   }
 
   /** Refrakt's screen-wide light (edge spectrum, colour split), for the renderer's final pass. */
@@ -288,6 +288,26 @@ export class GameView {
     return out;
   }
 
+  /** Shown while a world's background decodes: plain dark, rather than a flash of the built-in scenery. */
+  private readonly loadingBackdrop = Object.assign(new THREE.DataTexture(new Uint8Array([5, 7, 13, 255]), 1, 1), {
+    colorSpace: THREE.SRGBColorSpace,
+    needsUpdate: true,
+  });
+  private backdropRequest = 0;
+
+  private showBackdrop(worldIndex: number): void {
+    const request = ++this.backdropRequest;
+    const backdrop = this.backdrops.get(worldIndex);
+    if (!(backdrop instanceof Promise)) {
+      this.env.setBackdrop(backdrop);
+      return;
+    }
+    this.env.setBackdrop(this.loadingBackdrop);
+    void backdrop.then((texture) => {
+      if (request === this.backdropRequest) this.env.setBackdrop(texture);
+    });
+  }
+
   private bindEvents(): void {
     const ev = this.world.events;
     const world = this.world;
@@ -301,8 +321,7 @@ export class GameView {
       const def = campaign.worldDefAt(index);
       const changed = def.id !== this.worldId;
       this.setWorld(def.id);
-      const backdrop = this.backgrounds.get(campaign.worldIndexOf(index)) ?? null;
-      this.env.setBackdrop(backdrop);
+      this.showBackdrop(campaign.worldIndexOf(index));
       const weather = def.weather;
       this.rain.setActive(weather === 'rain');
       this.snow.setActive(weather === 'snow');

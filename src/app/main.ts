@@ -3,7 +3,6 @@ import { Game } from './Game';
 import { loadForestAssets } from '../themes/scenery/forest/assets';
 import { authoredEntry, readLibrary, validateWorld, type AuthoredWorld } from '../content/authoredWorlds';
 import { Campaign } from '../content/campaign';
-import * as THREE from 'three';
 import { buildCampaign, loadFileWorlds } from '../content/fileWorlds';
 import { parseLaunchOptions } from './launchOptions';
 
@@ -44,22 +43,10 @@ async function boot(): Promise<void> {
       }
       campaign = buildCampaign(files.worlds, saved);
     }
-    // Pre-rendered artwork is fetched up front so no world ever pops in half-drawn.
+    // The built-in forest's pre-rendered artwork is fetched up front so it never pops in half-drawn; each world's
+    // uploaded background loads when the world is first shown (BackdropCache).
     const assets = await loadForestAssets();
-    const backgrounds = new Map<number, THREE.Texture>();
-    await Promise.all(
-      campaign.worlds.map(async ({ background: url }, index) => {
-        if (!url) return;
-        try {
-          const texture = await new THREE.TextureLoader().loadAsync(url);
-          texture.colorSpace = THREE.SRGBColorSpace;
-          backgrounds.set(index, texture);
-        } catch (error) {
-          console.warn('An uploaded background could not load; using built-in scenery.', error);
-        }
-      }),
-    );
-    new Game(canvas, uiRoot, campaign, options, assets, backgrounds).start();
+    new Game(canvas, uiRoot, campaign, options, assets).start();
   } catch (err) {
     console.error(err);
     fatal(uiRoot, err instanceof Error ? err.message : String(err));

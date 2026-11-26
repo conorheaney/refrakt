@@ -8,6 +8,7 @@ import { loadForestAssets } from '../../src/themes/scenery/forest/assets';
 import { World } from '../../src/gameplay/World';
 import type { Point } from '../../src/gameplay/arena/playAreas';
 import { STAGE_ASPECT, STAGE_MIN_ASPECT } from '../../src/engine/Stage';
+import { mapBackdrops } from '../../src/app/backdrops';
 
 /** Paused original game renderer. Editor hit targets project through the same camera. */
 export class EditorScene {
@@ -42,7 +43,7 @@ export class EditorScene {
   }
 
   async init(): Promise<void> {
-    this.view = new GameView(this.world, this.renderer.gl, await loadForestAssets(), this.backgrounds);
+    this.view = new GameView(this.world, this.renderer.gl, await loadForestAssets(), mapBackdrops(this.backgrounds));
     this.view.rig.mode = 'play';
     this.view.rig.shakeScale = 0;
     this.renderer.attach(this.view.scene, this.view.rig.camera);
