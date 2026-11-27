@@ -370,6 +370,7 @@
       "radius": 0
     }
   },
+  "hazard": "snakes",
   "hazards": [
     {
       "kind": "snake",
@@ -444,7 +445,7 @@
       ]
     }
   ],
-  "weather": {
+  "ambience": {
     "kind": "rain",
     "paths": [
       {

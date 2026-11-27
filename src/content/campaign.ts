@@ -1,7 +1,7 @@
 import type { MusicTrackId } from './musicTracks';
 import type { BallArea, PolygonArea } from '../gameplay/arena/playAreas';
-import type { HazardDef } from '../gameplay/hazards/hazards';
-import { weatherProblem, type WeatherSettings } from '../gameplay/weather/settings';
+import type { HazardCues, HazardDef } from '../gameplay/hazards/hazards';
+import { ambienceProblem, type AmbienceSettings } from '../gameplay/ambience/settings';
 import { parseLevel, type LevelCell, type LevelDef } from './levels';
 import { levelNumber, STAGES_PER_WORLD, type WorldDef } from './worlds';
 
@@ -22,16 +22,19 @@ export interface WorldEntry {
   readonly playAreas: WorldAreas;
   /** Enemies active in every level of this world (gameplay/hazards/hazards.ts). */
   readonly hazards?: readonly HazardDef[];
+  /** Hazards set off by something else in the game (an ambience pulse) instead of their own timer. */
+  readonly hazardCues?: HazardCues;
   /** The world's scenery: an uploaded image (a data: URL). Without one the backdrop is plain dark. */
   readonly background?: string;
-  /** The air of the world (gameplay/weather/settings.ts): snow, rain, tomb dust. Absent means clear. */
-  readonly weather?: WeatherSettings;
+  /** The air of the world (gameplay/ambience/settings.ts): snow, rain, dust. Absent means clear. */
+  readonly ambience?: AmbienceSettings;
 }
 
 export interface WorldExtras {
   readonly hazards?: readonly HazardDef[];
+  readonly hazardCues?: HazardCues;
   readonly background?: string;
-  readonly weather?: WeatherSettings;
+  readonly ambience?: AmbienceSettings;
 }
 
 /**
@@ -47,16 +50,17 @@ export function worldEntry(
 ): WorldEntry {
   if (levels.length !== STAGES_PER_WORLD) throw new Error(`A world must contain exactly ${STAGES_PER_WORLD} levels.`);
   if (!areas.ball || !areas.paddle) throw new Error(`${def.name}: draw a ball area and a paddle area before playing.`);
-  const weather = extras.weather && weatherProblem(extras.weather);
-  if (weather) throw new Error(`${def.name}: ${weather} (draw one before playing).`);
+  const ambience = extras.ambience && ambienceProblem(extras.ambience);
+  if (ambience) throw new Error(`${def.name}: ${ambience} (draw one before playing).`);
   return {
     def,
     levels,
     cells: levels.map((level, i) => parseLevel(level, firstLevel + i)),
     playAreas: { ball: areas.ball, paddle: areas.paddle },
     ...(extras.hazards ? { hazards: extras.hazards } : {}),
+    ...(extras.hazardCues ? { hazardCues: extras.hazardCues } : {}),
     ...(extras.background ? { background: extras.background } : {}),
-    ...(extras.weather ? { weather: extras.weather } : {}),
+    ...(extras.ambience ? { ambience: extras.ambience } : {}),
   };
 }
 
@@ -131,13 +135,14 @@ export class Campaign {
     return new Campaign(this.worlds.map((world, i) => (i === index ? entry : world)));
   }
 
-  /** This campaign with world `index`'s areas and extras (hazards, background, weather) replaced. */
+  /** This campaign with world `index`'s areas and extras (hazards, background, ambience) replaced. */
   withWorldPartsAt(index: number, parts: { playAreas?: WorldAreas } & WorldExtras): Campaign {
     const world = this.worlds[index];
     if (!world) throw new Error(`No world slot ${index}.`);
     const hazards = 'hazards' in parts ? parts.hazards : world.hazards;
     const background = 'background' in parts ? parts.background : world.background;
-    const weather = 'weather' in parts ? parts.weather : world.weather;
+    const ambience = 'ambience' in parts ? parts.ambience : world.ambience;
+    const hazardCues = 'hazardCues' in parts ? parts.hazardCues : world.hazardCues;
     return this.withWorldAt(index, {
       def: world.def,
       levels: world.levels,
@@ -145,7 +150,8 @@ export class Campaign {
       playAreas: parts.playAreas ?? world.playAreas,
       ...(hazards ? { hazards } : {}),
       ...(background ? { background } : {}),
-      ...(weather ? { weather } : {}),
+      ...(ambience ? { ambience } : {}),
+      ...(hazardCues ? { hazardCues } : {}),
     });
   }
 }

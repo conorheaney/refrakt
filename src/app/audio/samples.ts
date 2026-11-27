@@ -27,8 +27,8 @@ export const CORE_SAMPLES: readonly SampleName[] = ['refraktStart', 'refraktEnd'
 
 /**
  * The recorded sounds a world's hazards need beyond the core ones: loaded when one of its levels loads, so a
- * player who never meets a snake never downloads (or decodes) its hiss. Weather loads its own the same way
- * (each weather class's samples, in gameplay/weather/).
+ * player who never meets a snake never downloads (or decodes) its hiss. Ambience loads its own the same way
+ * (each ambience class's samples, in gameplay/ambience/).
  */
 export function worldSamples(world: Pick<WorldEntry, 'hazards'>): SampleName[] {
   const names = new Set<SampleName>();

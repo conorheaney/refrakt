@@ -1,7 +1,7 @@
-import type { WeatherInfo } from '../weathers';
+import type { AmbienceInfo } from '../ambiences';
 
-/** What snow is (gameplay/weather/snow/Snow.ts is what it does): headless, for the simulation, validation and the editor. */
-export const SNOW: WeatherInfo = {
+/** What snow is (gameplay/ambience/snow/Snow.ts is what it does): headless, for the simulation, validation and the editor. */
+export const SNOW: AmbienceInfo = {
   label: 'Snow',
   paths: {
     min: 1,

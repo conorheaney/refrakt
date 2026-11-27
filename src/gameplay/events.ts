@@ -1,5 +1,5 @@
 import type { Brick, DamageCause, PowerUpKind } from './types';
-import type { WeatherKind } from './weather/weathers';
+import type { AmbienceKind } from './ambience/ambiences';
 
 /** Everything the simulation announces. Views, audio and flow control subscribe; the sim never calls them. */
 export interface GameEvents {
@@ -31,8 +31,8 @@ export interface GameEvents {
   lifeLost: { lives: number };
   gameOver: { score: number };
   levelCleared: { index: number; bonus: number };
-  /** The world's weather storms (gameplay/weather/WeatherClock.ts): a gust, a lightning strike, the tomb shaking. */
-  weatherStorm: { kind: WeatherKind };
+  /** The world's ambience pulses (gameplay/ambience/AmbienceClock.ts): a gust, a lightning strike, the tomb shaking. */
+  ambiencePulse: { kind: AmbienceKind };
   /** A wall snake starts its warning; (x, y) is its den. */
   snakeWarn: { x: number; y: number };
   snakeStrike: { x: number; y: number };

@@ -11,7 +11,7 @@ import {
   validateWorld,
 } from '../src/content/authoredWorlds';
 import { buildCampaign } from '../src/content/fileWorlds';
-import { validateWeather, type WeatherSettings } from '../src/gameplay/weather/settings';
+import { validateAmbience, type AmbienceSettings } from '../src/gameplay/ambience/settings';
 import tomb from '../public/worlds/Pharoughs-Tomb.json';
 import { worldEntry } from '../src/content/campaign';
 import { FIELD, GRID } from '../src/gameplay/config';
@@ -165,15 +165,15 @@ describe('authored world files and persistence', () => {
     expect(campaign.runEndLevel(10)).toBe(20);
   });
 
-  it("needs its weather's lines to be played, and validates them", () => {
+  it("needs its ambience's lines to be played, and validates them", () => {
     const data = createWorld('snowy');
     data.levels = data.levels.map((level) => ({ ...level, rows: ['1............'] }));
     expect(isPlayable(data)).toBe(true);
-    const snow: WeatherSettings = { kind: 'snow', paths: [], every: [24, 40] };
-    data.weather = snow;
+    const snow: AmbienceSettings = { kind: 'snow', paths: [], every: [24, 40] };
+    data.ambience = snow;
     expect(isPlayable(data)).toBe(false);
     expect(playProblems(data)).toBe('no snow line drawn');
-    expect(() => worldEntry(data.world, data.levels, data.playAreas as never, { weather: data.weather })).toThrow(
+    expect(() => worldEntry(data.world, data.levels, data.playAreas as never, { ambience: data.ambience })).toThrow(
       'no snow line drawn',
     );
     const line = {
@@ -182,13 +182,13 @@ describe('authored world files and persistence', () => {
         { x: 6, y: 11 },
       ],
     };
-    data.weather = { ...snow, paths: [line], releases: ['scarabs'] };
+    data.ambience = { ...snow, paths: [line] };
     expect(isPlayable(data)).toBe(true);
-    expect(validateWorld(data).weather).toEqual(data.weather);
-    expect(buildCampaign([data]).worlds[0].weather).toEqual(data.weather);
-    // A line is 2-8 points within the scene, curved by 0 to 3; storms come every 3-300 seconds.
-    const bad = (change: Record<string, unknown>) => () => validateWeather({ ...data.weather, ...change });
-    expect(bad({ kind: 'hail' })).toThrow('Unsupported weather');
+    expect(validateWorld(data).ambience).toEqual(data.ambience);
+    expect(buildCampaign([data]).worlds[0].ambience).toEqual(data.ambience);
+    // A line is 2-8 points within the scene, curved by 0 to 3; pulses come every 3-300 seconds.
+    const bad = (change: Record<string, unknown>) => () => validateAmbience({ ...data.ambience, ...change });
+    expect(bad({ kind: 'hail' })).toThrow('Unsupported ambience');
     expect(bad({ paths: [{ points: [{ x: 0, y: 9 }] }] })).toThrow('2-8 points');
     expect(
       bad({
@@ -206,19 +206,18 @@ describe('authored world files and persistence', () => {
     expect(bad({ paths: Array.from({ length: 7 }, () => line) })).toThrow('at most 6');
     expect(bad({ every: [30, 20] })).toThrow('every');
     expect(bad({ every: [1, 20] })).toThrow('every');
-    expect(bad({ releases: ['snake'] })).toThrow('hazard');
-    expect(() => validateWorld({ ...data, weather: 'snow' })).toThrow('Invalid weather');
+    expect(() => validateWorld({ ...data, ambience: 'snow' })).toThrow('Invalid ambience');
   });
 
-  it('reads weather as older files saved it: a name on the world, and the tomb dust line beside it', () => {
+  it('reads ambience as older files saved it: as weather, a name on the world, and the dust line beside it', () => {
     const data = createWorld('old');
     const old = (world: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
       validateWorld({ ...data, world: { ...data.world, ...world }, ...extra });
     const rain = old({ weather: 'rain' });
-    expect(rain.weather?.kind).toBe('rain');
-    expect(rain.weather?.paths.length).toBe(1);
+    expect(rain.ambience?.kind).toBe('rain');
+    expect(rain.ambience?.paths.length).toBe(1);
     expect((rain.world as unknown as Record<string, unknown>).weather).toBeUndefined();
-    expect(() => old({ weather: 'hail' })).toThrow('Unsupported weather');
+    expect(() => old({ weather: 'hail' })).toThrow('Unsupported ambience');
     const lintel = {
       points: [
         { x: -10, y: 11 },
@@ -227,12 +226,46 @@ describe('authored world files and persistence', () => {
     };
     const nest = { kind: 'scarabs', x: -16, y: -9.2 };
     const dust = old({ weather: 'dust' }, { dustLine: lintel, hazards: [nest] });
-    expect(dust.weather).toEqual({ kind: 'dust', paths: [lintel], every: [14, 22], releases: ['scarabs'] });
+    expect(dust.ambience).toEqual({ kind: 'dust', paths: [lintel], every: [14, 22] });
+    expect(dust.hazardCues).toEqual({ scarabs: 'pulse' });
     expect((dust as unknown as Record<string, unknown>).dustLine).toBeUndefined();
-    // Without nests the tomb storms on its own; without a line it gets the usual one.
-    expect(old({ weather: 'dust' }).weather).toMatchObject({ kind: 'dust', every: [20, 40] });
-    expect(old({ weather: 'dust' }).weather?.releases).toBeUndefined();
-    // The shipped tomb, as it is saved now, keeps its line and its scarab storms.
-    expect(validateWorld(tomb).weather).toMatchObject({ kind: 'dust', releases: ['scarabs'] });
+    // Without nests the tomb pulses on its own; without a line it gets the usual one.
+    expect(old({ weather: 'dust' }).ambience).toMatchObject({ kind: 'dust', every: [20, 40] });
+    expect(old({ weather: 'dust' }).hazardCues).toBeUndefined();
+    // Files that saved it as `weather`, listing the scarabs on it (`releases`), have them cued by its pulses.
+    const listed = old(
+      {},
+      { hazards: [nest], weather: { kind: 'dust', paths: [lintel], every: [14, 22], releases: ['scarabs'] } },
+    );
+    expect(listed.ambience).toEqual({ kind: 'dust', paths: [lintel], every: [14, 22] });
+    expect((listed as unknown as Record<string, unknown>).weather).toBeUndefined();
+    expect(listed.hazardCues).toEqual({ scarabs: 'pulse' });
+    // Cued by a "storm", as files saved it before it was called a pulse.
+    expect(old({}, { hazards: [nest], hazardCues: { scarabs: 'storm' } }).hazardCues).toEqual({ scarabs: 'pulse' });
+    // The shipped tomb, as it is saved now, keeps its line and its scarab pulses.
+    expect(validateWorld(tomb)).toMatchObject({ ambience: { kind: 'dust' }, hazardCues: { scarabs: 'pulse' } });
+  });
+
+  it('gives each world one hazard of its own, read from what older files placed', () => {
+    const data = createWorld('hazard');
+    const nest = { kind: 'scarabs', x: -16, y: -9.2 };
+    const snake = { kind: 'snake', x: 20, y: 0, reach: 6 };
+    expect(validateWorld(data).hazard).toBeUndefined();
+    expect(validateWorld({ ...data, hazards: [nest] }).hazard).toBe('scarabs');
+    expect(validateWorld({ ...data, hazard: 'icicles' }).hazard).toBe('icicles');
+    expect(() => validateWorld({ ...data, hazard: 'bats' })).toThrow('Unsupported hazard');
+    expect(() => validateWorld({ ...data, hazards: [nest, snake] })).toThrow('one kind of hazard');
+    expect(() => validateWorld({ ...data, hazard: 'snakes', hazards: [nest] })).toThrow('one kind of hazard');
+    // Only its own hazard can wait for the pulses.
+    expect(validateWorld({ ...data, hazard: 'snakes', hazardCues: { scarabs: 'pulse' } }).hazardCues).toBeUndefined();
+    expect(validateWorld(tomb).hazard).toBe('scarabs');
+  });
+
+  it('checks which hazards a world sets off by a cue', () => {
+    const data = { ...createWorld('cues'), hazard: 'scarabs' };
+    expect(validateWorld({ ...data, hazardCues: { scarabs: 'pulse' } }).hazardCues).toEqual({ scarabs: 'pulse' });
+    expect(() => validateWorld({ ...data, hazardCues: { snake: 'pulse' } })).toThrow('Unsupported hazard to cue');
+    expect(() => validateWorld({ ...data, hazardCues: { scarabs: 'thunder' } })).toThrow('Unsupported hazard cue');
+    expect(validateWorld({ ...data, hazardCues: {} }).hazardCues).toBeUndefined();
   });
 });

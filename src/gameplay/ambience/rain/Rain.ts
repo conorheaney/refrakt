@@ -3,7 +3,7 @@ import { GRID, PADDLE } from '../../config';
 import type { World } from '../../World';
 import { PADDLE_HALF_D } from '../../entities/EntityViews';
 import { reducedMotion } from '../../../engine/reducedMotion';
-import { FRONT_FADE, PATH_GLSL, particleDepth, Weather, type WeatherContext, type WeatherFrame } from '../Weather';
+import { FRONT_FADE, PATH_GLSL, particleDepth, Ambience, type AmbienceContext, type AmbienceFrame } from '../Ambience';
 import rainHeavy from './sfx/rain-heavy.mp3';
 import thunderClose from './sfx/thunder-close.mp3';
 import thunderDistant1 from './sfx/thunder-distant-1.mp3';
@@ -87,10 +87,10 @@ void main() {
  * Rain: thin, faint streaks falling from the rain's paths in one draw call, animated entirely on the GPU, drawn
  * additively without writing depth so bricks and the ball stay on top of the drops behind them and the backdrop
  * shows through. Drops splash on the paddle and on bricks under the paths. A loop of heavy rain plays under the
- * music. Its storm is a lightning strike: a bright flash and a weaker second one that light the playfield from
+ * music. Its pulse is a lightning strike: a bright flash and a weaker second one that light the playfield from
  * above and brighten the backdrop, then thunder.
  */
-export class Rain extends Weather {
+export class Rain extends Ambience {
   static readonly info = RAIN;
   static readonly samples = { rainHeavy, thunderClose, thunderDistant1, thunderDistant2 };
 
@@ -120,7 +120,7 @@ export class Rain extends Weather {
     { at: 0, strength: 0 },
   ];
 
-  constructor(ctx: WeatherContext) {
+  constructor(ctx: AmbienceContext) {
     super(ctx, RAIN, Rain.samples);
     const tail = new Float32Array(MAX_DROPS * 2);
     const rand = new Float32Array(MAX_DROPS * 2);
@@ -198,7 +198,7 @@ export class Rain extends Weather {
    * many seconds apart stay well under the WCAG limit of three flashes in any one second. With reduced motion
    * requested, the flash is a single soft brightening.
    */
-  protected onStorm(): void {
+  protected onPulse(): void {
     if (this.strikeAge >= 0) return;
     // Every strike is a full one, close overhead; the little variation left keeps them from feeling stamped out.
     const strength = 0.92 + Math.random() * 0.08;
@@ -213,7 +213,7 @@ export class Rain extends Weather {
     this.thunder(0.3 + Math.pow(1 - strength, 1.5) * 22, strength);
   }
 
-  protected onFrame(frame: WeatherFrame): void {
+  protected onFrame(frame: AmbienceFrame): void {
     // Wrap before float32 loses precision in the shader. The drops reshuffle once an hour, which reads as rain.
     this.time = (this.time + frame.realDt) % 3600;
     this.uniforms.uTime.value = this.time;
@@ -292,7 +292,7 @@ export class Rain extends Weather {
    * just behind it, both slowed a little so they are deeper and longer, and a synthesised rumble swelling
    * underneath that carries on after them (or, until the recordings load, a synthesised crack and roll). The
    * crack and rumble together trip the master compressor, which ducks the music for a moment; that is accepted
-   * as part of the storm.
+   * as part of the pulse.
    */
   private thunder(delay: number, strength: number): void {
     const sound = this.sound;

@@ -65,7 +65,7 @@ function run(sys: ScarabSystem, paddle: Paddle, seconds: number, balls: Ball[] =
 
 /** Starts a swarm straight away (the first nest stirs). */
 function stir(sys: ScarabSystem, paddle: Paddle): void {
-  (sys as unknown as { untilStorm: number }).untilStorm = 0;
+  (sys as unknown as { untilSwarm: number }).untilSwarm = 0;
   sys.update(SIM.step, paddle, [], true);
   expect(sys.nests[0].state).toBe('warn');
 }
@@ -670,7 +670,7 @@ describe('scarab nests', () => {
   });
 
   it('scarabs come in swarms: the nests stir, then 2 come out (4 on the last level), shared between the nests', () => {
-    const storm = (difficulty: number) => {
+    const swarm = (difficulty: number) => {
       const events = new EventBus<GameEvents>();
       const warns: number[] = [];
       events.on('scarabWarn', ({ x }) => warns.push(x));
@@ -680,7 +680,7 @@ describe('scarab nests', () => {
       // Nothing until the swarm's wait (and the first level's extra delay) is up.
       run(sys, paddle, SCARAB.firstDelay + SCARAB.waitMin[0] * 0.5);
       if (difficulty === 0) expect(warns).toHaveLength(0);
-      (sys as unknown as { untilStorm: number }).untilStorm = 0;
+      (sys as unknown as { untilSwarm: number }).untilSwarm = 0;
       sys.update(SIM.step, paddle, [], true);
       expect(warns).toHaveLength(2);
       expect(sys.activeCount).toBe(0);
@@ -692,31 +692,31 @@ describe('scarab nests', () => {
       expect(new Set(out.map((s) => s.nest)).size).toBe(2);
       return out.length;
     };
-    expect(storm(0)).toBe(2);
-    expect(storm(1)).toBe(4);
+    expect(swarm(0)).toBe(2);
+    expect(swarm(1)).toBe(4);
   });
 
-  it('when the weather brings them, they wait for its storms and keep no timer of their own', () => {
+  it('when a cue sets them off, they wait for it and keep no timer of their own', () => {
     const { sys } = setup([LEFT, RIGHT]);
     sys.cued = true;
     const paddle = paddleAt(0);
     run(sys, paddle, 120);
     expect(sys.nests.every((n) => n.state === 'idle')).toBe(true);
-    sys.release();
+    sys.trigger();
     expect(sys.nests.every((n) => n.state === 'warn')).toBe(true);
-    // A second storm while the swarm is on its way changes nothing.
-    sys.release();
+    // A second cue while the swarm is on its way changes nothing.
+    sys.trigger();
     run(sys, paddle, SCARAB.grind + SCARAB.stagger * 3 + 0.2);
     expect(sys.activeCount).toBe(2);
   });
 
-  it('the next storm waits until the last one is over', () => {
+  it('the next swarm waits until the last one is over', () => {
     const { sys } = setup();
     const paddle = paddleAt(0);
     stir(sys, paddle);
     run(sys, paddle, SCARAB.grind + SCARAB.stagger * 2 + 0.1);
     expect(sys.nests[0].state).toBe('idle');
-    const wait = (sys as unknown as { untilStorm: number }).untilStorm;
+    const wait = (sys as unknown as { untilSwarm: number }).untilSwarm;
     expect(wait).toBeGreaterThanOrEqual(SCARAB.waitMin[0] - 1);
     expect(wait).toBeLessThanOrEqual(SCARAB.waitMax[0]);
   });

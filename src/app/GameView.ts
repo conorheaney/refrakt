@@ -20,10 +20,10 @@ import {
 } from '../gameplay/entities/EntityViews';
 import { Environment } from '../themes/scenery/Environment';
 import { ParticleSystem } from '../engine/render/ParticleSystem';
-import type { Weather, WeatherFrame } from '../gameplay/weather/Weather';
-import type { WeatherKind } from '../gameplay/weather/weathers';
-import { WEATHER_TYPES } from '../gameplay/weather/weatherTypes';
-import type { WeatherSettings } from '../gameplay/weather/settings';
+import type { Ambience, AmbienceFrame } from '../gameplay/ambience/Ambience';
+import type { AmbienceKind } from '../gameplay/ambience/ambiences';
+import { AMBIENCE_TYPES } from '../gameplay/ambience/ambienceTypes';
+import type { AmbienceSettings } from '../gameplay/ambience/settings';
 import type { AudioEngine } from '../engine/audio/AudioEngine';
 import { IcicleView } from '../gameplay/hazards/icicles/IcicleView';
 import { SnakesView } from '../gameplay/hazards/snakes/SnakeView';
@@ -65,10 +65,10 @@ export class GameView {
   /** Coloured dust blended over the scene (a crushed scarab's red puff). */
   private readonly dustPuffs = new ParticleSystem(400, 'dust');
   private readonly debris = new DebrisSystem(420);
-  /** Every kind of weather, made up front (each adds its lights to the scene for good), and the level's (null: clear). */
-  private readonly weathers = new Map<WeatherKind, Weather>();
-  private weather: Weather | null = null;
-  private readonly weatherFrame: WeatherFrame;
+  /** Every kind of ambience, made up front (each adds its lights to the scene for good), and the level's (null: clear). */
+  private readonly ambiences = new Map<AmbienceKind, Ambience>();
+  private ambience: Ambience | null = null;
+  private readonly ambienceFrame: AmbienceFrame;
   private readonly ballFocus = { x: 0, y: 0 };
   private readonly icicles: IcicleView;
   private readonly scarabs: ScarabView;
@@ -93,31 +93,34 @@ export class GameView {
     /**
      * `debugArena` (`?debugArena`, see app/launchOptions.ts): draws the walls the ball bounces off (the world's drawn
      * ball area, drain left out) over the scene, so they can be checked against the scenery. `audio` is what the
-     * weather plays through (none in the editor), and `weatherSound` whether it may be heard right now.
+     * ambience plays through (none in the editor), and `ambienceSound` whether it may be heard right now.
      */
     private readonly options: {
       readonly debugArena?: boolean;
       readonly audio?: AudioEngine;
-      readonly weatherSound?: () => boolean;
+      readonly ambienceSound?: () => boolean;
     } = {},
   ) {
     const scene = this.scene;
     const glow = createGlowTexture();
     this.env = new Environment(scene, gl);
-    const weatherSound = options.weatherSound ?? (() => true);
+    const ambienceSound = options.ambienceSound ?? (() => true);
     const context = {
       scene,
       camera: this.rig.camera,
       particles: this.particles,
       audio: options.audio,
-      soundOn: weatherSound,
+      soundOn: ambienceSound,
       shake: (level: number) => {
         if (!reducedMotion()) this.rig.holdTrauma(level * this.intensity);
       },
     };
-    for (const [kind, type] of Object.entries(WEATHER_TYPES) as [WeatherKind, (typeof WEATHER_TYPES)[WeatherKind]][])
-      this.weathers.set(kind, new type(context));
-    this.weatherFrame = { realDt: 0, simDt: 0, world, ball: null, paddleX: 0 };
+    for (const [kind, type] of Object.entries(AMBIENCE_TYPES) as [
+      AmbienceKind,
+      (typeof AMBIENCE_TYPES)[AmbienceKind],
+    ][])
+      this.ambiences.set(kind, new type(context));
+    this.ambienceFrame = { realDt: 0, simDt: 0, world, ball: null, paddleX: 0 };
     this.bricks = new BrickView(scene);
     this.balls = new BallsView(scene);
     this.paddle = new PaddleView(scene);
@@ -172,7 +175,7 @@ export class GameView {
     this.env.resizeBackdrop(aspect);
     this.particles.setViewport(bufferHeight, this.rig.fov);
     this.dustPuffs.setViewport(bufferHeight, this.rig.fov);
-    for (const weather of this.weathers.values()) weather.setViewport(bufferHeight, this.rig.fov, aspect);
+    for (const ambience of this.ambiences.values()) ambience.setViewport(bufferHeight, this.rig.fov, aspect);
   }
 
   /** Small camera sway for rare, significant events only (no zoom punch or colour fringing). */
@@ -259,11 +262,11 @@ export class GameView {
   });
   private backdropRequest = 0;
 
-  /** The level's weather (it changes only behind a level transition); `settings` undefined: clear. */
-  private setWeather(settings: WeatherSettings | undefined): void {
-    const next = settings ? this.weathers.get(settings.kind)! : null;
-    if (next !== this.weather) this.weather?.stop();
-    this.weather = next;
+  /** The level's ambience (it changes only behind a level transition); `settings` undefined: clear. */
+  private setAmbience(settings: AmbienceSettings | undefined): void {
+    const next = settings ? this.ambiences.get(settings.kind)! : null;
+    if (next !== this.ambience) this.ambience?.stop();
+    this.ambience = next;
     if (next && settings) next.start(settings);
   }
 
@@ -291,7 +294,7 @@ export class GameView {
       this.refrakt.clear();
       const campaign = world.campaign;
       this.showBackdrop(campaign.worldIndexOf(index));
-      this.setWeather(campaign.worldAt(index).weather);
+      this.setAmbience(campaign.worldAt(index).ambience);
       if (this.backdropOutline) {
         this.scene.remove(this.backdropOutline);
         this.backdropOutline.traverse((object) => {
@@ -538,8 +541,8 @@ export class GameView {
         );
       }
     };
-    // The weather storms when the simulation says so (gameplay/weather/WeatherClock.ts).
-    ev.on('weatherStorm', () => this.weather?.storm());
+    // The ambience pulses when the simulation says so (gameplay/ambience/AmbienceClock.ts).
+    ev.on('ambiencePulse', () => this.ambience?.pulse());
     ev.on('scarabCling', ({ x, y }) => {
       sandPuff(x, y, 6, 1.2);
     });
@@ -678,15 +681,15 @@ export class GameView {
     if (refraktOn) light.color.setHSL(this.balls.refraktHue, 0.9, 0.6);
     else light.color.copy(this.ballLightFire);
 
-    if (this.weather) {
-      const frame = this.weatherFrame;
+    if (this.ambience) {
+      const frame = this.ambienceFrame;
       frame.realDt = realDt;
       frame.simDt = simDt;
       frame.ball = this.balls.hasFocus
         ? Object.assign(this.ballFocus, { x: this.balls.focusX, y: this.balls.focusY })
         : null;
       frame.paddleX = lerp(world.paddle.px, world.paddle.x, alpha);
-      this.weather.update(frame);
+      this.ambience.update(frame);
     }
     this.rig.update(realDt);
   }

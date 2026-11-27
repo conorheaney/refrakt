@@ -5,7 +5,7 @@ export type { Quality };
 export interface Settings {
   musicVolume: number;
   sfxVolume: number;
-  /** Weather and other background sound (rain, thunder). */
+  /** Ambience and other background sound (rain, thunder). */
   ambienceVolume: number;
   quality: Quality;
   screenShake: boolean;

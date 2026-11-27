@@ -12,23 +12,62 @@ import type { ArenaBounds } from '../arena/boundary';
 export type HazardKind = 'snake' | 'icicle' | 'icicles' | 'scarabs';
 
 /**
- * Hazards a weather's storms can bring with them (WeatherSettings.releases): instead of coming on their own
- * timer, they come out each time a storm hits (see HazardSystem.release).
+ * The hazards a world can be given (AuthoredWorld.hazard), one per world: everything in its `hazards` list is of
+ * that kind (see hazardOf).
  */
-export const RELEASABLE_HAZARDS = ['scarabs'] as const;
-export type ReleasableHazard = (typeof RELEASABLE_HAZARDS)[number];
+export const WORLD_HAZARDS = ['snakes', 'icicles', 'scarabs'] as const;
+export type WorldHazard = (typeof WORLD_HAZARDS)[number];
+export const isWorldHazard = (value: unknown): value is WorldHazard =>
+  (WORLD_HAZARDS as readonly unknown[]).includes(value);
+
+/** The world hazard a definition belongs to. */
+export function hazardOf(def: HazardDef): WorldHazard {
+  return def.kind === 'snake' ? 'snakes' : def.kind === 'scarabs' ? 'scarabs' : 'icicles';
+}
+
+/**
+ * Hazards that can be set off by something else happening in the game (a cue) instead of their own timer
+ * (see HazardSystem.trigger and HazardTriggers).
+ */
+export const CUEABLE_HAZARDS = ['scarabs'] as const;
+export type CueableHazard = (typeof CUEABLE_HAZARDS)[number];
+/**
+ * What can set a hazard off. 'pulse': each time the world's ambience pulses (the `ambiencePulse` event), whatever
+ * the ambience is. The ambience itself never knows: it only announces its pulses.
+ */
+export const HAZARD_CUES = ['pulse'] as const;
+/** Cues as older files saved them. */
+const OLD_CUES: Record<string, HazardCue> = { storm: 'pulse' };
+export type HazardCue = (typeof HAZARD_CUES)[number];
+/** Saved on the world (`hazardCues`): the hazards set off by a cue. Any not listed keep their own timer. */
+export type HazardCues = Partial<Record<CueableHazard, HazardCue>>;
+
+/** Checks a world's `hazardCues`. */
+export function validateHazardCues(value: unknown): HazardCues {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid hazard cues.');
+  const cues: HazardCues = {};
+  for (const [hazard, cue] of Object.entries(value)) {
+    if (!(CUEABLE_HAZARDS as readonly string[]).includes(hazard))
+      throw new Error(`Unsupported hazard to cue: ${hazard}.`);
+    const known = typeof cue === 'string' ? (OLD_CUES[cue] ?? cue) : cue;
+    if (!(HAZARD_CUES as readonly unknown[]).includes(known))
+      throw new Error(`Unsupported hazard cue: ${String(cue)}.`);
+    cues[hazard as CueableHazard] = known as HazardCue;
+  }
+  return cues;
+}
 
 /**
  * What World needs from each kind of hazard: it loads, resets and steps every system in its `hazardSystems` list
  * the same way, so a new kind of enemy is one more system there (plus its definition and validation here).
  */
 export interface HazardSystem {
-  /** The kind a weather storm can release, for a system that supports it (see `cued` and `release`). */
-  readonly releasable?: ReleasableHazard;
-  /** Set before each load: true when the world's storms bring this hazard, so it keeps no timer of its own. */
+  /** The kind a cue can set off, for a system that supports it (see `cued` and `trigger`). */
+  readonly cueable?: CueableHazard;
+  /** Set before each load (HazardTriggers): true when a cue sets this hazard off, so it keeps no timer of its own. */
   cued?: boolean;
-  /** A storm hit: come out now (ignored while already out). */
-  release?(): void;
+  /** Its cue came: come out now (ignored while already out). */
+  trigger?(): void;
   /**
    * Takes the world's hazards (every kind; each system keeps its own) for a level; `difficulty` is 0 on a world's
    * first level, 1 on its tenth; `arena` is the extent of the world's drawn ball area.

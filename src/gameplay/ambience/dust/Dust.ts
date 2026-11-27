@@ -7,12 +7,12 @@ import {
   FRONT_FADE,
   PATH_GLSL,
   particleDepth,
-  Weather,
-  type WeatherContext,
-  type WeatherFrame,
-} from '../Weather';
+  Ambience,
+  type AmbienceContext,
+  type AmbienceFrame,
+} from '../Ambience';
 import stoneGate from './sfx/stone-gate.mp3';
-import { DUST_Z, TOMB_DUST } from './tombDustInfo';
+import { DUST_Z, DUST } from './dustInfo';
 
 /**
  * Where the light comes from in the Pharoughs Tomb painting, in pixels of the 1600 x 900 artwork (y down).
@@ -39,8 +39,8 @@ const MOTE_MIN = new THREE.Vector3(-26, -14, -7);
 const MOTE_SIZE = new THREE.Vector3(52, 30, 11);
 const MOTE_DIAMETER = 0.09;
 
-/** A storm: the stone gate grinds, then the tomb shakes and dust pours from the paths (seconds). */
-const STORM = {
+/** A pulse: the stone gate grinds, then the tomb shakes and dust pours from the paths (seconds). */
+const PULSE = {
   /** The gate grinds and the stone groans this long before the shake and the dust start. */
   lead: 1,
   rise: 0.4,
@@ -227,7 +227,7 @@ varying vec3 vColor;
 float hash(float n) { return fract(sin(n * 12.9898 + 1.7) * 43758.5453); }
 
 void main() {
-  // Each grain loops on its own cycle and shows only if it was shaken loose during the storm.
+  // Each grain loops on its own cycle and shows only if it was shaken loose during the pulse.
   float life = 2.4 + 0.8 * aRand;
   float age = mod(uTime + aPhase * life, life);
   float born = uTime - age;
@@ -292,26 +292,26 @@ void main() {
 const NEVER = 1e9;
 
 /**
- * Tomb dust, made for the Pharoughs Tomb painting: fine dust motes drifting through the room that glow gold where
+ * Dust, made for the Pharoughs Tomb painting: fine dust motes drifting through the room that glow gold where
  * the painted shaft of light and the wall torches catch them, an animated beam and torch glow over the painting,
  * and warm light from the torches on the playfield. Now and then a torch flares up. It sounds like a still room
- * with the torches crackling either side. Its storm: a stone gate grinds open, then the tomb shakes and dust and
+ * with the torches crackling either side. Its pulse: a stone gate grinds open, then the tomb shakes and dust and
  * grit pour from its paths (a lintel, an arch) while the beam flickers, with a deep stone rumble and small
  * stones falling. Everything is animated on the GPU in three draw calls; the falling dust uses normal blending,
  * as added light would vanish against the bright sandstone. All its sound but the gate is synthesised.
  */
-export class TombDust extends Weather {
-  static readonly info = TOMB_DUST;
+export class Dust extends Ambience {
+  static readonly info = DUST;
   static readonly samples = { stoneGate };
 
   private readonly glow: THREE.Mesh;
   private readonly motes: THREE.Points;
   private readonly ceilingDust: THREE.Points;
   /** Per falling grain: start position (x, y on the paths; z depth), kind (aRand) and crack (aSift). */
-  private readonly dustPos = new Float32Array(STORM.dust * 3);
+  private readonly dustPos = new Float32Array(PULSE.dust * 3);
   private readonly dustPosAttr = new THREE.BufferAttribute(this.dustPos, 3);
-  private readonly dustRand = new Float32Array(STORM.dust);
-  private readonly dustSift = new Float32Array(STORM.dust);
+  private readonly dustRand = new Float32Array(PULSE.dust);
+  private readonly dustSift = new Float32Array(PULSE.dust);
   private readonly art = {
     uArtRepeat: { value: new THREE.Vector2(1, 1) },
     uArtOffset: { value: new THREE.Vector2(0, 0) },
@@ -338,16 +338,16 @@ export class TombDust extends Weather {
     uScale: { value: 600 },
     uOpacity: { value: LOOK.ceilingDust },
   };
-  /** Warm light from the wall torches either side: always in the scene, dark unless this is the weather. */
+  /** Warm light from the wall torches either side: always in the scene, dark unless this is the ambience. */
   private readonly torchLeft = new THREE.PointLight(0xff8a3a, 0, 34, 2);
   private readonly torchRight = new THREE.PointLight(0xff8a3a, 0, 34, 2);
 
   private time = 0;
-  private stormAge = -1;
-  private stormPeak = 0;
-  private stormHold = 0;
-  /** Seconds of warning (the gate, the groan) left before the storm's shake and dust; 0 when none is coming. */
-  private stormLead = 0;
+  private pulseAge = -1;
+  private pulsePeak = 0;
+  private pulseHold = 0;
+  /** Seconds of warning (the gate, the groan) left before the pulse's shake and dust; 0 when none is coming. */
+  private pulseLead = 0;
   /** How hard the tomb is shaking right now, 0-1. */
   rumble = 0;
 
@@ -366,8 +366,8 @@ export class TombDust extends Weather {
   /** How much each torch (left, right) is flaring, for its crackle, 0-1; set by a flare, decays on its own. */
   private readonly flaring = [0, 0];
 
-  constructor(ctx: WeatherContext) {
-    super(ctx, TOMB_DUST, TombDust.samples);
+  constructor(ctx: AmbienceContext) {
+    super(ctx, DUST, Dust.samples);
     const glowMaterial = new THREE.ShaderMaterial({
       uniforms: this.art,
       vertexShader: GLOW_VERTEX,
@@ -407,9 +407,9 @@ export class TombDust extends Weather {
     this.motes.frustumCulled = false;
     this.motes.renderOrder = 10;
 
-    const dPhase = new Float32Array(STORM.dust);
-    for (let i = 0; i < STORM.dust; i++) {
-      this.dustSift[i] = Math.floor(Math.random() * STORM.sifts);
+    const dPhase = new Float32Array(PULSE.dust);
+    for (let i = 0; i < PULSE.dust; i++) {
+      this.dustSift[i] = Math.floor(Math.random() * PULSE.sifts);
       // x and y: where on the paths it starts (onStart). z: behind the bricks (z = 0, half-depth 0.44), so it
       // never hides them or the ball.
       this.dustPos.set([0, 0, DUST_Z + (Math.random() - 0.5) * 1.8], i * 3);
@@ -455,8 +455,8 @@ export class TombDust extends Weather {
    * veil grain at its crack, and specks and grit anywhere along them.
    */
   protected onStart(fresh: boolean): void {
-    const cracks = Array.from({ length: STORM.sifts }, () => this.pointOnPaths());
-    for (let i = 0; i < STORM.dust; i++) {
+    const cracks = Array.from({ length: PULSE.sifts }, () => this.pointOnPaths());
+    for (let i = 0; i < PULSE.dust; i++) {
       const p = this.dustRand[i] < VEIL_SHARE ? cracks[this.dustSift[i]] : this.pointOnPaths();
       this.dustPos[i * 3] = p.x;
       this.dustPos[i * 3 + 1] = p.y;
@@ -468,8 +468,8 @@ export class TombDust extends Weather {
   protected onStop(): void {
     this.dustUniforms.uOn.value = NEVER;
     this.dustUniforms.uOff.value = NEVER;
-    this.stormAge = -1;
-    this.stormLead = 0;
+    this.pulseAge = -1;
+    this.pulseLead = 0;
     this.flareAge = -1;
     this.rumble = 0;
     this.flare = 0;
@@ -484,16 +484,16 @@ export class TombDust extends Weather {
     this.room = null;
   }
 
-  /** A storm: the gate grinds and the stone groans, then (STORM.lead later) the shake and the dust. */
-  protected onStorm(): void {
-    if (this.stormLead > 0 || this.stormAge >= 0) return;
-    this.stormPeak = 0.85 + Math.random() * 0.15;
-    this.stormHold = between(STORM.holdMin, STORM.holdMax);
-    this.stormLead = STORM.lead;
+  /** A pulse: the gate grinds and the stone groans, then (PULSE.lead later) the shake and the dust. */
+  protected onPulse(): void {
+    if (this.pulseLead > 0 || this.pulseAge >= 0) return;
+    this.pulsePeak = 0.85 + Math.random() * 0.15;
+    this.pulseHold = between(PULSE.holdMin, PULSE.holdMax);
+    this.pulseLead = PULSE.lead;
     const sound = this.sound;
     if (!sound) return;
     this.gateSound(sound.audio, sound.now);
-    this.rumbleSound(sound.audio, sound.now, this.stormPeak, this.stormHold);
+    this.rumbleSound(sound.audio, sound.now, this.pulsePeak, this.pulseHold);
   }
 
   protected override onViewport(pointScale: number, aspect: number): void {
@@ -508,10 +508,10 @@ export class TombDust extends Weather {
   }
 
   /**
-   * The dust keeps drifting in menus and pauses, and a storm or flare already under way plays out at normal speed
+   * The dust keeps drifting in menus and pauses, and a pulse or flare already under way plays out at normal speed
    * (wall-clock time); the wait for the next flare and the torches' crackle only run while the game does.
    */
-  protected onFrame(frame: WeatherFrame): void {
+  protected onFrame(frame: AmbienceFrame): void {
     const realDt = frame.realDt;
     this.time += realDt;
     // Wrap before float32 loses precision in the shaders, shifting every stored time with the clock.
@@ -530,7 +530,7 @@ export class TombDust extends Weather {
     this.moteUniforms.uBall.value.set(ball ? ball.x : 999, ball ? ball.y : 999);
     this.moteUniforms.uPaddle.value.set(frame.paddleX, paddle.y, paddle.width / 2);
 
-    this.updateStorm(realDt);
+    this.updatePulse(realDt);
     this.updateFlare(realDt, frame.simDt);
 
     // Torches flicker on their own rhythms; a flare lifts one or both.
@@ -557,30 +557,30 @@ export class TombDust extends Weather {
     this.roomSound(realDt, frame.simDt);
   }
 
-  private updateStorm(realDt: number): void {
-    if (this.stormLead > 0) {
+  private updatePulse(realDt: number): void {
+    if (this.pulseLead > 0) {
       // The warning: the shake and dust follow once it has built.
-      this.stormLead -= realDt;
-      if (this.stormLead <= 0) {
-        this.stormLead = 0;
-        this.stormAge = 0;
+      this.pulseLead -= realDt;
+      if (this.pulseLead <= 0) {
+        this.pulseLead = 0;
+        this.pulseAge = 0;
         this.dustUniforms.uOn.value = this.time;
-        this.dustUniforms.uOff.value = this.time + STORM.rise + this.stormHold;
+        this.dustUniforms.uOff.value = this.time + PULSE.rise + this.pulseHold;
       }
     }
     this.rumble = 0;
-    if (this.stormAge < 0) return;
-    this.stormAge += realDt;
-    this.rumble = this.stormPeak * envelope(this.stormAge, STORM.rise, this.stormHold, STORM.fall);
-    if (this.stormAge > STORM.rise + this.stormHold + STORM.fall) this.stormAge = -1;
+    if (this.pulseAge < 0) return;
+    this.pulseAge += realDt;
+    this.rumble = this.pulsePeak * envelope(this.pulseAge, PULSE.rise, this.pulseHold, PULSE.fall);
+    if (this.pulseAge > PULSE.rise + this.pulseHold + PULSE.fall) this.pulseAge = -1;
   }
 
   private updateFlare(realDt: number, simDt: number): void {
     this.untilFlare -= simDt;
     if (this.untilFlare <= 0 && this.flareAge < 0) {
       this.untilFlare = between(FLARE.intervalMin, FLARE.intervalMax);
-      // Keep the two big moments apart: no flare while a storm is under way.
-      if (this.stormAge < 0 && this.stormLead <= 0) {
+      // Keep the two big moments apart: no flare while a pulse is under way.
+      if (this.pulseAge < 0 && this.pulseLead <= 0) {
         const roll = Math.random();
         this.flareSide = roll < 0.25 ? 0 : roll < 0.625 ? -1 : 1;
         this.flarePeak = (0.65 + Math.random() * 0.35) * (reducedMotion() ? 0.5 : 1);
@@ -660,13 +660,13 @@ export class TombDust extends Weather {
   }
 
   /**
-   * The tomb shifting (strength `s`, 0-1): a groan of stone from the first warning (STORM.lead before the shake), a
-   * grinding judder through the whole shake (STORM.rise, `hold`, STORM.fall), then grit pouring and small stones
+   * The tomb shifting (strength `s`, 0-1): a groan of stone from the first warning (PULSE.lead before the shake), a
+   * grinding judder through the whole shake (PULSE.rise, `hold`, PULSE.fall), then grit pouring and small stones
    * falling that carry on after the dust has settled. It is all well above the deep sub-bass as well as in it, so
    * it is heard on laptop and phone speakers too.
    */
   private rumbleSound(audio: AudioEngine, t: number, s: number, hold: number): void {
-    const { lead, rise, fall } = STORM;
+    const { lead, rise, fall } = PULSE;
     const shake = t + lead;
     const bus = 'ambience' as const;
     // The groan: builds from the first warning, through the shake, and dies away after it.
@@ -759,7 +759,7 @@ export class TombDust extends Weather {
   }
 
   /**
-   * A huge stone gate grinding open as the storm begins (the dust follows STORM.lead in, while it carries on): the
+   * A huge stone gate grinding open as the pulse begins (the dust follows PULSE.lead in, while it carries on): the
    * recording (sfx/stone-gate.mp3, mixed from three CC0 Freesound clips: see src/app/audio/SOUND_CREDITS.md), on
    * the effects bus but softened, its harshest highs filtered off; synthesised (gateSynth) until it has loaded.
    */

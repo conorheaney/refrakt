@@ -31,10 +31,12 @@ You can still add JSON manually and list its filename in `index.json`. Use lette
 numbers, hyphens or underscores in filenames.
 
 Each file includes ten complete levels, its background and its ball and paddle
-areas; a world with weather also has its `weather` settings (which weather, the
-lines it comes from, how often it storms and which hazards its storms bring;
-older files that name the weather on the world are read too). Invalid or
-unfinished worlds (a level with nothing to break, an area or a weather line not
+areas; a world with ambience also has its `ambience` settings (which ambience, the
+lines it comes from and how often it pulses; older files that saved it as `weather`, or
+named the weather on the world, are read too), and a world's hazard is named in `hazard` (`snakes`,
+`icicles` or `scarabs`, placed in `hazards`); one that comes with the pulses
+rather than on its own timer says so in `hazardCues` (`{ "scarabs": "pulse" }`). Invalid or
+unfinished worlds (a level with nothing to break, an area or an ambience line not
 drawn) are skipped with a
 browser-console warning.
 Project files take precedence over browser saves with the same world key.

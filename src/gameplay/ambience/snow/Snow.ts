@@ -8,10 +8,10 @@ import {
   FRONT_FADE,
   PATH_GLSL,
   particleDepth,
-  Weather,
-  type WeatherContext,
-  type WeatherFrame,
-} from '../Weather';
+  Ambience,
+  type AmbienceContext,
+  type AmbienceFrame,
+} from '../Ambience';
 import winterStorm from './sfx/winter-storm.mp3';
 import { SNOW } from './snowInfo';
 
@@ -40,7 +40,7 @@ const WIND = {
   base: -0.5,
   /** Added at the peak of a full-strength gust. */
   gust: -9,
-  /** A storm is a pair of gusts: the second follows this long after the first has died away... */
+  /** A pulse is a pair of gusts: the second follows this long after the first has died away... */
   pairGapMin: 2,
   pairGapMax: 4,
   /** ...a little weaker, as this fraction of the first's strength. */
@@ -133,12 +133,12 @@ void main() {
 /**
  * Snow: soft round flakes falling from the snow's paths, tumbling as they fall and drifting on a light breeze,
  * in one draw call animated on the GPU. Normal (not additive) blending, so the flakes stay white against a pale,
- * snowy backdrop. Its storm is a pair of gusts that sweep the snow sideways, lift spindrift off the tops of the
+ * snowy backdrop. Its pulse is a pair of gusts that sweep the snow sideways, lift spindrift off the tops of the
  * bricks and paddle under it, and howl (each gust a different stretch of a stereo recording of a winter storm,
  * leaning right to left the way the snow blows); the calm between is quiet but for ice creaking far off now and
  * then. The world's ice chimes are part of its soundtrack ('crystal' in app/audio/Music.ts), where they keep time.
  */
-export class Snow extends Weather {
+export class Snow extends Ambience {
   static readonly info = SNOW;
   static readonly samples = { winterStorm };
 
@@ -175,7 +175,7 @@ export class Snow extends Weather {
   private untilCreak = between(...CREAK_FIRST);
   private lastSoundOffset = -RECORDING;
 
-  constructor(ctx: WeatherContext) {
+  constructor(ctx: AmbienceContext) {
     super(ctx, SNOW, Snow.samples);
     const rand = new Float32Array(MAX_FLAKES);
     const phase = new Float32Array(MAX_FLAKES);
@@ -252,8 +252,8 @@ export class Snow extends Weather {
     this.untilEcho = -1;
   }
 
-  /** A storm: a gust, then a slightly weaker second one soon after it dies away. */
-  protected onStorm(): void {
+  /** A pulse: a gust, then a slightly weaker second one soon after it dies away. */
+  protected onPulse(): void {
     if (this.gustAge >= 0 || this.untilEcho >= 0) return;
     this.blow(0.55 + Math.random() * 0.45);
     this.untilEcho = WIND.rise + this.gustHold + WIND.fall + between(WIND.pairGapMin, WIND.pairGapMax);
@@ -263,7 +263,7 @@ export class Snow extends Weather {
     this.uniforms.uScale.value = pointScale;
   }
 
-  protected onFrame(frame: WeatherFrame): void {
+  protected onFrame(frame: AmbienceFrame): void {
     const dt = frame.realDt;
     // Wrap before float32 loses precision in the shader.
     this.time = (this.time + dt) % 3600;

@@ -314,6 +314,7 @@
       "radius": 0
     }
   },
+  "hazard": "scarabs",
   "hazards": [
     {
       "kind": "scarabs",
@@ -390,7 +391,7 @@
       ]
     }
   ],
-  "weather": {
+  "ambience": {
     "kind": "dust",
     "paths": [
       {
@@ -413,9 +414,9 @@
     "every": [
       14,
       22
-    ],
-    "releases": [
-      "scarabs"
     ]
+  },
+  "hazardCues": {
+    "scarabs": "pulse"
   }
 }

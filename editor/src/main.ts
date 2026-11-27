@@ -16,9 +16,10 @@ import { AreaEditor } from './AreaEditor';
 import { SnakeEditor } from './SnakeEditor';
 import { IcicleEditor } from './IcicleEditor';
 import { ScarabEditor } from './ScarabEditor';
-import { WeatherEditor } from './WeatherEditor';
-import type { WeatherSettings } from '../../src/gameplay/weather/settings';
+import { AmbienceEditor } from './AmbienceEditor';
+import type { AmbienceSettings } from '../../src/gameplay/ambience/settings';
 import type { HazardDef } from '../../src/gameplay/hazards/hazards';
+import { HazardChoice, type HazardParts } from './HazardChoice';
 import { EditorScene } from './Scene';
 import { listWorldFiles, saveWorldFile, type WorldFile } from './WorldFiles';
 import { AudioEngine } from '../../src/engine/audio/AudioEngine';
@@ -51,7 +52,8 @@ let areas: AreaEditor | undefined;
 let snakes: SnakeEditor | undefined;
 let icicles: IcicleEditor | undefined;
 let scarabs: ScarabEditor | undefined;
-let weather: WeatherEditor | undefined;
+let ambience: AmbienceEditor | undefined;
+let hazardChoice: HazardChoice | undefined;
 const paletteButtons: HTMLButtonElement[] = [];
 
 function status(message: string, error = false): void {
@@ -168,19 +170,20 @@ function refreshLayers(): void {
   snakes?.refresh();
   icicles?.refresh();
   scarabs?.refresh();
-  weather?.refresh();
+  ambience?.refresh();
+  hazardChoice?.refresh();
 }
-/** Applies the world's weather (undefined: clear), with undo. */
-function commitWeather(settings: WeatherSettings | undefined, message: string): void {
+/** Applies the world's ambience (undefined: clear), with undo. */
+function commitAmbience(settings: AmbienceSettings | undefined, message: string): void {
   snapshot();
-  if (settings) data.weather = structuredClone(settings);
-  else delete data.weather;
+  if (settings) data.ambience = structuredClone(settings);
+  else delete data.ambience;
   render();
   status(message);
 }
-/** Shows weather mid-edit in the scene without touching the world or its undo history. */
-function previewWeather(settings: WeatherSettings | undefined): void {
-  scene?.sync({ ...data, weather: settings }, selected);
+/** Shows ambience mid-edit in the scene without touching the world or its undo history. */
+function previewAmbience(settings: AmbienceSettings | undefined): void {
+  scene?.sync({ ...data, ambience: settings }, selected);
 }
 /** Replaces the world's hazards (snakes, icicles, scarab nests; undefined: none), with undo. */
 function commitHazards(hazards: HazardDef[] | undefined): void {
@@ -188,6 +191,17 @@ function commitHazards(hazards: HazardDef[] | undefined): void {
   if (hazards?.length) data.hazards = structuredClone(hazards);
   else delete data.hazards;
   render();
+}
+/** Sets the world's hazard, where it is placed and what sets it off (each undefined: none), with undo. */
+function commitHazardParts(parts: HazardParts, message: string): void {
+  snapshot();
+  for (const key of ['hazard', 'hazards', 'hazardCues'] as const) {
+    const value = parts[key];
+    if (value === undefined || (Array.isArray(value) && !value.length)) delete data[key];
+    else (data as unknown as Record<string, unknown>)[key] = structuredClone(value);
+  }
+  render();
+  status(message);
 }
 /** Shows hazards mid-edit in the scene without touching the world or its undo history. */
 function previewHazards(hazards: HazardDef[] | undefined): void {
@@ -210,7 +224,7 @@ function render(): void {
   el('background-info').textContent = data.backgroundImage
     ? 'Included in saves and exports.'
     : 'Upload PNG, JPEG or WebP. The image fills the scene behind the arena; until then it is plain dark.';
-  el('world-title').textContent = data.world.name || 'Untitled';
+  showWorldChoice();
   renderGrid();
   el<HTMLButtonElement>('undo').disabled = undo.length === 0;
   el<HTMLButtonElement>('redo').disabled = redo.length === 0;
@@ -485,14 +499,24 @@ async function refreshLibrary(): Promise<void> {
   // Most recently saved first.
   fileLibrary = [...library.worlds].sort((a, b) => b.modified - a.modified);
   const select = el<HTMLSelectElement>('library');
-  select.replaceChildren(new Option('Choose a world from the game folder…', ''));
+  // The first option stands for the open world when it is not one of these files (new or imported, not yet saved).
+  select.replaceChildren(new Option('', ''));
   fileLibrary.forEach((file) =>
     select.add(
       new Option(`${file.world.world.name}${unfinishedLevels(file.world).length ? ' · draft' : ''}`, file.filename),
     ),
   );
-  select.value = currentFile?.filename ?? '';
+  showWorldChoice();
   if (library.warnings.length) status(`Some world files could not load: ${library.warnings.join(' ')}`, true);
+}
+/** Shows the open world in the world picker: its file, or (not saved yet) its name. */
+function showWorldChoice(): void {
+  const select = el<HTMLSelectElement>('library');
+  const unsaved = select.options[0];
+  if (!unsaved) return;
+  unsaved.text = `${data.world.name || 'Untitled'} · not saved`;
+  unsaved.hidden = !!currentFile;
+  select.value = currentFile?.filename ?? '';
 }
 function canReplace(): boolean {
   return !saving && (!dirty || confirm('Discard unsaved changes to this world?'));
@@ -507,7 +531,6 @@ function replace(next: AuthoredWorld, saved: boolean, file: WorldFile | null = n
   redo = [];
   dirty = !saved || added;
   render();
-  el<HTMLSelectElement>('library').value = currentFile?.filename ?? '';
 }
 el('new').addEventListener('click', () => {
   if (canReplace()) {
@@ -517,16 +540,14 @@ el('new').addEventListener('click', () => {
 });
 el('library').addEventListener('change', () => {
   const filename = el<HTMLSelectElement>('library').value;
-  if (!filename) return;
-  if (!canReplace()) {
-    el<HTMLSelectElement>('library').value = currentFile?.filename ?? '';
+  if (!filename || !canReplace()) {
+    showWorldChoice();
     return;
   }
   const saved = fileLibrary.find((item) => item.filename === filename);
   if (saved) {
     replace(saved.world, true, saved);
     status('World loaded from the game folder.');
-    el<HTMLDialogElement>('world-dialog').close();
   }
 });
 el('refresh-library').addEventListener('click', () => {
@@ -653,7 +674,16 @@ areas = new AreaEditor(scene, () => data, commitArea, status);
 snakes = new SnakeEditor(scene, () => data, commitHazards, previewHazards, status);
 icicles = new IcicleEditor(scene, () => data, commitHazards, previewHazards, status);
 scarabs = new ScarabEditor(scene, () => data, commitHazards, previewHazards, status);
-weather = new WeatherEditor(scene, () => data, commitWeather, previewWeather, status);
+hazardChoice = new HazardChoice(
+  () => data,
+  commitHazardParts,
+  // A hazard layer the world no longer has goes back to the bricks.
+  (layer) => {
+    const mode = document.body.dataset.mode;
+    if ((mode === 'snakes' || mode === 'icicles' || mode === 'scarabs') && mode !== layer) areas?.setMode('blocks');
+  },
+);
+ambience = new AmbienceEditor(scene, () => data, commitAmbience, previewAmbience, status);
 areas.onModeChange = refreshLayers;
 render();
 // Opens on the most recently saved world in the game folder (a new one if there are none).
@@ -662,7 +692,9 @@ void refreshLibrary()
     const latest = fileLibrary[0];
     if (latest && !currentFile && undo.length === 0) {
       replace(latest.world, true, latest);
-      status(`Opened ${latest.world.world.name}, the most recently saved world. Use the World button to open another.`);
+      status(
+        `Opened ${latest.world.world.name}, the most recently saved world. Pick another from the world list at the top.`,
+      );
     }
   })
   .catch(report);

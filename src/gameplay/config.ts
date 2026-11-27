@@ -187,7 +187,7 @@ export const SNAKE = {
 
 /**
  * Scarab nests (gameplay/hazards/scarabs/scarabs.ts). Each nest is a spawn point with the path its scarabs walk in
- * along. Each storm (see grind below) the nests stir (sand trickles and antennae peek out), then let out a small
+ * along. Each swarm (see grind below) the nests stir (sand trickles and antennae peek out), then let out a small
  * swarm that walks in and crawls along the floor after the paddle. From a random distance
  * (`hopReach` / `flyReach` short of the paddle's nearer end) it crouches and hops, or opens its wing cases and
  * flies, at where the paddle will be, give or take `aimScatter`; a flyer keeps re-aiming as it goes, but only
@@ -205,16 +205,16 @@ export const SNAKE = {
  */
 export const SCARAB = {
   /**
-   * Scarabs come in swarms: the nests stir for `grind` seconds, then the swarm comes out (with tomb dust, the
-   * stone gate grinds open over the stir and the dust pours as they come). When the world's weather brings them,
-   * each of its storms starts one (gameplay/weather/WeatherClock.ts); otherwise they keep their own timer: seconds
+   * Scarabs come in swarms: the nests stir for `grind` seconds, then the swarm comes out (with dust, the
+   * stone gate grinds open over the stir and the dust pours as they come). When the world cues them on its
+   * ambience's pulses, each pulse starts one (gameplay/hazards/HazardTriggers.ts); otherwise they keep their own timer: seconds
    * between swarms, first level to tenth (between waitMin and waitMax), with `firstDelay` more before a level's first.
    */
   firstDelay: 3,
   waitMin: [14, 9],
   waitMax: [22, 14],
   grind: 1,
-  /** Scarabs per storm (shared between the nests), first level to tenth. */
+  /** Scarabs per swarm (shared between the nests), first level to tenth. */
   swarm: [2, 4],
   /** Seconds between scarabs leaving the crack. */
   stagger: 0.6,

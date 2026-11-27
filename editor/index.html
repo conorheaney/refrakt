@@ -8,18 +8,20 @@
     <main id="arena" aria-label="Scene editor">
       <canvas id="scene" aria-label="Original Refrakt scene"></canvas>
       <div id="grid" role="group" aria-label="Brick layout, 13 columns and 12 rows"></div>
-      <svg id="areas" aria-label="Play area drawing surface"><g id="area-lines"></g><g id="area-handles"></g><g id="snake-layer"></g><g id="icicle-layer"></g><g id="scarab-layer"></g><g id="weather-layer"></g></svg>
+      <svg id="areas" aria-label="Play area drawing surface"><g id="area-lines"></g><g id="area-handles"></g><g id="snake-layer"></g><g id="icicle-layer"></g><g id="scarab-layer"></g><g id="ambience-layer"></g></svg>
     </main>
     <header class="hud-panel">
       <a class="brand" href="../">REFRAKT <span>WORLD EDITOR</span></a>
-      <button id="world-button" class="world-button" aria-haspopup="dialog" title="Choose a world and change its settings"><span class="label">World</span><b id="world-title">Untitled</b></button>
+      <div class="world-picker" role="group" aria-label="World">
+        <select id="library" aria-label="World" title="Worlds in the game folder, most recently saved first"></select><button id="refresh-library" aria-label="Refresh the world list" title="Refresh the world list (picks up edits made outside the editor)">↻</button><button id="world-button" aria-haspopup="dialog" aria-label="World settings" title="World settings: name, background, music and ambience">⋯</button>
+      </div>
       <div class="level-picker" role="group" aria-label="Level">
         <button id="level-prev" aria-label="Previous level">‹</button><select id="level-select" aria-label="Level"></select><button id="level-next" aria-label="Next level">›</button>
       </div>
       <div class="actions"><button id="new">New</button><button id="import">Import</button><button id="export">Export</button><button id="save" class="primary">Save world</button><button id="test" class="primary">▶ Test level</button><a id="close-editor" class="close-editor" href="../" title="Close the editor and go back to the game" aria-label="Close the editor">✕</a></div>
     </header>
     <nav class="layer-bar hud-panel" aria-label="Layer">
-      <button id="mode-level" aria-pressed="false">Level</button><button id="mode-blocks" aria-pressed="true">Blocks</button><span class="sep"></span><button id="mode-ball" aria-pressed="false">Ball area</button><button id="mode-paddle" aria-pressed="false">Paddle area</button><span class="sep"></span><button id="mode-snakes" aria-pressed="false">Snakes</button><button id="mode-icicles" aria-pressed="false">Icicles</button><button id="mode-scarabs" aria-pressed="false">Scarab nests</button><button id="mode-weather" aria-pressed="false">Weather</button>
+      <button id="mode-level" aria-pressed="false">Level</button><button id="mode-blocks" aria-pressed="true">Blocks</button><span class="sep"></span><button id="mode-ball" aria-pressed="false">Ball area</button><button id="mode-paddle" aria-pressed="false">Paddle area</button><span class="sep"></span><button id="mode-snakes" aria-pressed="false">Snakes</button><button id="mode-icicles" aria-pressed="false">Icicles</button><button id="mode-scarabs" aria-pressed="false">Scarab nests</button><button id="mode-ambience" aria-pressed="false">Ambience</button>
       <span class="sep"></span><button id="guides-toggle" aria-pressed="true" title="Show the brick grid's guides">Guides</button><button id="hud-toggle" aria-pressed="false" title="Hide the editor to see the scene (H)">Hide · H</button>
     </nav>
     <section id="level-tools" class="hud-panel layer-panel">
@@ -72,17 +74,15 @@
       <p class="hint">Draw the entry point (large: where scarabs appear, behind the scenery), then the path they walk in along; the hollow last point is where they reach the floor.</p>
       <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
     </section>
-    <section id="weather-tools" class="hud-panel layer-panel" hidden>
-      <h2>Weather</h2>
-      <label>Weather<select id="weather"><option value="">Clear</option></select></label>
-      <p class="hint" id="weather-summary"></p>
-      <div id="weather-settings">
-        <div class="actions"><button id="weather-draw">Add line</button><button id="weather-delete">Delete selected</button><button id="weather-reset">Use default</button></div>
-        <label>Curve <span id="weather-curve-value"></span><input id="weather-curve" type="range" /></label>
-        <p class="hint" id="weather-hint"></p>
-        <div class="storm-every" role="group" aria-label="Seconds between storms">Storms every <input id="weather-every-min" type="number" aria-label="Shortest wait, seconds" /> to <input id="weather-every-max" type="number" aria-label="Longest wait, seconds" /> s</div>
+    <section id="ambience-tools" class="hud-panel layer-panel" hidden>
+      <h2>Ambience <span id="ambience-name"></span></h2>
+      <p class="hint" id="ambience-summary"></p>
+      <div id="ambience-settings">
+        <div class="actions"><button id="ambience-draw">Add line</button><button id="ambience-delete">Delete selected</button><button id="ambience-reset">Use default</button></div>
+        <label>Curve <span id="ambience-curve-value"></span><input id="ambience-curve" type="range" /></label>
+        <p class="hint" id="ambience-hint"></p>
+        <div class="pulse-every" role="group" aria-label="Seconds between pulses">Pulses every <input id="ambience-every-min" type="number" aria-label="Shortest wait, seconds" /> to <input id="ambience-every-max" type="number" aria-label="Longest wait, seconds" /> s</div>
         <p class="hint">On the first level; they come up to a third sooner by the tenth, and only while the ball is in play.</p>
-        <div id="weather-releases"></div>
         <details><summary>How to edit paths</summary><p class="hint path-help"></p></details>
       </div>
     </section>
@@ -91,14 +91,8 @@
       <p id="status" role="status" aria-live="polite">Loading the game scene…</p><span id="dirty">Not saved</span>
     </div>
     <dialog id="world-dialog" aria-labelledby="world-dialog-title">
-      <form method="dialog" class="dialog-head"><h2 id="world-dialog-title">World</h2><button>Close</button></form>
+      <form method="dialog" class="dialog-head"><h2 id="world-dialog-title">World settings</h2><button>Close</button></form>
       <div class="dialog-body">
-        <section>
-          <h3>Open</h3>
-          <label>Game worlds<select id="library"><option value="">Choose a world from the game folder…</option></select></label>
-          <button id="refresh-library">Refresh world list</button>
-          <p class="hint">Most recently saved first. The editor opens the most recent one.</p>
-        </section>
         <section>
           <h3>Settings</h3>
           <label>Name<input id="world-name" maxlength="80" autocomplete="off" /></label>
@@ -114,6 +108,13 @@
             <label>Intensity <span id="music-intensity-value"></span><input id="music-intensity" type="range" min="0" max="1" step="0.05" value="0.8" /></label>
             <p class="hint" id="music-hint">Low intensity is the calm bed; high brings in every layer. Change either while it plays.</p>
           </div>
+        </section>
+        <section>
+          <h3>Ambience &amp; hazard</h3>
+          <label>Ambience<select id="ambience"><option value="">None</option></select></label>
+          <label>Hazard<select id="hazard"><option value="">None</option></select></label>
+          <label id="hazard-cue-field">Comes<select id="hazard-cue"><option value="">On its own timer</option><option value="pulse">With each ambience pulse</option></select></label>
+          <p class="hint" id="hazard-hint"></p>
         </section>
       </div>
     </dialog>

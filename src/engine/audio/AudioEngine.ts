@@ -49,7 +49,7 @@ export interface SampleOptions {
    */
   panTo?: number;
   filterPeak?: number;
-  /** 'sfx' (default) or 'ambience' (weather and other background sound). */
+  /** 'sfx' (default) or 'ambience' (rain, snow, dust and other background sound). */
   bus?: 'sfx' | 'ambience';
 }
 
@@ -540,7 +540,7 @@ export class AudioEngine {
   }
 
   /**
-   * A continuous band of filtered noise whose level can be moved smoothly (a hiss or hum under the weather).
+   * A continuous band of filtered noise whose level can be moved smoothly (a hiss or hum under the ambience).
    * Starts silent; null until the context is running. Call `stop` when done with it.
    */
   noiseBed(o: { filterType?: BiquadFilterType; filter: number; q?: number; pan?: number; bus?: Bus }): NoiseBed | null {

@@ -346,6 +346,7 @@
       ]
     }
   },
+  "hazard": "icicles",
   "hazards": [
     {
       "kind": "icicles",
@@ -373,7 +374,7 @@
       "seed": 1
     }
   ],
-  "weather": {
+  "ambience": {
     "kind": "snow",
     "paths": [
       {

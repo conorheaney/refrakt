@@ -3,17 +3,17 @@ import type { AudioEngine } from '../../src/engine/audio/AudioEngine';
 import { ParticleSystem } from '../../src/engine/render/ParticleSystem';
 import { CAMERA_HOME } from '../../src/gameplay/CameraRig';
 import { World } from '../../src/gameplay/World';
-import type { Weather, WeatherContext, WeatherFrame } from '../../src/gameplay/weather/Weather';
-import { WEATHERS, type WeatherKind } from '../../src/gameplay/weather/weathers';
-import { WEATHER_TYPES } from '../../src/gameplay/weather/weatherTypes';
-import type { WeatherSettings } from '../../src/gameplay/weather/settings';
+import type { Ambience, AmbienceContext, AmbienceFrame } from '../../src/gameplay/ambience/Ambience';
+import { AMBIENCES, type AmbienceKind } from '../../src/gameplay/ambience/ambiences';
+import { AMBIENCE_TYPES } from '../../src/gameplay/ambience/ambienceTypes';
+import type { AmbienceSettings } from '../../src/gameplay/ambience/settings';
 import { FakeAudio } from './fakeAudio';
 import { SHIPPED_CAMPAIGN } from './worlds';
 
 export const DT = 1 / 60;
 
-/** A weather of `kind` in an empty scene, with the game camera, a recording audio engine and a world to rain on. */
-export function weatherHarness<K extends WeatherKind>(kind: K) {
+/** An ambience of `kind` in an empty scene, with the game camera, a recording audio engine and a world to rain on. */
+export function ambienceHarness<K extends AmbienceKind>(kind: K) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 16 / 9, 0.5, 400);
   camera.position.set(0, CAMERA_HOME.y, CAMERA_HOME.z);
@@ -22,7 +22,7 @@ export function weatherHarness<K extends WeatherKind>(kind: K) {
   const audio = new FakeAudio();
   const shakes: number[] = [];
   const state = { soundOn: true };
-  const ctx: WeatherContext = {
+  const ctx: AmbienceContext = {
     scene,
     camera,
     particles: new ParticleSystem(5000),
@@ -30,26 +30,26 @@ export function weatherHarness<K extends WeatherKind>(kind: K) {
     soundOn: () => state.soundOn,
     shake: (level) => shakes.push(level),
   };
-  const weather = new WEATHER_TYPES[kind](ctx) as InstanceType<(typeof WEATHER_TYPES)[K]>;
+  const ambience = new AMBIENCE_TYPES[kind](ctx) as InstanceType<(typeof AMBIENCE_TYPES)[K]>;
   const world = new World(SHIPPED_CAMPAIGN);
   world.newGame(1);
-  const frame: WeatherFrame = { realDt: DT, simDt: DT, world, ball: null, paddleX: 0 };
+  const frame: AmbienceFrame = { realDt: DT, simDt: DT, world, ball: null, paddleX: 0 };
   /** Runs it for `seconds`, the game running (`simulating`) or paused, calling `each` after every frame. */
   const run = (seconds: number, simulating = true, each: () => void = () => {}): void => {
     for (let t = 0; t < seconds; t += DT) {
       frame.realDt = DT;
       frame.simDt = simulating ? DT : 0;
-      (weather as Weather).update(frame);
+      (ambience as Ambience).update(frame);
       audio.context.currentTime += DT;
       each();
     }
   };
-  return { scene, camera, audio, shakes, state, weather, world, frame, run };
+  return { scene, camera, audio, shakes, state, ambience, world, frame, run };
 }
 
 /** Its usual settings, with these paths. */
-export function settings(kind: WeatherKind, paths: WeatherSettings['paths']): WeatherSettings {
-  return { kind, paths, every: [...WEATHERS[kind].every] };
+export function settings(kind: AmbienceKind, paths: AmbienceSettings['paths']): AmbienceSettings {
+  return { kind, paths, every: [...AMBIENCES[kind].every] };
 }
 
 /** Whether (x, y) lies on the polyline through `points` (straight segments, as a line with no curve). */

@@ -22,7 +22,7 @@ function panOf(x: number): number {
 }
 
 /**
- * Maps simulation events to synthesised sound effects. The weather's sound is its own (gameplay/weather/), heard
+ * Maps simulation events to synthesised sound effects. The ambience's sound is its own (gameplay/ambience/), heard
  * only while `enabled`.
  */
 export class AudioDirector {
@@ -33,7 +33,7 @@ export class AudioDirector {
   /** Bricks shattered in this Refrakt so far: each chimes one step higher. */
   private refraktStreak = 0;
 
-  /** Disabled during attract mode so the menu stays calm (this also quiets the weather). */
+  /** Disabled during attract mode so the menu stays calm (this also quiets the ambience). */
   get enabled(): boolean {
     return this.on;
   }
@@ -43,7 +43,7 @@ export class AudioDirector {
     this.applyRefraktHum(1);
   }
 
-  /** While paused the Refrakt hum stops and the ambience (rain, snow, tomb dust) drops to PAUSE_AMBIENCE. */
+  /** While paused the Refrakt hum stops and the ambience (rain, snow, dust) drops to PAUSE_AMBIENCE. */
   setPaused(paused: boolean): void {
     this.hushed = paused;
     this.applyRefraktHum(0.3);

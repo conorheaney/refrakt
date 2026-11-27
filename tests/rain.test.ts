@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { Rain } from '../src/gameplay/weather/rain/Rain';
-import { DT, onLine, settings, weatherHarness } from './support/weather';
+import { Rain } from '../src/gameplay/ambience/rain/Rain';
+import { DT, onLine, settings, ambienceHarness } from './support/ambience';
 
 const LINE = [
   { x: -8, y: 9 },
@@ -8,19 +8,19 @@ const LINE = [
 ];
 
 function raining() {
-  const h = weatherHarness('rain');
-  h.weather.start(settings('rain', [{ points: LINE }]));
+  const h = ambienceHarness('rain');
+  h.ambience.start(settings('rain', [{ points: LINE }]));
   return h;
 }
 
 it('falls from its lines, more of it from longer ones', () => {
-  const { weather } = raining();
-  expect(weather.drops).toBeGreaterThan(100);
-  for (let i = 0; i < weather.drops; i++) {
-    const { x, y } = weather.drop(i);
+  const { ambience } = raining();
+  expect(ambience.drops).toBeGreaterThan(100);
+  for (let i = 0; i < ambience.drops; i++) {
+    const { x, y } = ambience.drop(i);
     expect(onLine(LINE, x, y)).toBe(true);
   }
-  const short = weatherHarness('rain').weather;
+  const short = ambienceHarness('rain').ambience;
   short.start(
     settings('rain', [
       {
@@ -31,12 +31,12 @@ it('falls from its lines, more of it from longer ones', () => {
       },
     ]),
   );
-  expect(short.drops).toBeLessThan(weather.drops / 2);
+  expect(short.drops).toBeLessThan(ambience.drops / 2);
 });
 
 it('starts from the top of the scene by default, and plays its loop while it may be heard', () => {
-  const { weather, audio, state, run } = weatherHarness('rain');
-  weather.start(settings('rain', Rain.info.defaultPaths(undefined as never)));
+  const { ambience, audio, state, run } = ambienceHarness('rain');
+  ambience.start(settings('rain', Rain.info.defaultPaths(undefined as never)));
   expect(audio.wanted).toEqual(new Set(Object.keys(Rain.samples)));
   run(DT);
   expect(audio.loops.get('rainHeavy')).toBeGreaterThan(0);
@@ -45,18 +45,18 @@ it('starts from the top of the scene by default, and plays its loop while it may
   expect(audio.loops.get('rainHeavy')).toBe(0);
   state.soundOn = true;
   run(DT);
-  weather.stop();
+  ambience.stop();
   expect(audio.loops.get('rainHeavy')).toBe(0);
 });
 
-it('strikes lightning on each storm: a flash and a weaker one, then thunder', () => {
-  const { weather, audio, run } = raining();
+it('strikes lightning on each pulse: a flash and a weaker one, then thunder', () => {
+  const { ambience, audio, run } = raining();
   run(1);
-  expect(weather.flash).toBe(0);
+  expect(ambience.flash).toBe(0);
   const before = audio.samples.length;
-  weather.storm();
+  ambience.pulse();
   const flashes: number[] = [0];
-  run(3, true, () => flashes.push(weather.flash));
+  run(3, true, () => flashes.push(ambience.flash));
   expect(Math.max(...flashes)).toBeGreaterThan(0.5);
   expect(Math.max(...flashes)).toBeLessThanOrEqual(1.6);
   // Two flashes, at least 0.35 s apart (well under three in any one second).
@@ -69,16 +69,16 @@ it('strikes lightning on each storm: a flash and a weaker one, then thunder', ()
 });
 
 it('lights nothing while clear, and stops a flash at once when the world changes', () => {
-  const { weather, run, scene } = weatherHarness('rain');
-  weather.storm();
+  const { ambience, run, scene } = ambienceHarness('rain');
+  ambience.pulse();
   run(1);
-  expect(weather.flash).toBe(0);
-  weather.start(settings('rain', [{ points: LINE }]));
-  weather.storm();
+  expect(ambience.flash).toBe(0);
+  ambience.start(settings('rain', [{ points: LINE }]));
+  ambience.pulse();
   run(0.1);
-  expect(weather.flash).toBeGreaterThan(0.3);
+  expect(ambience.flash).toBeGreaterThan(0.3);
   expect(scene.backgroundIntensity).toBeGreaterThan(1);
-  weather.stop();
-  expect(weather.flash).toBe(0);
+  ambience.stop();
+  expect(ambience.flash).toBe(0);
   expect(scene.backgroundIntensity).toBe(1);
 });

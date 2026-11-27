@@ -13,8 +13,8 @@ import type { ArenaBounds } from '../../arena/boundary';
  * floor, recovers, turns round and tries again. They never let the paddle run into them on the floor: brought
  * too close, one springs up onto it (or, with no room on it, scuttles off or leaps over it). Once on, they
  * cling (shoving the paddle on the way they were going as they land) and weigh one end down (bending its bounces) until a returned ball crushes them, the only way one dies.
- * They only come in a swarm (see startStorm): on their own timer, or each time the world's weather storms when it
- * brings them (WeatherSettings.releases; see release). While
+ * They only come in a swarm (see startSwarm): on their own timer, or when a cue sets them off (the world's
+ * `hazardCues`, such as each ambience pulse; see trigger). While
  * the paddle is full only the nearest on each side keeps trying to get on; the rest run off and swirl about
  * out in the scene, coming back as places come free.
  */
@@ -131,15 +131,15 @@ export function paddleSlope(p: Paddle): number {
 
 /** Runs a world's scarab nests. Owned by World; deterministic for a given seed. */
 export class ScarabSystem implements HazardSystem {
-  readonly releasable = 'scarabs';
-  /** True while the world's weather brings the swarms (WeatherClock): no timer of their own then. */
+  readonly cueable = 'scarabs';
+  /** True while a cue sets the swarms off (HazardTriggers): no timer of their own then. */
   cued = false;
   readonly nests: Nest[] = [];
   /** A fixed pool: SCARAB.maxActive scarabs, `active` when out of their nest. */
   readonly items: Scarab[] = [];
   private difficulty = 0;
-  /** Seconds until the next swarm on their own timer (counting down only while every nest is quiet, the ball is in play and no weather brings them). */
-  private untilStorm = 0;
+  /** Seconds until the next swarm on their own timer (counting down only while every nest is quiet, the ball is in play and no cue sets them off). */
+  private untilSwarm = 0;
   /** See-saw clock (radians) while scarabs ride the paddle, and which way its first lurch went. */
   private teeter = 0;
   private teeterDir = 1;
@@ -232,7 +232,7 @@ export class ScarabSystem implements HazardSystem {
       n.pending = 0;
       n.timer = n.duration = 0;
     }
-    this.untilStorm = (firstOfLevel ? SCARAB.firstDelay : 0) + this.wait();
+    this.untilSwarm = (firstOfLevel ? SCARAB.firstDelay : 0) + this.wait();
   }
 
   /** Scarabs clinging to the paddle. */
@@ -265,11 +265,11 @@ export class ScarabSystem implements HazardSystem {
   update(dt: number, paddle: Paddle, balls: readonly Ball[], live: boolean): number {
     if (this.nests.length === 0) return 0;
     let points = 0;
-    // Between storms every nest is quiet; the next storm comes when its wait is up.
-    const stormy = this.nests.some((n) => n.state !== 'idle');
-    if (!stormy && live && !this.cued) {
-      this.untilStorm -= dt;
-      if (this.untilStorm <= 0) this.startStorm();
+    // Between swarms every nest is quiet; the next swarm comes when its wait is up.
+    const swarming = this.nests.some((n) => n.state !== 'idle');
+    if (!swarming && live && !this.cued) {
+      this.untilSwarm -= dt;
+      if (this.untilSwarm <= 0) this.startSwarm();
     }
     for (let i = 0; i < this.nests.length; i++) {
       const n = this.nests[i];
@@ -298,7 +298,7 @@ export class ScarabSystem implements HazardSystem {
         this.enter(n, 'idle', 0);
       }
     }
-    if (stormy && this.nests.every((n) => n.state === 'idle')) this.untilStorm = this.wait();
+    if (swarming && this.nests.every((n) => n.state === 'idle')) this.untilSwarm = this.wait();
     this.moveScarabs(dt, paddle, live);
     if (live) this.swat(balls);
     // Riders see-saw the paddle, quicker on later levels and the more of them there are.
@@ -373,21 +373,21 @@ export class ScarabSystem implements HazardSystem {
     return Math.max(-1, Math.min(1, bias + this.teeterDir * this.scaled(SCARAB.teeterSwing) * Math.sin(this.teeter)));
   }
 
-  /** A weather storm hit (WeatherClock): the swarm comes now, unless one is already on its way. */
-  release(): void {
+  /** Their cue came (HazardTriggers): the swarm comes now, unless one is already on its way. */
+  trigger(): void {
     if (this.nests.length === 0 || this.nests.some((n) => n.state !== 'idle')) return;
-    this.startStorm();
+    this.startSwarm();
   }
 
   /**
    * A swarm: the swarm for this level (SCARAB.swarm, as many as there is room for) is shared out between the
-   * nests, which stir together for SCARAB.grind (with tomb dust, while the stone gate grinds open); then they
+   * nests, which stir together for SCARAB.grind (with dust, while the stone gate grinds open); then they
    * come out (see update).
    */
-  private startStorm(): void {
+  private startSwarm(): void {
     const room = SCARAB.maxActive - this.activeCount;
     if (room <= 0) {
-      this.untilStorm = this.rng.range(SCARAB.retry[0], SCARAB.retry[1]);
+      this.untilSwarm = this.rng.range(SCARAB.retry[0], SCARAB.retry[1]);
       return;
     }
     const count = Math.min(room, Math.round(this.scaled(SCARAB.swarm)));
