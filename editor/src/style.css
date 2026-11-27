@@ -59,20 +59,21 @@ body:not([data-mode=level]) #level-tools,body:not([data-mode=blocks]) #block-too
 #grid { pointer-events: none; }
 .cell { position: absolute; pointer-events: auto; padding: 0; border-radius: 2px; background: transparent; border: 1px solid #9cc8dd25; color: transparent; touch-action: none; user-select: none; }
 .cell:not([data-symbol='.']) { border-color: transparent; }
-/* Painted cells draw their brick (the editor's grid is flat, so the scene's 3D bricks are not shown). Glass
-   bricks take the game's row tints (amber, rose, sapphire). */
-.cell:not([data-symbol='.'])::before { content: ''; position: absolute; inset: 6% 3%; border-radius: 4px; box-shadow: inset 0 2px 0 #ffffff59, inset 0 -3px 0 #00000038, 0 0 10px var(--glow, transparent); background: var(--brick); }
-.cell[data-symbol='1'][data-row='0'] { --brick: linear-gradient(#ffb072, #ff8424 55%, #d8640e); --glow: #ff842455; }
-.cell[data-symbol='1'][data-row='1'] { --brick: linear-gradient(#ff8fc0, #ff4f9e 55%, #d22f7c); --glow: #ff4f9e55; }
-.cell[data-symbol='1'][data-row='2'] { --brick: linear-gradient(#7fb4ff, #2f84ff 55%, #1b63cf); --glow: #2f84ff55; }
-.cell[data-symbol='2'] { --brick: linear-gradient(#f2f4f8, #c9ced8 60%, #a7adb9); }
-.cell[data-symbol='3'] { --brick: linear-gradient(#e9ebef, #c2c6cf); }
-.cell[data-symbol='3']::before { outline: 3px solid #6b7486; outline-offset: -5px; }
-.cell[data-symbol='S'] { --brick: linear-gradient(#8a97ab, #4d596c 60%, #323e50); }
-.cell[data-symbol='X'] { --brick: linear-gradient(#ff8a5c, #e2482a 55%, #a92d17); --glow: #ff5a2e66; }
-.cell[data-symbol='P'] { --brick: linear-gradient(#ffd77a, #e3a52c 55%, #a8731a); --glow: #ffb43a66; }
-.cell[data-symbol='G'] { --brick: linear-gradient(#a998e9aa, #7665a6aa); }
-.cell[data-symbol='G']::before { border: 1px dashed #c8bcff; }
+/* Painted cells draw their brick at the game brick's size within its cell (GRID.halfW/halfH of cellW/cellH; the scene's 3D bricks are not shown). Glass
+   bricks take the game's tints (amber, rose, sapphire by row, shifted two along in the outer columns). */
+.cell:not([data-symbol='.'])::before { content: ''; position: absolute; inset: 3.2% 2%; border-radius: 4px; box-shadow: inset 0 2px 0 #ffffff59, inset 0 -3px 0 #00000038, 0 0 10px var(--glow, transparent); background: var(--brick); }
+.cell[data-symbol='1'][data-tint='0'] { --brick: linear-gradient(#ffb072, #ff8424 55%, #d8640e); --glow: #ff842455; }
+.cell[data-symbol='1'][data-tint='1'] { --brick: linear-gradient(#ff8fc0, #ff4f9e 55%, #d22f7c); --glow: #ff4f9e55; }
+.cell[data-symbol='1'][data-tint='2'] { --brick: linear-gradient(#7fb4ff, #2f84ff 55%, #1b63cf); --glow: #2f84ff55; }
+/* The other kinds take the game's tints (BrickView.colorOf): charcoal tough, violet armoured, slate steel. */
+.cell[data-symbol='2'] { --brick: linear-gradient(#8a8f9e, #5c6070 55%, #3c404c); }
+.cell[data-symbol='3'] { --brick: linear-gradient(#b08cff, #8a55ff 55%, #6233d6); --glow: #8a55ff55; }
+.cell[data-symbol='3']::before { outline: 2px solid #d9d2ee99; outline-offset: -4px; }
+.cell[data-symbol='S'] { --brick: linear-gradient(#b7bfca, #8d96a3 60%, #5f6875); }
+.cell[data-symbol='X'] { --brick: linear-gradient(#ff7a50, #ff3a0c 55%, #b82400); --glow: #ff3a0c66; }
+.cell[data-symbol='P'] { --brick: linear-gradient(#ffcd6e, #ffa51f 55%, #c27810); --glow: #ffa51f66; }
+.cell[data-symbol='G'] { --brick: linear-gradient(#c5b6ffaa, #a58cffaa 55%, #7a62d6aa); }
+.cell[data-symbol='G']::before { border: 1px dashed #d8ceff; }
 .cell:hover,.cell:focus-visible { background: #a5e7de29; outline: 1px solid #c0fff4; outline-offset: 0; }
 #areas { pointer-events: none; overflow: visible; }
 /* Every layer that edits paths takes the pointer; blocks and level leave it to the brick grid and panels. */

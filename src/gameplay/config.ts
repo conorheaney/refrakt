@@ -60,8 +60,8 @@ export const GRID = {
   halfW: 0.845,
   halfH: 0.515,
   depth: 0.88,
-  /** Centre of row 0: leaves one ball diameter (plus a hair) between the top row and FIELD.top. */
-  topY: 8.8,
+  /** Centre of row 0: leaves about one and a half ball diameters between the top row and FIELD.top. */
+  topY: 8.25,
 } as const satisfies GridDef;
 
 export const BALL = {

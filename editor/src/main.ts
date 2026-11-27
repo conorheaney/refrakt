@@ -9,7 +9,7 @@ import {
 } from '../../src/content/authoredWorlds';
 import { withAreas } from './defaultAreas';
 import { UNDO_LIMIT, undoSnapshot } from './undoSnapshot';
-import { GRID } from '../../src/gameplay/config';
+import { GRID, ROW_PALETTE } from '../../src/gameplay/config';
 import type { LevelDef } from '../../src/content/levels';
 import type { PlayAreas, PolygonArea } from '../../src/gameplay/arena/playAreas';
 import { AreaEditor } from './AreaEditor';
@@ -125,42 +125,34 @@ function renderGrid(): void {
   // The real game scene behind the grid shows the bricks, scenery and arena exactly as the game will.
   scene?.sync(data, selected);
 }
-/** Places each brick cell's hit target over the cell as the game camera shows it. */
-/** Top edge of the block area on the 1920-wide design stage (240 px at 1920 x 1080); scales with the stage. */
-const GRID_TOP_DESIGN_PX = 240;
+/** Depth of the bricks' outer front edge (see createBrickGeometry): the outline the game camera shows. */
+const BRICK_FACE_Z = GRID.depth / 2 - 0.2;
 
 /**
- * Lays the brick cells out as a flat, axis-aligned grid (no camera perspective): the same overall width and
- * height the game camera gives the grid (its average projected width and its projected height), centred where
- * the camera centres it, with its top edge at GRID_TOP_DESIGN_PX on the design stage. Each painted cell shows
- * its brick in 2D (see style.css), so the editor's own 3D bricks are hidden (see EditorScene).
+ * Places each brick cell over the cell as the game camera shows it: every cell is projected on its own at the
+ * bricks' front face, so cells sit exactly where the game draws their bricks and nearer (lower) rows come out
+ * slightly wider, as in the game. A cell spans its projected mid-height width and its projected height, so
+ * neighbouring cells meet without gaps. Each painted cell shows its brick in 2D (see style.css), so the
+ * editor's own 3D bricks are hidden (see EditorScene).
  */
 function layoutGrid(): void {
-  const grid = GRID;
-  const left = (grid.cols / 2) * grid.cellW;
-  const top = grid.topY + grid.cellH / 2;
-  const bottom = grid.topY - (grid.rows - 0.5) * grid.cellH;
-  const tl = scene.project({ x: -left, y: top });
-  const tr = scene.project({ x: left, y: top });
-  const bl = scene.project({ x: -left, y: bottom });
-  const br = scene.project({ x: left, y: bottom });
-  const width = (tr.x - tl.x + (br.x - bl.x)) / 2;
-  const height = (bl.y + br.y) / 2 - (tl.y + tr.y) / 2;
-  const centreX = (tl.x + tr.x + bl.x + br.x) / 4;
-  const stage = el('arena');
-  const y0 = GRID_TOP_DESIGN_PX * (stage.clientWidth / 1920);
-  const x0 = centreX - width / 2;
-  const cw = width / grid.cols;
-  const ch = height / grid.rows;
+  const { cols, cellW, cellH, topY } = GRID;
   cells.forEach((cell, i) => {
-    const row = Math.floor(i / GRID.cols);
-    const col = i % GRID.cols;
-    cell.dataset.row = String(row % 3);
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const x = (col - (cols - 1) / 2) * cellW;
+    const y = topY - row * cellH;
+    const left = scene.project({ x: x - cellW / 2, y }, BRICK_FACE_Z).x;
+    const right = scene.project({ x: x + cellW / 2, y }, BRICK_FACE_Z).x;
+    const top = scene.project({ x, y: y + cellH / 2 }, BRICK_FACE_Z).y;
+    const bottom = scene.project({ x, y: y - cellH / 2 }, BRICK_FACE_Z).y;
+    // The game's glass tint: by row, shifted two along in the outer columns (BrickView.colorOf).
+    cell.dataset.tint = String((row + (Math.abs(col - (cols - 1) / 2) > 3.5 ? 2 : 0)) % ROW_PALETTE.length);
     Object.assign(cell.style, {
-      left: `${x0 + col * cw}px`,
-      top: `${y0 + row * ch}px`,
-      width: `${cw}px`,
-      height: `${ch}px`,
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${right - left}px`,
+      height: `${bottom - top}px`,
     });
   });
   refreshLayers();
