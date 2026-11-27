@@ -18,6 +18,17 @@ export interface AmbienceSettings {
    * play (gameplay/ambience/AmbienceClock.ts).
    */
   readonly every: readonly [number, number];
+  /** Its own settings (AmbienceInfo.options), by key; any left out are at their defaults. */
+  readonly options?: Readonly<Record<string, string | number>>;
+}
+
+/** The value of option `key` of this ambience: as saved, or its default. */
+export function ambienceOption(settings: AmbienceSettings, key: string): string | number {
+  const saved = settings.options?.[key];
+  if (saved !== undefined) return saved;
+  const option = AMBIENCES[settings.kind].options?.find((o) => o.key === key);
+  if (!option) throw new Error(`${AMBIENCES[settings.kind].label} has no setting "${key}".`);
+  return option.default;
 }
 
 /**
@@ -64,7 +75,31 @@ export function validateAmbience(value: unknown): AmbienceSettings {
     every[0] > every[1]
   )
     throw new Error(`Pulses must come every ${shortest}-${longest} seconds, the shortest wait first.`);
-  return { kind: data.kind, paths, every: [every[0] as number, every[1] as number] };
+  const options = validateOptions(data.kind, data.options);
+  return { kind: data.kind, paths, every: [every[0] as number, every[1] as number], ...(options ? { options } : {}) };
+}
+
+function validateOptions(kind: AmbienceKind, value: unknown): Record<string, string | number> | undefined {
+  if (value === undefined) return undefined;
+  const info = AMBIENCES[kind];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid ambience settings.');
+  const out: Record<string, string | number> = {};
+  for (const [key, v] of Object.entries(value)) {
+    const option = info.options?.find((o) => o.key === key);
+    if (!option) throw new Error(`${info.label} has no setting "${key}".`);
+    if (option.type === 'color') {
+      if (typeof v !== 'string' || !/^#[0-9a-f]{6}$/i.test(v))
+        throw new Error(`${info.label}'s ${option.label.toLowerCase()} must be a colour like #c4cfd4.`);
+      out[key] = v.toLowerCase();
+    } else {
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < option.min || v > option.max)
+        throw new Error(
+          `${info.label}'s ${option.label.toLowerCase()} must be between ${option.min} and ${option.max}.`,
+        );
+      out[key] = v;
+    }
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 function validatePath(value: unknown): AmbiencePath {

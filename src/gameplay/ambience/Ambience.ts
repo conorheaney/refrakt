@@ -7,8 +7,8 @@ import type { AmbiencePath, AmbienceSettings } from './settings';
 import type { AmbienceInfo } from './ambiences';
 
 /**
- * Ambience is what fills the air of a world: snow, rain, dust. Each kind is one class in this folder
- * (snow/Snow.ts, rain/Rain.ts, dust/Dust.ts), built on Ambience below, and does everything to do with it:
+ * Ambience is what fills the air of a world: snow, rain, dust, fog. Each kind is one class in this folder
+ * (snow/Snow.ts, rain/Rain.ts, dust/Dust.ts, fog/Fog.ts), built on Ambience below, and does everything to do with it:
  * what is drawn and lit, what is heard, how it reacts to the paddle and bricks, and what one of its pulses
  * looks and sounds like. It comes from the paths drawn for it in the editor (AmbienceSettings.paths). Beside each
  * class, a few lines say what it is (its AmbienceInfo: snow/snowInfo.ts and so on) without loading three.js.

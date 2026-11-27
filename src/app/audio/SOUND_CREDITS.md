@@ -3,7 +3,7 @@
 Each clip lives next to the theme or hazard that uses it; this list keeps their credits in one place.
 
 All clips are free for commercial use and none needs attribution (all are CC0 or public domain). Played by `src/app/audio/AudioDirector.ts`
-(names in `src/app/audio/samples.ts`). Rain, thunder and wind play on the ambience bus (Ambience slider); the rest on effects. Every one except the rain, the wind and the Refrakt hum falls back to a synthesised sound if it fails to load; the Refrakt clips play on effects.
+(names in `src/app/audio/samples.ts`). Rain, thunder, wind and the fog's sounds play on the ambience bus (Ambience slider); the rest on effects. Every one except the rain, the wind, the fog's drone, foghorns and whispers, and the Refrakt hum falls back to a synthesised sound if it fails to load; the Refrakt clips play on effects.
 
 | File | Source | Licence | Edit |
 | --- | --- | --- | --- |
@@ -12,6 +12,11 @@ All clips are free for commercial use and none needs attribution (all are CC0 or
 | `src/gameplay/ambience/rain/sfx/thunder-distant-1.mp3` | BigSoundBank, "Thunder #1" (no. 2718), https://bigsoundbank.com/thunder-s2718.html | CC0 1.0 | Unedited |
 | `src/gameplay/ambience/rain/sfx/thunder-distant-2.mp3` | BigSoundBank, "Thunder #6" (no. 3179), https://bigsoundbank.com/thunder-6-s3179.html | CC0 1.0 | Unedited |
 | `src/gameplay/ambience/snow/sfx/winter-storm.mp3` | Freesound, "Howling winter storm ambient sounds" by DBlover, https://freesound.org/s/505999/ (high-quality preview) | CC0 1.0 | 95-156 s (the steadiest minute), high-passed at 45 Hz, RMS-matched to the clip it replaced, MP3 128 kbps stereo; in snowy worlds each gust (they come in pairs) plays a faded 11-15 s stretch of it |
+| `src/gameplay/ambience/fog/sfx/fog-drone.mp3` | Freesound, "wind drone effect" by cbrews, https://freesound.org/s/719251/ (high-quality preview) | CC0 1.0 | High-passed at 40 Hz, raised 14 dB (RMS about -28.5 dBFS), MP3 128 kbps stereo; looped seamlessly in game as the fog's bed |
+| `src/gameplay/ambience/fog/sfx/foghorn-far.mp3` | Freesound, "Long Distant Foghorn.aiff" by Danjocross, https://freesound.org/s/507471/ (high-quality preview) | CC0 1.0 | Peak-normalised to -1 dBFS, 0.8 s fade out, MP3 192 kbps; one of the two foghorns as a fog bank rolls in (slowed and low-passed in game) |
+| `src/gameplay/ambience/fog/sfx/foghorn-echo.mp3` | Freesound, "Great echoing foghorn.aiff" by Danjocross, https://freesound.org/s/507472/ (high-quality preview) | CC0 1.0 | Peak-normalised to -1 dBFS, 0.65 s fade out, MP3 192 kbps; the other foghorn |
+| `src/gameplay/ambience/fog/sfx/whispers.mp3` | Freesound, "Ghostly Whispering" by qubodup, https://freesound.org/s/194628/ (high-quality preview) | CC0 1.0 | 20-80 s, high-passed at 150 Hz, peak-normalised to -1 dBFS, MP3 128 kbps stereo; each fog bank plays a faded 9-12 s stretch panned from one side to the other |
+| `src/gameplay/ambience/fog/sfx/bell-toll.mp3` | Freesound, "TollBell.wav" by daytripper, https://freesound.org/s/73678/ (high-quality preview) | CC0 1.0 | Peak-normalised to -1 dBFS, MP3 192 kbps; tolls now and then in the fog's calm, slowed and low-passed so it sounds far off (falls back to a synthesised bell) |
 | `src/gameplay/hazards/snakes/sfx/snake-strike.wav` | BigSoundBank, "Whoosh #4" (no. 1796), https://bigsoundbank.com/whoosh-4-s1796.html | CC0 1.0 | 0.20-0.80 s, mono, normalised |
 | `src/gameplay/hazards/snakes/sfx/snake-bite.wav` | BigSoundBank, "Sword That Cuts" (no. 127), https://bigsoundbank.com/sword-that-cuts-s0127.html | CC0 1.0 | 0.04-0.62 s, normalised |
 | `src/gameplay/hazards/scarabs/sfx/scarab-crunch.wav` | Mixed from three BigSoundBank clips: "Bones cracking #1" (no. 596), https://bigsoundbank.com/detail-0596-bones-cracking.html ; "Apple crunched #1" (no. 1113), https://bigsoundbank.com/apple-crunched-1-s1113.html ; "Tripes" (no. 334), https://bigsoundbank.com/tripes-s0334.html | CC0 1.0 | Crack 3.885-4.12 s of no. 596, crunch 0.565-0.86 s of no. 1113 (6 ms later, 0.8 gain), squish 0.33-0.72 s of no. 334 (25 ms later, 0.4 gain); mono 48 kHz, peak-normalised to -1 dBFS, 60 ms fade out; 0.42 s |

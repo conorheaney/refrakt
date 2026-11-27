@@ -44,7 +44,7 @@ export interface AuthoredWorld {
    * the swarms come with each ambience pulse (gameplay/hazards/HazardTriggers.ts).
    */
   hazardCues?: HazardCues;
-  /** The air of the world (gameplay/ambience/settings.ts): snow, rain, dust. Absent means clear. */
+  /** The air of the world (gameplay/ambience/settings.ts): snow, rain, dust, fog. Absent means clear. */
   ambience?: AmbienceSettings;
 }
 

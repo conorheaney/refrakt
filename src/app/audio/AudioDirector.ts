@@ -43,7 +43,7 @@ export class AudioDirector {
     this.applyRefraktHum(1);
   }
 
-  /** While paused the Refrakt hum stops and the ambience (rain, snow, dust) drops to PAUSE_AMBIENCE. */
+  /** While paused the Refrakt hum stops and the ambience (rain, snow, dust, fog) drops to PAUSE_AMBIENCE. */
   setPaused(paused: boolean): void {
     this.hushed = paused;
     this.applyRefraktHum(0.3);

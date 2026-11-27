@@ -32,7 +32,8 @@ numbers, hyphens or underscores in filenames.
 
 Each file includes ten complete levels, its background and its ball and paddle
 areas; a world with ambience also has its `ambience` settings (which ambience, the
-lines it comes from and how often it pulses; older files that saved it as `weather`, or
+lines it comes from, how often it pulses and, for fog, its `options`: `color` and
+`thickness`; older files that saved it as `weather`, or
 named the weather on the world, are read too), and a world's hazard is named in `hazard` (`snakes`,
 `icicles` or `scarabs`, placed in `hazards`); one that comes with the pulses
 rather than on its own timer says so in `hazardCues` (`{ "scarabs": "pulse" }`). Invalid or

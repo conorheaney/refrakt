@@ -49,7 +49,7 @@ export interface SampleOptions {
    */
   panTo?: number;
   filterPeak?: number;
-  /** 'sfx' (default) or 'ambience' (rain, snow, dust and other background sound). */
+  /** 'sfx' (default) or 'ambience' (rain, snow, dust, fog and other background sound). */
   bus?: 'sfx' | 'ambience';
 }
 

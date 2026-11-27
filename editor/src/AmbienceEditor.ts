@@ -1,5 +1,6 @@
 import type { AuthoredWorld } from '../../src/content/authoredWorlds';
 import {
+  ambienceOption,
   defaultAmbience,
   PATH_POINTS,
   PULSE_SECONDS,
@@ -7,7 +8,7 @@ import {
   type AmbienceSettings,
 } from '../../src/gameplay/ambience/settings';
 import { isAmbienceKind, AMBIENCE_KINDS, AMBIENCES } from '../../src/gameplay/ambience/ambiences';
-import type { AmbienceInfo } from '../../src/gameplay/ambience/ambiences';
+import type { AmbienceInfo, AmbienceKind, AmbienceOption } from '../../src/gameplay/ambience/ambiences';
 import { defaultArea } from './defaultAreas';
 import { PathTool, type EditPath, type PathGroup, type PathModel } from './PathTool';
 import type { EditorScene } from './Scene';
@@ -25,6 +26,8 @@ const [MIN_POINTS, MAX_POINTS] = PATH_POINTS;
  */
 export class AmbienceEditor {
   private readonly tool: PathTool;
+  /** The ambience whose settings (AmbienceInfo.options) the panel's controls are built for. */
+  private optionsFor: AmbienceKind | null = null;
 
   constructor(
     scene: EditorScene,
@@ -163,6 +166,7 @@ export class AmbienceEditor {
     el('ambience-name').textContent = info ? `· ${info.label}` : '';
     el('ambience-settings').hidden = !info;
     if (!ambience || !info) {
+      this.optionsFor = null;
       el('ambience-summary').textContent =
         'No ambience. Choose one in World settings, then set where it comes from and how often it pulses here.';
       return;
@@ -178,6 +182,69 @@ export class AmbienceEditor {
     el('ambience-hint').textContent = info.paths.hint;
     el<HTMLInputElement>('ambience-every-min').value = String(ambience.every[0]);
     el<HTMLInputElement>('ambience-every-max').value = String(ambience.every[1]);
+    this.options(ambience, info);
+  }
+
+  /**
+   * A control for each of the ambience's own settings (its colour, how thick it is): built when the ambience changes,
+   * and showing the world's values. Dragging previews in the scene; letting go saves, with undo.
+   */
+  private options(ambience: AmbienceSettings, info: AmbienceInfo): void {
+    const box = el('ambience-options');
+    if (this.optionsFor !== ambience.kind) {
+      this.optionsFor = ambience.kind;
+      box.replaceChildren(...(info.options ?? []).map((option) => this.optionControl(option)));
+    }
+    for (const option of info.options ?? []) {
+      const input = box.querySelector<HTMLInputElement>(`[data-option="${option.key}"]`);
+      if (!input || document.activeElement === input) continue;
+      const value = ambienceOption(ambience, option.key);
+      input.value = String(value);
+      this.showValue(option, value);
+    }
+  }
+
+  private optionControl(option: AmbienceOption): HTMLLabelElement {
+    const label = document.createElement('label');
+    const value = document.createElement('span');
+    value.dataset.optionValue = option.key;
+    const input = document.createElement('input');
+    input.dataset.option = option.key;
+    input.type = option.type;
+    input.setAttribute('aria-label', option.label);
+    if (option.type === 'range')
+      Object.assign(input, { min: String(option.min), max: String(option.max), step: String(option.step) });
+    label.append(`${option.label} `, value, input);
+    const read = (): string | number => (option.type === 'range' ? Number(input.value) : input.value);
+    const withValue = (): AmbienceSettings | undefined => {
+      const ambience = this.getData().ambience;
+      return ambience && validateAmbience({ ...ambience, options: { ...ambience.options, [option.key]: read() } });
+    };
+    input.addEventListener('input', () => {
+      this.showValue(option, read());
+      const next = withValue();
+      if (next) this.preview(next);
+    });
+    input.addEventListener('change', () => {
+      try {
+        const next = withValue();
+        if (next) this.commit(next, `${option.label}: ${this.describe(option, read())}.`);
+      } catch (error) {
+        this.status(error instanceof Error ? error.message : String(error), true);
+        this.refresh();
+      }
+    });
+    return label;
+  }
+
+  private showValue(option: AmbienceOption, value: string | number): void {
+    const shown = el('ambience-options').querySelector<HTMLElement>(`[data-option-value="${option.key}"]`);
+    if (shown) shown.textContent = option.type === 'range' ? this.describe(option, value) : '';
+  }
+
+  private describe(option: AmbienceOption, value: string | number): string {
+    if (option.type === 'color') return String(value);
+    return option.percent ? `${Math.round(Number(value) * 100)}%` : String(value);
   }
 
   /** The World settings dialog's ambience choice. */

@@ -3,6 +3,7 @@ import type { AmbienceKind } from './ambiences';
 import { Rain } from './rain/Rain';
 import { Snow } from './snow/Snow';
 import { Dust } from './dust/Dust';
+import { Fog } from './fog/Fog';
 
 /** A kind of ambience's class: what it does, and the recordings it plays (loaded only when it is used). */
 export interface AmbienceType {
@@ -15,4 +16,5 @@ export const AMBIENCE_TYPES = {
   rain: Rain,
   snow: Snow,
   dust: Dust,
+  fog: Fog,
 } as const satisfies Record<AmbienceKind, AmbienceType>;

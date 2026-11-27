@@ -29,6 +29,9 @@ h2 { font-size: 18px; letter-spacing: .04em; font-weight: 600; margin: 0 0 16px;
 label { display: flex; flex-direction: column; gap: 8px; margin: 17px 0; font-size: 14px; color: #bad1e0; }
 input,select { padding: 9px 10px; width: 100%; min-width: 0; }
 input[type=range] { accent-color: #a5e7de; padding: 0; }
+input[type=color] { width: 72px; height: 36px; padding: 3px; cursor: pointer; }
+input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type=color]::-webkit-color-swatch { border: none; border-radius: 4px; }
 .check { flex-direction: row; align-items: center; }
 .check input { width: 17px; height: 17px; margin: 0 4px 0 0; flex: none; accent-color: #a5e7de; }
 .upload input { font-size: 13px; }

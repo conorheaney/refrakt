@@ -28,4 +28,7 @@ it("keeps each ambience's recordings with the ambience, under names no other sou
   );
   expect(Object.keys(AMBIENCE_TYPES.snow.samples)).toEqual(['winterStorm']);
   expect(Object.keys(AMBIENCE_TYPES.dust.samples)).toEqual(['stoneGate']);
+  expect(Object.keys(AMBIENCE_TYPES.fog.samples).sort()).toEqual(
+    ['bellToll', 'fogDrone', 'foghornEcho', 'foghornFar', 'whispers'].sort(),
+  );
 });

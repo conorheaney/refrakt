@@ -26,7 +26,7 @@ export interface WorldEntry {
   readonly hazardCues?: HazardCues;
   /** The world's scenery: an uploaded image (a data: URL). Without one the backdrop is plain dark. */
   readonly background?: string;
-  /** The air of the world (gameplay/ambience/settings.ts): snow, rain, dust. Absent means clear. */
+  /** The air of the world (gameplay/ambience/settings.ts): snow, rain, dust, fog. Absent means clear. */
   readonly ambience?: AmbienceSettings;
 }
 

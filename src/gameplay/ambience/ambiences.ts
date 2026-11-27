@@ -3,6 +3,7 @@ import type { AmbiencePath } from './settings';
 import { RAIN } from './rain/rainInfo';
 import { SNOW } from './snow/snowInfo';
 import { DUST } from './dust/dustInfo';
+import { FOG } from './fog/fogInfo';
 
 /**
  * What a kind of ambience is: its name, the paths it comes from and the settings a world starts with. Each ambience
@@ -27,7 +28,27 @@ export interface AmbienceInfo {
   readonly every: readonly [number, number];
   /** The paths a world starts with when it picks this ambience (`ball` is its ball area). */
   defaultPaths(ball: BallArea): AmbiencePath[];
+  /** Settings a world can give this ambience in the editor (its colour, how thick it is); none if absent. */
+  readonly options?: readonly AmbienceOption[];
 }
+
+/**
+ * One setting of an ambience, saved by `key` in AmbienceSettings.options (absent: `default`). The editor shows a
+ * colour picker or a slider for it.
+ */
+export type AmbienceOption =
+  | { readonly key: string; readonly label: string; readonly type: 'color'; readonly default: string }
+  | {
+      readonly key: string;
+      readonly label: string;
+      readonly type: 'range';
+      readonly min: number;
+      readonly max: number;
+      readonly step: number;
+      readonly default: number;
+      /** Shown as a percentage of 1 in the editor. */
+      readonly percent?: boolean;
+    };
 
 /**
  * Every ambience a world can pick, by the name saved in world files (AmbienceSettings.kind). Its class, which does
@@ -37,6 +58,7 @@ export const AMBIENCES = {
   rain: RAIN,
   snow: SNOW,
   dust: DUST,
+  fog: FOG,
 } as const satisfies Record<string, AmbienceInfo>;
 
 export type AmbienceKind = keyof typeof AMBIENCES;
